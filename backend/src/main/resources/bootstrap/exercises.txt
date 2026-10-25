@@ -1,0 +1,43 @@
+# Catálogo inicial de ejercicios globales (NEX-15). Son los que ve cualquier Entrenador de cualquier gimnasio.
+# Formato, una línea por ejercicio:  Nombre | Grupo muscular | Descripción
+# Las líneas vacías y las que empiezan con # se ignoran. El nombre no se repite (sin distinguir mayúsculas).
+# El procedimiento solo agrega los que faltan; nunca modifica ni reactiva uno que ya exista.
+Press de banca plano | Pecho | Acostado en un banco plano, baja la barra hasta el pecho y empuja hasta extender los brazos.
+Press inclinado con mancuernas | Pecho | En un banco inclinado, empuja las mancuernas hacia arriba y únelas sin chocarlas.
+Aperturas con mancuernas | Pecho | Acostado, abre los brazos con ligera flexión de codos y ciérralos sobre el pecho.
+Flexiones de pecho | Pecho | Con el cuerpo en línea recta, baja el pecho al suelo y empuja hasta extender los brazos.
+Fondos en paralelas | Pecho | Sostenido en paralelas, baja flexionando los codos y sube empujando con el pecho y los tríceps.
+Dominadas | Espalda | Colgado de una barra, sube hasta pasar la barbilla y baja con control.
+Jalón al pecho | Espalda | Sentado en la polea alta, tira de la barra hacia el pecho llevando los codos hacia abajo.
+Remo con barra | Espalda | Con el torso inclinado y la espalda recta, lleva la barra hacia el abdomen.
+Remo con mancuerna a una mano | Espalda | Apoyado en un banco, tira de la mancuerna hacia la cadera sin rotar el torso.
+Peso muerto | Espalda | Con la barra en el suelo, levanta extendiendo cadera y rodillas manteniendo la espalda neutra.
+Sentadilla con barra | Piernas | Con la barra sobre la espalda alta, baja la cadera hasta la paralela y sube empujando el suelo.
+Prensa de piernas | Piernas | Sentado en la máquina, empuja la plataforma extendiendo las rodillas sin bloquearlas.
+Zancadas | Piernas | Da un paso largo, baja la rodilla trasera hacia el suelo y vuelve a la posición inicial.
+Peso muerto rumano | Piernas | Con las piernas casi extendidas, lleva la cadera atrás bajando la barra por los muslos.
+Extensión de cuádriceps en máquina | Piernas | Sentado, extiende las rodillas levantando la almohadilla y baja lentamente.
+Curl femoral en máquina | Piernas | Boca abajo o sentado, flexiona las rodillas llevando los talones hacia los glúteos.
+Elevación de talones de pie | Piernas | De pie, sube sobre las puntas de los pies y baja con control para trabajar las pantorrillas.
+Puente de glúteos | Glúteos | Acostado boca arriba con las rodillas flexionadas, eleva la cadera apretando los glúteos.
+Hip thrust con barra | Glúteos | Con la espalda alta apoyada en un banco y la barra sobre la cadera, eleva la cadera hasta alinear el tronco.
+Press militar con barra | Hombros | De pie o sentado, empuja la barra desde los hombros hasta extender los brazos sobre la cabeza.
+Elevaciones laterales con mancuernas | Hombros | De pie, sube las mancuernas hacia los lados hasta la altura de los hombros.
+Vuelos posteriores con mancuernas | Hombros | Con el torso inclinado, abre los brazos hacia los lados para trabajar la parte posterior del hombro.
+Curl de bíceps con barra | Bíceps | De pie, flexiona los codos llevando la barra hacia los hombros sin balancear el cuerpo.
+Curl martillo con mancuernas | Bíceps | Con las palmas enfrentadas, flexiona los codos subiendo las mancuernas.
+Extensión de tríceps en polea | Tríceps | De pie frente a la polea alta, extiende los codos empujando la cuerda o barra hacia abajo.
+Press francés | Tríceps | Acostado, baja la barra hacia la frente flexionando los codos y vuelve extendiéndolos.
+Plancha abdominal | Core | Apoyado en antebrazos y puntas de los pies, mantén el cuerpo en línea recta el tiempo indicado.
+Crunch abdominal | Core | Acostado con las rodillas flexionadas, eleva los hombros del suelo contrayendo el abdomen.
+Elevación de piernas colgado | Core | Colgado de una barra, sube las piernas hasta la cadera o más arriba sin balancearte.
+Giro ruso | Core | Sentado con el torso inclinado y los pies elevados, rota el tronco de un lado a otro.
+Caminata en cinta | Cardio | Camina en la cinta a ritmo constante durante el tiempo indicado.
+Trote en cinta | Cardio | Trota en la cinta a ritmo moderado durante el tiempo indicado.
+Bicicleta estática | Cardio | Pedalea a ritmo constante o por intervalos durante el tiempo indicado.
+Elíptica | Cardio | Mueve piernas y brazos de forma continua en la máquina elíptica durante el tiempo indicado.
+Saltar la cuerda | Cardio | Salta con ambos pies manteniendo un ritmo constante.
+Burpees | Cuerpo completo | De pie, baja a posición de flexión, regresa con un salto y extiende el cuerpo arriba.
+Estiramiento de isquiotibiales | Movilidad | Sentado con una pierna extendida, inclina el tronco hacia el pie sin redondear la espalda.
+Rotación torácica en cuadrupedia | Movilidad | En cuatro apoyos, lleva una mano a la nuca y rota el tronco abriendo el codo hacia el techo.
+Movilidad de cadera 90/90 | Movilidad | Sentado con ambas rodillas a 90 grados, cambia de lado rotando la cadera sin ayudarte con las manos.
