@@ -13,27 +13,27 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /** Datos de prueba para las pruebas de autorización: usuarios, gimnasios, afiliaciones, sedes y sesiones. */
-class AccessFixtures {
+public class AccessFixtures {
 
     static final String PASSWORD = "Clave-Segura-123";
     private static final AtomicInteger SEQ = new AtomicInteger();
 
-    record Account(long id, String email) { }
+    public record Account(long id, String email) { }
 
     /** Gimnasio con su Administrador (afiliación y cuenta activas). */
-    record Org(long id, Account admin, long adminMemberId) { }
+    public record Org(long id, Account admin, long adminMemberId) { }
 
     private final JdbcTemplate jdbc;
     private final PasswordEncoder encoder;
     private final MockMvc mvc;
 
-    AccessFixtures(JdbcTemplate jdbc, PasswordEncoder encoder, MockMvc mvc) {
+    public AccessFixtures(JdbcTemplate jdbc, PasswordEncoder encoder, MockMvc mvc) {
         this.jdbc = jdbc;
         this.encoder = encoder;
         this.mvc = mvc;
     }
 
-    Account user(boolean platformAdmin, boolean active) {
+    public Account user(boolean platformAdmin, boolean active) {
         int n = SEQ.incrementAndGet();
         String email = "u" + n + "@nexfit.test";
         long id = jdbc.queryForObject("""
@@ -44,7 +44,7 @@ class AccessFixtures {
         return new Account(id, email);
     }
 
-    long org(boolean active) {
+    public long org(boolean active) {
         return jdbc.queryForObject("""
             INSERT INTO organizations (name, contact_email, timezone, is_active)
             VALUES ('Gym', 'g@nexfit.test', 'America/Bogota', ?) RETURNING id
@@ -52,7 +52,7 @@ class AccessFixtures {
     }
 
     /** Afilia al usuario con un rol; devuelve el id de organization_members. */
-    long member(Account user, long orgId, String role, boolean active) {
+    public long member(Account user, long orgId, String role, boolean active) {
         if (role.equals("client")) {
             // RN-25: el cliente exige EPS y un contacto de emergencia; todo en una sola sentencia (un commit).
             return jdbc.queryForObject("""
@@ -75,31 +75,31 @@ class AccessFixtures {
         return memberId;
     }
 
-    Org orgWithAdmin() {
+    public Org orgWithAdmin() {
         long orgId = org(true);
         Account admin = user(false, true);
         return new Org(orgId, admin, member(admin, orgId, "admin", true));
     }
 
     /** Usuario nuevo afiliado al gimnasio con un solo rol. */
-    Account actor(long orgId, String role) {
+    public Account actor(long orgId, String role) {
         Account a = user(false, true);
         member(a, orgId, role, true);
         return a;
     }
 
-    long branch(long orgId) {
+    public long branch(long orgId) {
         return jdbc.queryForObject("""
             INSERT INTO branches (organization_id, name, address_line1, city, department, country, is_active)
             VALUES (?, ?, 'Calle 1', 'Tunja', 'Boyacá', 'Colombia', true) RETURNING id
             """, Long.class, orgId, "Sede " + SEQ.incrementAndGet());
     }
 
-    int branchCount(long orgId) {
+    public int branchCount(long orgId) {
         return jdbc.queryForObject("SELECT count(*) FROM branches WHERE organization_id = ?", Integer.class, orgId);
     }
 
-    Cookie login(Account account) throws Exception {
+    public Cookie login(Account account) throws Exception {
         MvcResult r = mvc.perform(post("/auth/login").with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"email\":\"%s\",\"password\":\"%s\"}".formatted(account.email(), PASSWORD))).andReturn();
