@@ -29,6 +29,7 @@ Un paquete por módulo, directamente bajo `com.nexfit` (nombres en inglés, como
 | `membership` | R1 · R2 · R5 | | `resource` | R1 · R6 |
 | `payment` | R2 · R5 | | `audit` | R5 |
 | `booking` | R3 | | `shared` | todos |
+| `bootstrap` | R0 | | | |
 
 Lo que esté en el paquete raíz del módulo es su API pública; los subpaquetes (`internal`, etc.) son privados. `ModularityTests` falla si un módulo usa clases internas de otro. `shared` es el único que todos pueden usar.
 
@@ -66,7 +67,7 @@ Lo que esté en el paquete raíz del módulo es su API pública; los subpaquetes
 | `test` | Agregar o corregir pruebas | `test(membership): agregar pruebas unitarias de cancelación — NEX-52.` |
 
 - Descripción en español y con verbo en infinitivo («añadir», «corregir», «actualizar»), como en los ejemplos del profesor.
-- El módulo es el del monorepo: `auth`, `organization`, `membership`, `payment`, `booking`, `attendance`, `training`, `resource`, `audit`, o `db`, `frontend`, `ci`, `docs`. Si el cambio toca varios, se usa el principal o se parte el commit.
+- El módulo es el del monorepo: `auth`, `organization`, `membership`, `payment`, `booking`, `attendance`, `training`, `resource`, `audit`, `bootstrap`, o `db`, `frontend`, `ci`, `docs`. Si el cambio toca varios, se usa el principal o se parte el commit.
 - `— NEX-xx.` al final es obligatorio: conecta el commit con el tablero y con los requisitos.
 - **Prohibidos:** `cambios`, `fix bug`, `wip`, `últimos ajustes`, commits sin tipo o sin NEX-xx.
 
