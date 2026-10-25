@@ -27,6 +27,7 @@ El navegador solo habla con Vercel; la cookie de sesión es de ese dominio, por 
 ## Estado verificado
 
 - Backend desplegado en Azure Container Apps (`nexfit-api`).
+- Imagen vigente: `nexfit-api:v3` (25/10/2026), con `develop` hasta 73ce820 (PR #29).
 - `GET /api/actuator/health` por HTTPS responde 200.
 - `http://` redirige con 301 a HTTPS.
 
@@ -49,7 +50,7 @@ Lo que se comprobó al desplegar, y que condiciona el procedimiento:
 
 1. **La imagen se construye en local y se sube a Azure Container Registry (ACR).** ACR Tasks (`az acr build`) no está permitido en la suscripción de estudiantes, así que: `docker build` sobre `backend/Dockerfile` (puerto 8080), `docker push` al ACR y crear/actualizar la app desde esa imagen.
 2. **El ACR se usa con las credenciales de administrador.** La identidad administrada no es compatible con el entorno *express* de Container Apps.
-3. **Ingress externo, puerto 8080, máximo 1 réplica.** El mínimo de réplicas sigue por decidir (ver abajo).
+3. **Ingress externo, puerto 8080, máximo 1 réplica.** Mínimo de réplicas: 0 (ver abajo).
 4. **Secretos y variables** de la tabla anterior, con `secretref:` para las sensibles.
 5. **URL pública:** se lee con `az containerapp show --name nexfit-api --resource-group nexfit-rg --query properties.configuration.ingress.fqdn -o tsv` y va en `frontend/vercel.json`.
 
@@ -62,7 +63,7 @@ Este documento ya no lista los comandos `az` exactos de creación del entorno y 
 - **Flyway exige una base vacía** en el primer arranque (o con su historial); si la base ya tiene tablas ajenas a Flyway, la migración falla.
 - **Arranque en frío:** unos 30 s.
 
-**Réplicas.** Máximo 1. Mínimo 0 (gratis, pero el primer acceso tras inactividad paga unos 30 s de arranque en frío) o 1 (sin arranque en frío, consume cuota). Decisión pendiente: tomarla con el costo real y el resultado del monitor.
+**Réplicas.** Máximo 1, mínimo 0 (decisión del 20/10/2026): la app duerme cuando no se usa y el primer acceso tras inactividad paga unos 30 s de arranque en frío. Antes de una demo se despierta abriendo la URL de health (`https://nexfit-vert.vercel.app/api/actuator/health`).
 
 **IP del cliente.** `application.yml` usa `server.forward-headers-strategy: native` y `server.tomcat.remoteip.internal-proxies: .*`, y lee la IP del cliente de la cabecera `server.tomcat.remoteip.remote-ip-header`, que se fija con la variable `CLIENT_IP_HEADER` (por defecto `X-Forwarded-For`). `getRemoteAddr()` y, por tanto, `audit_events.ip_address` salen de esa cabecera.
 
@@ -101,7 +102,8 @@ Con `CLIENT_IP_HEADER=X-Real-IP` (o `X-Vercel-Forwarded-For`), quien llame direc
 - [x] El rewrite de `/api/*` de Vercel hacia Azure funciona.
 - [x] Monitor de UptimeRobot configurado (cada 5 minutos, aviso por correo).
 - [ ] **Sin verificar:** cálculo del 95 % con datos reales del monitor.
-- [ ] **Sin verificar:** costo real en Azure for Students y decisión del mínimo de réplicas (0 o 1).
+- [x] Mínimo de réplicas decidido: 0 (20/10/2026).
+- [ ] **Sin verificar:** costo real en Azure for Students.
 
 ### Presupuesto de Azure
 

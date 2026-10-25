@@ -1,0 +1,34 @@
+# Catálogo inicial de EPS (NEX-15 · RN-25).
+# Una por línea. Las líneas vacías y las que empiezan con # se ignoran.
+# Es solo el punto de partida: después el Master lo administra desde la aplicación (US-18).
+# El procedimiento no modifica ni reactiva una EPS que ya exista (se compara sin distinguir mayúsculas).
+# TODO(equipo): contrastar este listado con el vigente de la Superintendencia Nacional de Salud antes de usar datos reales.
+Nueva EPS
+Sanitas EPS
+EPS Sura
+Salud Total EPS
+Compensar EPS
+Famisanar EPS
+Coosalud EPS
+Mutual SER EPS
+Savia Salud EPS
+Capital Salud EPS
+Asmet Salud EPS
+Emssanar EPS
+SOS EPS (Servicio Occidental de Salud)
+Aliansalud EPS
+Cajacopi Atlántico EPS
+Comfenalco Valle EPS
+Comfachocó EPS
+Comfaoriente EPS
+Capresoca EPS
+Anas Wayuu EPSI
+Dusakawi EPSI
+Pijaos Salud EPSI
+AIC EPSI (Asociación Indígena del Cauca)
+Mallamas EPSI
+# Regímenes especiales (no son EPS, pero sus afiliados también deben poder elegir una opción)
+Fuerzas Militares (Sanidad Militar)
+Policía Nacional (Sanidad Policial)
+Ecopetrol (régimen especial)
+Magisterio (FOMAG)

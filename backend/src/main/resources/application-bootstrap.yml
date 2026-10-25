@@ -1,0 +1,9 @@
+# Perfil del procedimiento de inicialización (NEX-15).
+# Se activa solo a propósito: spring.profiles.active=bootstrap. Arranca la aplicación (corre Flyway),
+# ejecuta la inicialización una vez y termina. Ver db/seeds/README.md.
+spring:
+  main:
+    banner-mode: "off"
+
+server:
+  port: 0   # puerto libre: no choca con una API que ya esté corriendo
