@@ -322,6 +322,22 @@ public class AuthService {
             .single();
     }
 
+    /** Contraseña temporal nueva, sin tocar la BD ni auditar: la usa quien crea una cuenta (US-09). */
+//public record TemporaryPassword(String plaintext, String hash) { }
+
+public TemporaryPassword newTemporaryPassword() {
+    String temporary = generateTemporaryPassword();
+    return new TemporaryPassword(temporary, encoder.encode(temporary));
+}
+
+/** Revoca todas las sesiones de un usuario (al perder un rol, defensa en profundidad). */
+public void revokeUserSessions(long userId) {
+    sessions.findByPrincipalName(String.valueOf(userId)).keySet()
+        .forEach(sessionId -> sessions.deleteById(sessionId));
+}
+
+
+
     private String generateTemporaryPassword() {
         StringBuilder sb = new StringBuilder(TEMP_PASSWORD_LENGTH);
         for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
