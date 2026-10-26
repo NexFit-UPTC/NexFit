@@ -77,3 +77,44 @@ terminal.
 Los dos archivos de `bootstrap/` son el punto de partida, no la fuente definitiva: el Master administra la lista de
 EPS desde la aplicación (US-18) y el catálogo de ejercicios también (US-41). Si quieres agregar elementos al
 arranque, edita el archivo y vuelve a ejecutar el procedimiento: solo se insertan los nuevos.
+
+## Datos de prueba ficticios (NEX-18)
+
+Procedimiento del equipo, como el de arranque: vive en `com.nexfit.bootstrap.seed` y solo se activa con el perfil
+Spring `seed`. **Todo es inventado** (correos `@nexfit.test`, documentos `TEST-…`, teléfonos de relleno): ningún dato
+corresponde a personas reales (A-03, RNF-08). La contraseña de todas las cuentas sale de una variable de entorno; no
+se escribe en el repositorio.
+
+Hay dos conjuntos, y cada uno es **idempotente** (si ya está cargado no se toca):
+
+| Conjunto (`NEXFIT_SEED_DATASET`) | Contenido |
+|---|---|
+| `functional` (por defecto) | 2 gimnasios (*Gimnasio Demo Norte* y *Sur*) con una sede cada uno; un Master; en cada gimnasio un Administrador, un Staff, un Entrenador y clientes con membresías (una vencida) y pagos; ingresos de ejemplo; y **una persona afiliada a ambos gimnasios** (`cliente.compartido@nexfit.test`) para probar aislamiento. |
+| `reference` | Conjunto de carga para rendimiento: 5 gimnasios (*Gimnasio Carga 1…5*), 1.000 clientes y 20.000 ingresos **por gimnasio** (100.000 en total), cada cliente con su membresía anual vigente y su pago. Sin clases ni reservas por ahora. |
+| `all` | Ambos. |
+
+Cuentas del conjunto funcional (misma contraseña para todas): `master@nexfit.test`, `admin.norte@nexfit.test`,
+`staff.norte@nexfit.test`, `trainer.norte@nexfit.test`, `cliente1.norte@nexfit.test` (y lo mismo con `.sur`),
+`cliente.compartido@nexfit.test`. En el de referencia: `carga1.admin@nexfit.test`, `carga1.staff@nexfit.test`,
+`carga1.trainer@nexfit.test` y `carga1.c1@nexfit.test` … `carga1.c1000@nexfit.test` (y así para los gimnasios 2 a 5).
+
+### Cómo ejecutarlo en local
+
+```bash
+cd backend
+set -a; source ../.env; set +a
+
+read -rsp "Contraseña de las cuentas ficticias (mínimo 12 caracteres): " NEXFIT_SEED_PASSWORD; echo
+export NEXFIT_SEED_PASSWORD
+export NEXFIT_SEED_DATASET=functional      # functional | reference | all
+
+mvn spring-boot:run -Dspring-boot.run.profiles=seed
+
+unset NEXFIT_SEED_PASSWORD
+```
+
+- Se niega a correr si la base **no es local**, para no llenar de datos falsos la base de producción por error. Solo
+  si de verdad lo quieres (por ejemplo, un entorno de pruebas aparte) define `NEXFIT_SEED_ALLOW_REMOTE=true`.
+- Al terminar imprime cuántos gimnasios, clientes e ingresos cargó; el código de salida es 0 si salió bien y 1 si
+  falló (en ese caso no queda nada a medias).
+- El conjunto de referencia tarda más que el funcional (100.000 ingresos con sus validaciones de membresía).
