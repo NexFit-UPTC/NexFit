@@ -1,3 +1,6 @@
+# Insignia CI
+![CI](https://github.com/NexFit-UPTC/NexFit/actions/workflows/ci.yml/badge.svg)
+
 # NexFit
 
 SaaS multiestablecimiento para la gestión de gimnasios. Proyecto del Grupo 1 (UPTC).
