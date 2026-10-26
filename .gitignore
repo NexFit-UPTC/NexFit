@@ -14,6 +14,12 @@ frontend/dist/
 frontend/.angular/
 frontend/.vercel/
 
+# Claude Code (config personal)
+.claude/settings.local.json
+
+# Salida generada
+build/
+
 # Editores y sistema
 .idea/
 .vscode/*

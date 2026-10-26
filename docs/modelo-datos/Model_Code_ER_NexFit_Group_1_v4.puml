@@ -1,0 +1,309 @@
+@startuml NexFit_ER
+' Modelo ER de NexFit v4 (16/10/2026). Parte del modelo corregido (12/10/2026) y añade:
+'   D-05: memberships.status_reason, status_changed_at, status_changed_by_member_id
+'   D-04: payments.completed_at, completed_by_member_id
+'   D-15: users.temp_password_expires_at
+' v3: se retira user_sessions (D-14, D-35). La sesión la guarda Spring Session JDBC en sus tablas
+'   técnicas spring_session y spring_session_attributes (migración Flyway V1), que no se dibujan aquí.
+' v4: se incorporan los requisitos RF-113 a RF-118 (mockups de Jeferson, aprobados por el equipo):
+'   routines.category, level, estimated_minutes, estimated_kcal (RF-113);
+'   organization_members.weekly_goal_sessions (RF-117);
+'   tablas nuevas workout_logs y workout_log_items (RF-115, RF-116) y body_weight_records (RF-118); ENUM routine_category y routine_level.
+' La unicidad de nombre en branches, membership_plans y exercises es por gimnasio (índices con lower(name)), no global.
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+package "M1 Organización y accesos" #D6E4F0 {
+  entity organizations #D6E4F0 {
+    *id : bigint <<PK>>
+    *name : varchar(150)
+    *contact_email : varchar(150)
+    contact_phone : varchar(30)
+    *timezone : varchar(50)
+    *is_active : bool
+    *created_at : timestamptz
+  }
+  entity branches #D6E4F0 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *name : varchar(150)
+    phone : varchar(30)
+    schedule : text
+    *address_line1 : varchar(150)
+    address_line2 : varchar(150)
+    *city : varchar(100)
+    *department : varchar(100)
+    postal_code : varchar(20)
+    *country : varchar(100)
+    *is_active : bool
+  }
+  entity users #D6E4F0 {
+    *id : bigint <<PK>>
+    *document_type : document_type
+    *document_number : varchar(30) <<UQ>>
+    *first_name : varchar(100)
+    *last_name : varchar(100)
+    *birth_date : date
+    *email : varchar(150) <<UQ>>
+    *password_hash : varchar(255)
+    *must_change_password : bool
+    temp_password_expires_at : timestamptz
+    *failed_login_count : smallint
+    locked_until : timestamptz
+    *is_platform_admin : bool
+    *is_active : bool
+    *created_at : timestamptz
+  }
+  entity organization_members #D6E4F0 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *user_id : bigint <<FK>>
+    phone : varchar(30)
+    eps_id : bigint <<FK>>
+    privacy_accepted_at : timestamptz
+    health_consent_at : timestamptz
+    weekly_goal_sessions : smallint
+    *is_active : bool
+    *joined_at : timestamptz
+  }
+  entity member_roles #D6E4F0 {
+    *member_id : bigint <<PK,FK>>
+    *role : member_role <<PK>>
+    *organization_id : bigint <<FK>>
+    *assigned_at : timestamptz
+  }
+}
+
+package "M2 Salud y emergencias" #F6DADA {
+  entity health_insurance_providers #F6DADA {
+    *id : bigint <<PK>>
+    *name : varchar(150)
+    *is_active : bool
+  }
+  entity emergency_contacts #F6DADA {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *full_name : varchar(150)
+    *relationship : varchar(50)
+    *phone : varchar(30)
+    *is_primary : bool
+  }
+}
+
+package "M3 Membresías" #DDEFD9 {
+  entity membership_plans #DDEFD9 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *name : varchar(100)
+    description : text
+    *price : numeric(12,2)
+    *duration_days : int
+    benefits : text
+    *is_active : bool
+  }
+  entity memberships #DDEFD9 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *plan_id : bigint <<FK>>
+    *created_by_member_id : bigint <<FK>>
+    *start_date : date
+    *end_date : date
+    *status : membership_status
+    status_reason : text
+    status_changed_at : timestamptz
+    status_changed_by_member_id : bigint <<FK>>
+    *created_at : timestamptz
+  }
+}
+
+package "M4 Pagos" #FFF2CC {
+  entity payments #FFF2CC {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    membership_id : bigint <<FK>>
+    *registered_by_member_id : bigint <<FK>>
+    *concept : varchar(150)
+    *amount : numeric(12,2)
+    *paid_at : timestamptz
+    *method : payment_method
+    reference : varchar(100)
+    *status : payment_status
+    void_reason : text
+    completed_at : timestamptz
+    completed_by_member_id : bigint <<FK>>
+  }
+}
+
+package "M5 Clases y reservas" #E8DDF3 {
+  entity classes #E8DDF3 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *branch_id : bigint <<FK>>
+    trainer_member_id : bigint <<FK>>
+    *name : varchar(150)
+    description : text
+    *starts_at : timestamptz
+    *duration_minutes : int
+    *capacity : int
+    *status : class_status
+    *created_at : timestamptz
+  }
+  entity class_bookings #E8DDF3 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *class_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *booked_at : timestamptz
+    *status : booking_status
+    cancelled_at : timestamptz
+  }
+}
+
+package "M6 Asistencia" #D5EFEF {
+  entity check_ins #D5EFEF {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *branch_id : bigint <<FK>>
+    registered_by_member_id : bigint <<FK>>
+    *check_in_at : timestamptz
+    check_out_at : timestamptz
+    *auto_closed : bool
+  }
+}
+
+package "M7 Entrenamiento" #FCE4CC {
+  entity trainer_profiles #FCE4CC {
+    *member_id : bigint <<PK,FK>>
+    *organization_id : bigint <<FK>>
+    specialty : varchar(150)
+    certification : varchar(150)
+    hire_date : date
+  }
+  entity trainer_clients #FCE4CC {
+    *trainer_member_id : bigint <<PK,FK>>
+    *client_member_id : bigint <<PK,FK>>
+    *organization_id : bigint <<FK>>
+    *assigned_at : timestamptz
+    *is_active : bool
+  }
+  entity exercises #FCE4CC {
+    *id : bigint <<PK>>
+    organization_id : bigint <<FK>>
+    *name : varchar(100)
+    muscle_group : varchar(100)
+    description : text
+    *is_active : bool
+  }
+  entity routines #FCE4CC {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *trainer_member_id : bigint <<FK>>
+    *client_member_id : bigint <<FK>>
+    *name : varchar(150)
+    category : routine_category
+    level : routine_level
+    estimated_minutes : smallint
+    estimated_kcal : smallint
+    *created_at : timestamptz
+    *is_active : bool
+  }
+  entity routine_exercises #FCE4CC {
+    *id : bigint <<PK>>
+    *routine_id : bigint <<FK>>
+    *exercise_id : bigint <<FK>>
+    *exec_order : smallint
+    *series : smallint
+    *repetitions : smallint
+    *rest_seconds : smallint
+  }
+  entity workout_logs #FCE4CC {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *routine_id : bigint <<FK>>
+    *performed_on : date
+    *created_at : timestamptz
+  }
+  entity workout_log_items #FCE4CC {
+    *workout_log_id : bigint <<PK,FK>>
+    *routine_exercise_id : bigint <<PK,FK>>
+  }
+  entity body_weight_records #FCE4CC {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *member_id : bigint <<FK>>
+    *measured_on : date
+    *weight_kg : numeric(5,2)
+    *created_at : timestamptz
+  }
+}
+
+package "M8 Recursos físicos" #E4E4E4 {
+  entity equipment #E4E4E4 {
+    *id : bigint <<PK>>
+    *organization_id : bigint <<FK>>
+    *branch_id : bigint <<FK>>
+    *name : varchar(150)
+    category : varchar(100)
+    *status : equipment_status
+    acquisition_date : date
+  }
+}
+
+package "M9 Auditoría y trazabilidad" #DCDCF2 {
+  entity audit_events #DCDCF2 {
+    *id : bigint <<PK>>
+    organization_id : bigint <<FK>>
+    actor_user_id : bigint <<FK>>
+    *event_type : varchar(60)
+    entity_type : varchar(60)
+    entity_id : bigint
+    *occurred_at : timestamptz
+    ip_address : inet
+    *metadata : jsonb
+  }
+}
+
+users ||--o{ organization_members : "se afilia"
+organizations ||--o{ organization_members : "afilia"
+organization_members ||--|{ member_roles : "desempeña"
+organization_members ||--o| trainer_profiles : "se especializa"
+organizations ||--o{ branches : "posee"
+organizations ||--o{ membership_plans : "ofrece"
+organizations |o--o{ exercises : "define ejercicios propios"
+organizations |o--o{ audit_events : "origina"
+users |o--o{ audit_events : "ejecuta"
+health_insurance_providers |o--o{ organization_members : "cubre"
+organization_members ||--o{ emergency_contacts : "registra"
+membership_plans ||--o{ memberships : "origina"
+organization_members ||--o{ memberships : "adquiere"
+memberships |o--o{ payments : "origina"
+organization_members ||--o{ payments : "realiza"
+organization_members ||--o{ check_ins : "ingresa"
+branches ||--o{ check_ins : "recibe"
+branches ||--o{ classes : "aloja"
+trainer_profiles |o--o{ classes : "dicta"
+classes ||--o{ class_bookings : "tiene"
+organization_members ||--o{ class_bookings : "reserva"
+trainer_profiles ||--o{ trainer_clients : "entrena"
+organization_members ||--o{ trainer_clients : "es alumno"
+trainer_clients ||--o{ routines : "recibe"
+routines ||--|{ routine_exercises : "incluye"
+exercises ||--o{ routine_exercises : "se usa en"
+organization_members ||--o{ workout_logs : "registra entrenamientos"
+routines ||--o{ workout_logs : "se realiza en"
+workout_logs ||--|{ workout_log_items : "marca"
+routine_exercises ||--o{ workout_log_items : "se completa en"
+organization_members ||--o{ body_weight_records : "registra su peso"
+branches ||--o{ equipment : "contiene"
+
+legend right
+  PK clave primaria | FK clave foránea | UQ único | * obligatorio
+endlegend
+@enduml

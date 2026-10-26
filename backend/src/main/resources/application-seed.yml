@@ -1,0 +1,9 @@
+# Perfil de la carga de datos de prueba (NEX-18).
+# Se activa solo a propósito: spring.profiles.active=seed. Arranca la aplicación (corre Flyway),
+# carga los datos ficticios una vez y termina. Ver db/seeds/README.md.
+spring:
+  main:
+    banner-mode: "off"
+
+server:
+  port: 0   # puerto libre: no choca con una API que ya esté corriendo

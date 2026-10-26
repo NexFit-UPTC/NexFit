@@ -23,7 +23,14 @@ spring:
       enabled: true
 
 server:
-  port: ${PORT:8080}          # Cloud Run inyecta PORT
+  port: ${PORT:8080}          # Container Apps: el ingress apunta a este puerto (8080)
+  forward-headers-strategy: native   # RemoteIpValve: getRemoteAddr() = IP del cliente (auditoría)
+  tomcat:
+    remoteip:
+      internal-proxies: .*    # Vercel -> proxy de la nube -> app; ver docs/arquitectura/despliegue.md
+      # Azure sobrescribe X-Forwarded-For con la IP que ve (la de Vercel); en Azure se fija
+      # CLIENT_IP_HEADER=X-Real-IP (o X-Vercel-Forwarded-For) sin reconstruir la imagen.
+      remote-ip-header: ${CLIENT_IP_HEADER:X-Forwarded-For}
   servlet:
     context-path: /api
     session:
