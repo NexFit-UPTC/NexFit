@@ -1,0 +1,54 @@
+# Toda la configuración sensible llega por variables de entorno (RNF-14).
+# Ver .env.example en la raíz del repositorio.
+spring:
+  application:
+    name: nexfit
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nexfit}
+    username: ${DB_USER:nexfit}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none        # El esquema lo crea Flyway, nunca Hibernate
+  flyway:
+    locations: classpath:db/migration
+  session:
+    jdbc:
+      initialize-schema: never   # La tabla de sesiones la crea Flyway (V1)
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8080}          # Container Apps: el ingress apunta a este puerto (8080)
+  forward-headers-strategy: native   # RemoteIpValve: getRemoteAddr() = IP del cliente (auditoría)
+  tomcat:
+    remoteip:
+      internal-proxies: .*    # Vercel -> proxy de la nube -> app; ver docs/arquitectura/despliegue.md
+      # Azure sobrescribe X-Forwarded-For con la IP que ve (la de Vercel); en Azure se fija
+      # CLIENT_IP_HEADER=X-Real-IP (o X-Vercel-Forwarded-For) sin reconstruir la imagen.
+      remote-ip-header: ${CLIENT_IP_HEADER:X-Forwarded-For}
+  servlet:
+    context-path: /api
+    session:
+      timeout: 30m            # RNF-07
+      cookie:
+        name: NEXFIT_SESSION
+        http-only: true
+        secure: ${COOKIE_SECURE:true}
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    db:
+      enabled: false          # El monitor no debe despertar Neon

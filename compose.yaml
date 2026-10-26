@@ -1,0 +1,14 @@
+# Base de datos local para desarrollo: docker compose up -d
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: nexfit
+      POSTGRES_USER: nexfit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexfit-db:/var/lib/postgresql
+volumes:
+  nexfit-db:

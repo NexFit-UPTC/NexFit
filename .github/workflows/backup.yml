@@ -1,0 +1,44 @@
+# .github/workflows/backup.yml
+# NEX-19 (TT-10): copia de seguridad diaria de la base Neon con retención de 7 días.
+#
+# - Se ejecuta todos los días a las 06:00 UTC (01:00 hora Bogotá) y también
+#   se puede lanzar a mano desde la pestaña Actions (workflow_dispatch).
+# - Usa pg_dump 18 dentro de Docker para que la versión del cliente
+#   coincida con el servidor (PostgreSQL 18 en Neon).
+# - La copia se publica como artefacto del workflow con retención de 7 días:
+#   GitHub borra automáticamente los artefactos vencidos.
+# - Requiere el secreto del repositorio NEON_DATABASE_URL con la cadena de
+#   conexión de Neon (Settings -> Secrets and variables -> Actions).
+# - NOTA: los workflows programados solo corren en la rama por defecto del
+#   repositorio. Verifica en GitHub (Settings -> General) cuál es.
+
+name: Copia de seguridad diaria
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generar volcado con pg_dump 18
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          FILE_NAME: nexfit-${{ github.run_id }}.dump
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" \
+            -e DATABASE_URL \
+            -e FILE_NAME \
+            postgres:18 \
+            sh -c 'pg_dump "$DATABASE_URL" --format=custom --no-owner --file="/work/$FILE_NAME"'
+
+      - name: Publicar la copia (se conserva 7 días)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexfit-backup-${{ github.run_number }}
+          path: ${{ github.workspace }}/nexfit-*.dump
+          retention-days: 7
+          if-no-files-found: error

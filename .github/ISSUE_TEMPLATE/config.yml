@@ -1,0 +1,6 @@
+# El trabajo se gestiona en Linear, no en GitHub Issues.
+blank_issues_enabled: false
+contact_links:
+  - name: Backlog de NexFit en Linear
+    url: https://linear.app/nexfit
+    about: Crea y consulta las issues en Linear.

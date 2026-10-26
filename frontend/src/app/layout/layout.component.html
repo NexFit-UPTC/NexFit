@@ -1,0 +1,27 @@
+<header>
+  <strong>NexFit</strong>
+  <span>
+    @if (sesion.establecimiento(); as est) { {{ est.name }} · }
+    @if (sesion.usuario(); as u) { {{ u.firstName }} {{ u.lastName }} }
+  </span>
+</header>
+<nav aria-label="Secciones">
+  @for (s of secciones(); track s.ruta) {
+    <a [routerLink]="s.ruta" routerLinkActive="activa">{{ s.titulo }}</a>
+  }
+</nav>
+<main>
+  @if (sesion.estado() === 'error') {
+    <p role="alert">
+      No se pudo conectar con el servidor.
+      <button type="button" (click)="sesion.cargar()">Reintentar</button>
+    </p>
+  }
+  @if (sesion.mensaje(); as m) {
+    <p role="alert">
+      {{ m }}
+      <button type="button" (click)="sesion.mensaje.set(null)">Cerrar</button>
+    </p>
+  }
+  <router-outlet />
+</main>

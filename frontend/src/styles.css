@@ -1,0 +1,21 @@
+:root {
+  /* Paleta neutra provisional; <html data-theme> es el gancho para redefinir estas variables. */
+  --fuente: system-ui, sans-serif;
+  --color-fondo: #ffffff;
+  --color-superficie: #f5f5f5;
+  --color-texto: #1f2933;
+  --color-borde: #d9dde1;
+  --color-primario: #3b5b7a;
+  --espacio-1: 4px;
+  --espacio-2: 8px;
+  --espacio-3: 16px;
+  --espacio-4: 24px;
+  font-family: var(--fuente);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+}
