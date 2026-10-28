@@ -4,13 +4,19 @@ import { catchError, of, switchMap } from 'rxjs';
 
 const SEGURO = ['GET', 'HEAD', 'OPTIONS'];
 
-function hayCookie(): boolean {
-  return document.cookie.split('; ').some((c) => c.startsWith('XSRF-TOKEN='));
+const COOKIE = 'XSRF-TOKEN=';
+
+function leerCookie(): string | null {
+  const c = document.cookie.split('; ').find((c) => c.startsWith(COOKIE));
+  return c ? decodeURIComponent(c.slice(COOKIE.length)) : null;
 }
 
-/** La cabecera X-XSRF-TOKEN la pone Angular; aquí solo se pide la cookie si aún no existe. */
+/**
+ * Si la cookie ya existe, la cabecera X-XSRF-TOKEN la pone Angular. Si no existe, aquí se pide y, como el
+ * interceptor de Angular corre antes que este y ya no puede leerla, la cabecera se agrega aquí.
+ */
 export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
-  if (SEGURO.includes(req.method) || !req.url.startsWith('/api/') || hayCookie()) {
+  if (SEGURO.includes(req.method) || !req.url.startsWith('/api/') || leerCookie()) {
     return next(req);
   }
   // Health es público y siembra la cookie. HttpBackend evita los interceptores: sus errores no redirigen ni muestran banner.
@@ -18,6 +24,9 @@ export const csrfInterceptor: HttpInterceptorFn = (req, next) => {
     .get('/api/actuator/health')
     .pipe(
       catchError(() => of(null)),
-      switchMap(() => next(req))
+      switchMap(() => {
+        const token = leerCookie();
+        return next(token ? req.clone({ setHeaders: { 'X-XSRF-TOKEN': token } }) : req);
+      })
     );
 };

@@ -1,8 +1,13 @@
 <header>
-  <strong>NexFit</strong>
-  <span>
-    @if (sesion.establecimiento(); as est) { {{ est.name }} · }
-    @if (sesion.usuario(); as u) { {{ u.firstName }} {{ u.lastName }} }
+  <strong class="marca">NexFit</strong>
+  <span class="persona">
+    @if (sesion.establecimiento(); as est) {
+      <span class="gimnasio">{{ est.name }}</span>
+    }
+    @if (sesion.usuario(); as u) {
+      <span>{{ u.firstName }} {{ u.lastName }}</span>
+    }
+    <button type="button" class="nf-boton-texto" (click)="cerrarSesion()">Cerrar sesión</button>
   </span>
 </header>
 <nav aria-label="Secciones">
@@ -12,15 +17,15 @@
 </nav>
 <main>
   @if (sesion.estado() === 'error') {
-    <p role="alert">
+    <p class="nf-alerta" role="alert">
       No se pudo conectar con el servidor.
-      <button type="button" (click)="sesion.cargar()">Reintentar</button>
+      <button type="button" class="nf-boton-texto" (click)="sesion.cargar()">Reintentar</button>
     </p>
   }
   @if (sesion.mensaje(); as m) {
-    <p role="alert">
+    <p class="nf-alerta" role="alert">
       {{ m }}
-      <button type="button" (click)="sesion.mensaje.set(null)">Cerrar</button>
+      <button type="button" class="nf-boton-texto" (click)="sesion.mensaje.set(null)">Cerrar</button>
     </p>
   }
   <router-outlet />

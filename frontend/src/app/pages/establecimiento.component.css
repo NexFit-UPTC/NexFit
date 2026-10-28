@@ -1,0 +1,67 @@
+.titulo {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.lista {
+  display: grid;
+  gap: var(--espacio-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opcion {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 16px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-texto);
+  background: var(--color-fondo);
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.opcion:hover:not(:disabled),
+.opcion:focus-visible {
+  border-color: var(--color-primario);
+}
+
+.opcion:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.nombre {
+  font-weight: 700;
+}
+
+.roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rol {
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primario);
+  background: transparent;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+}
+
+.entrando {
+  font-size: 0.8125rem;
+  color: var(--color-texto-suave);
+}
+
+.salidas {
+  display: flex;
+  justify-content: center;
+}
