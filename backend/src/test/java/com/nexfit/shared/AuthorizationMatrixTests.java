@@ -157,6 +157,11 @@ class AuthorizationMatrixTests {
     private static final String ESTABLISHMENT_BODY =
         "{\"name\":\"Gimnasio matriz\",\"contactEmail\":\"matriz@nexfit.test\",\"timezone\":\"America/Bogota\"}";
 
+    private static final String STAFF_BODY =
+        "{\"documentType\":\"CC\",\"documentNumber\":\"TEST-MATRIZ-STAFF-1\",\"firstName\":\"Nuevo\","
+            + "\"lastName\":\"Staff\",\"birthDate\":\"1990-01-01\",\"email\":\"matriz.staff@nexfit.test\","
+            + "\"roles\":[\"staff\"]}";
+
     /**
      * Registro de endpoints de la aplicación. La clave es "MÉTODO ruta" tal como la declara el controlador.
      * El conjunto de roles es lo que la matriz 3.7 deja pasar a ese endpoint.
@@ -230,6 +235,20 @@ class AuthorizationMatrixTests {
 
         // --- Auditoría ---
         list.add(gated("GET /audit/events", roles(Rol.MASTER, Rol.ADMIN), "/audit/events", null));
+
+        // --- Personal y roles (NEX-36: solo ADMIN en los 4 verbos de PERSONAL_Y_ROLES) ---
+        // Sin Foreign: estos casos cubren 401 sin sesión, 403 para los demás roles y que la
+        // compuerta se abre para ADMIN. El aislamiento entre gimnasios ya lo cubre StaffTests.
+        list.add(gated("POST /staff", roles(Rol.ADMIN), "/staff", STAFF_BODY));
+        list.add(gated("GET /staff", roles(Rol.ADMIN), "/staff", null));
+        list.add(gated("GET /staff/{memberId}", roles(Rol.ADMIN),
+            c -> "/staff/" + c.userB(), null, null));
+        list.add(gated("PATCH /staff/{memberId}", roles(Rol.ADMIN),
+            c -> "/staff/" + c.userB(), "{\"roles\":[\"trainer\"]}", null));
+        list.add(gated("POST /staff/{memberId}/activate", roles(Rol.ADMIN),
+            c -> "/staff/" + c.userB() + "/activate", null, null));
+        list.add(gated("POST /staff/{memberId}/deactivate", roles(Rol.ADMIN),
+            c -> "/staff/" + c.userB() + "/deactivate", null, null));
 
         return list;
     }
