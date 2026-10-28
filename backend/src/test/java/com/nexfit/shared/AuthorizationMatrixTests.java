@@ -173,6 +173,10 @@ class AuthorizationMatrixTests {
         list.add(gated("PUT /establishments/{id}", roles(Rol.MASTER),
             c -> "/establishments/" + c.b().id(), ESTABLISHMENT_BODY,
             byPath("/establishments/%d", c -> c.b().id(), ESTABLISHMENT_BODY, FORBIDDEN_OR_NOT_FOUND)));
+        // Con {"active":true} sobre un establecimiento activo no cambia nada: el registro no puede dejar B inactivo.
+        list.add(gated("PATCH /establishments/{id}/active", roles(Rol.MASTER),
+            c -> "/establishments/" + c.b().id() + "/active", "{\"active\":true}",
+            byPath("/establishments/%d/active", c -> c.b().id(), "{\"active\":true}", FORBIDDEN_OR_NOT_FOUND)));
         list.add(gated("POST /establishments/{orgId}/admin", roles(Rol.MASTER),
             c -> "/establishments/" + c.b().id() + "/admin",
             "{\"documentType\":\"CC\",\"documentNumber\":\"TEST-MATRIZ-1\",\"firstName\":\"Nuevo\","

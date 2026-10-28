@@ -1,5 +1,7 @@
 package com.nexfit.organization;
 
+import com.nexfit.audit.AuditEventType;
+import com.nexfit.audit.AuditService;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -7,14 +9,16 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Creación, consulta y modificación de establecimientos (US-06, NEX-29; US-07, NEX-32). */
+/** Creación, consulta, modificación y baja lógica de establecimientos (US-06, NEX-29; US-07, NEX-32; US-08, NEX-33). */
 @Service
 class EstablishmentService {
 
     private final JdbcClient jdbc;
+    private final AuditService audit;
 
-    EstablishmentService(JdbcClient jdbc) {
+    EstablishmentService(JdbcClient jdbc, AuditService audit) {
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     public record Establishment(long id, String name, String contactEmail, String timezone, boolean active) { }
@@ -88,6 +92,32 @@ class EstablishmentService {
         } catch (DataIntegrityViolationException e) {
             throw new InvalidTimezoneException();
         }
+    }
+
+    /**
+     * Activa o desactiva el establecimiento (US-08, RN-33). Es baja lógica: no toca ningún otro dato, así que
+     * el historial queda intacto. Es idempotente y solo audita cuando el estado realmente cambia. Vacío si no
+     * existe. Los usuarios del establecimiento dejan de poder operar en él en su siguiente solicitud, porque
+     * {@code SessionUserFilter} consulta el estado en cada una.
+     */
+    @Transactional
+    public Optional<Establishment> setActive(long id, boolean active, long actorUserId, String ip) {
+        Optional<Boolean> current = jdbc.sql("SELECT is_active FROM organizations WHERE id = :id FOR UPDATE")
+            .param("id", id).query(Boolean.class).optional();
+        if (current.isEmpty()) {
+            return Optional.empty();
+        }
+        if (current.get() != active) {
+            jdbc.sql("UPDATE organizations SET is_active = :active WHERE id = :id")
+                .param("active", active).param("id", id).update();
+            audit.record(active ? AuditEventType.ORGANIZATION_REACTIVATED : AuditEventType.ORGANIZATION_DEACTIVATED,
+                actorUserId, id, "organization", id, ip, null);
+        }
+        return jdbc.sql("SELECT id, name, contact_email, timezone, is_active FROM organizations WHERE id = :id")
+            .param("id", id)
+            .query((rs, n) -> new Establishment(rs.getLong("id"), rs.getString("name"),
+                rs.getString("contact_email"), rs.getString("timezone"), rs.getBoolean("is_active")))
+            .optional();
     }
 
     private static Summary mapSummary(java.sql.ResultSet rs, int n) throws java.sql.SQLException {

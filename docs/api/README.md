@@ -32,3 +32,33 @@ Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `name`, `contactEmail` o `timezone`.
 - `403 ACCESS_DENIED`: el usuario no es Master.
 - `401` sin sesión.
+
+## Consultar y modificar establecimientos (NEX-32, US-07)
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/establishments` | Master | Lista los establecimientos: `[{id, name, contactEmail, timezone, active, branchCount, clientCount}]`. |
+| `GET /api/establishments/{id}` | Master | Un establecimiento con el mismo formato; `404` si no existe. |
+| `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. |
+
+Nota: la issue NEX-87 habla de `PATCH`, pero el backend expone `PUT /api/establishments/{id}`; el frontend usa `PUT`.
+
+Errores: `400 VALIDATION_ERROR` con `{code, field, message}` (como en la creación), `403 ACCESS_DENIED` si no es Master, `401` sin sesión.
+
+## Crear y asignar el Administrador (NEX-34, US-09)
+
+Rutas bajo `/api/establishments/{orgId}/admin`. Solo Master; `orgId` viene de la ruta.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/establishments/{orgId}/admin/lookup?documentType=CC&documentNumber=…` | Master | Busca a la persona por documento: `{"exists": false}` o `{"exists": true, "firstName", "lastName"}`. |
+| `POST /api/establishments/{orgId}/admin` | Master | Crea la cuenta del Administrador o afilia a una persona existente. |
+
+Cuerpo de `POST`: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…"}`.
+
+Respuestas:
+- `201` `{userId, temporaryPassword}`: cuenta nueva; la contraseña temporal solo se devuelve en esta respuesta.
+- `200` `{userId, firstName, lastName}`: la persona ya existía y quedó afiliada como Administrador.
+- `400 VALIDATION_ERROR` con `{code, field, message}`.
+- `404 {message}`: establecimiento no encontrado. `409 {message}`: establecimiento inactivo, correo de otra persona o documento registrado con otro correo.
+- `403 ACCESS_DENIED` si no es Master; `401` sin sesión.
