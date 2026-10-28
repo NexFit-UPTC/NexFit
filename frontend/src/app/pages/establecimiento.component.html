@@ -1,0 +1,48 @@
+<app-auth-shell>
+  <h1 class="titulo">Elige tu establecimiento</h1>
+  <p class="nf-ayuda">Elige con cuál de tus gimnasios quieres operar ahora.</p>
+
+  @if (error(); as mensaje) {
+    <p class="nf-alerta" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (cargando()) {
+    <p class="nf-ayuda" role="status">Cargando tus establecimientos…</p>
+  } @else if (lista(); as items) {
+    @if (items.length === 0) {
+      <p class="nf-ayuda">
+        No tienes ningún establecimiento activo. Pídele a un Administrador de tu gimnasio que revise tu
+        afiliación.
+      </p>
+    } @else {
+      <ul class="lista">
+        @for (e of items; track e.organizationId) {
+          <li>
+            <button
+              type="button"
+              class="opcion"
+              [disabled]="eligiendo() !== null"
+              (click)="elegir(e)"
+            >
+              <span class="nombre">{{ e.name }}</span>
+              <span class="roles">
+                @for (rol of e.roles; track rol) {
+                  <span class="rol">{{ etiqueta(rol) }}</span>
+                }
+              </span>
+              @if (eligiendo() === e.organizationId) {
+                <span class="entrando" role="status">Entrando…</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <button type="button" class="nf-boton nf-boton-ancho" (click)="cargar()">Reintentar</button>
+  }
+
+  <div class="salidas">
+    <button type="button" class="nf-boton-texto" (click)="cerrarSesion()">Cerrar sesión</button>
+  </div>
+</app-auth-shell>
