@@ -6,6 +6,7 @@ import com.nexfit.shared.Accion;
 import com.nexfit.shared.Funcion;
 import com.nexfit.shared.Permisos;
 import com.nexfit.shared.RequiresAccess;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
@@ -16,12 +17,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Establecimientos (US-06, NEX-29; US-07, NEX-32): /api/establishments.
@@ -126,6 +129,30 @@ class EstablishmentController {
         } catch (InvalidTimezoneException e) {
             return invalid("timezone", "La zona horaria no es válida");
         }
+    }
+
+    /**
+     * Activa o desactiva un establecimiento (US-08, NEX-33). Solo el Master. No existe ninguna operación para
+     * eliminarlo: la baja es lógica y el historial se conserva (R-19).
+     */
+    @RequiresAccess(funcion = Funcion.ESTABLECIMIENTOS, accion = Accion.ACTIVAR)
+    @PatchMapping("/{id}/active")
+    ResponseEntity<?> setActive(@PathVariable long id, @RequestBody Map<String, Object> body,
+                                HttpServletRequest request) {
+        if (!(body.get("active") instanceof Boolean active)) {
+            return invalid("active", "Indica si el establecimiento queda activo (true) o inactivo (false)");
+        }
+        return establishments.setActive(id, active, actorId(), request.getRemoteAddr())
+            .map(updated -> ResponseEntity.ok((Object) updated))
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private static long actorId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof Long id) {
+            return id;
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     }
 
     /** Solo el Master puede MODIFICAR establecimientos (matriz 3.7); el resto, no. */
