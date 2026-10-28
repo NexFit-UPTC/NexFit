@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
 import { LayoutComponent } from './layout/layout.component';
 import { AdministradorComponent } from './pages/administrador.component';
@@ -21,8 +22,8 @@ export const routes: Routes = [
     canActivate: [sessionGuard],
     children: [
       { path: 'mi-perfil', component: MiPerfilComponent },
-      { path: 'establecimientos', component: EstablecimientosComponent },
-      { path: 'administrador', component: AdministradorComponent },
+      { path: 'establecimientos', component: EstablecimientosComponent, canActivate: [masterGuard] },
+      { path: 'administrador', component: AdministradorComponent, canActivate: [masterGuard] },
       { path: 'auditoria', component: AuditoriaComponent },
       { path: 'sedes', component: SedesComponent },
       { path: 'planes', component: PlanesComponent },
