@@ -91,7 +91,8 @@ Hay dos conjuntos, y cada uno es **idempotente** (si ya está cargado no se toca
 |---|---|
 | `functional` (por defecto) | 2 gimnasios (*Gimnasio Demo Norte* y *Sur*) con una sede cada uno; un Master; en cada gimnasio un Administrador, un Staff, un Entrenador y clientes con membresías (una vencida) y pagos; ingresos de ejemplo; y **una persona afiliada a ambos gimnasios** (`cliente.compartido@nexfit.test`) para probar aislamiento. |
 | `reference` | Conjunto de carga para rendimiento: 5 gimnasios (*Gimnasio Carga 1…5*), 1.000 clientes y 20.000 ingresos **por gimnasio** (100.000 en total), cada cliente con su membresía anual vigente y su pago. Sin clases ni reservas por ahora. |
-| `all` | Ambos. |
+| `massive` | Demo a gran escala (ver abajo), con `NEXFIT_SEED_SCALE` = `small`, `medium` o `large`. |
+| `all` | `functional` + `reference` (no incluye `massive`). |
 
 Cuentas del conjunto funcional (misma contraseña para todas): `master@nexfit.test`, `admin.norte@nexfit.test`,
 `staff.norte@nexfit.test`, `trainer.norte@nexfit.test`, `cliente1.norte@nexfit.test` (y lo mismo con `.sur`),
@@ -106,7 +107,7 @@ set -a; source ../.env; set +a
 
 read -rsp "Contraseña de las cuentas ficticias (mínimo 12 caracteres): " NEXFIT_SEED_PASSWORD; echo
 export NEXFIT_SEED_PASSWORD
-export NEXFIT_SEED_DATASET=functional      # functional | reference | all
+export NEXFIT_SEED_DATASET=functional      # functional | reference | massive | all
 
 mvn spring-boot:run -Dspring-boot.run.profiles=seed
 
@@ -118,3 +119,47 @@ unset NEXFIT_SEED_PASSWORD
 - Al terminar imprime cuántos gimnasios, clientes e ingresos cargó; el código de salida es 0 si salió bien y 1 si
   falló (en ese caso no queda nada a medias).
 - El conjunto de referencia tarda más que el funcional (100.000 ingresos con sus validaciones de membresía).
+
+## Conjunto `massive` (demo a gran escala)
+
+`NEXFIT_SEED_DATASET=massive` con `NEXFIT_SEED_SCALE` (`small` por defecto). Es determinista (semilla fija; las fechas
+se calculan respecto de hoy en `America/Bogota`) y **idempotente por gimnasio**: un gimnasio ya cargado (correo de
+contacto `infoNN@massive.nexfit.test`) no se toca; si cargas `medium` y luego `large`, solo se agregan los gimnasios
+que faltan. Carga con `COPY`, una transacción por gimnasio, y al final imprime los conteos por tabla.
+
+| Escala | Gimnasios | Sedes | Clientes | Ingresos | Tamaño medido |
+|---|---|---|---|---|---|
+| `small` | 3 | 6 | ~1.500 | ~40.000 | pocos MB |
+| `medium` | 8 | 24 | ~8.000 | ~350.000 | 69 MB (≈70 s) |
+| `large` | 15 | 45 | ~30.000 | ~1,5 M | 239 MB (≈280 s) |
+
+Tamaño medido con `pg_database_size` en PostgreSQL 18 local, sin sesiones ni auditoría. Verifica el límite de
+almacenamiento del plan de Neon antes de cargar `large`.
+
+Qué contiene (solo tablas del MER v4, todo con `organization_id`): gimnasios, sedes (municipios de Boyacá y
+ciudades principales, direcciones con formato colombiano), planes en COP, personas con nombres y apellidos
+colombianos, EPS (solo las de `bootstrap/eps.txt`), membresías sin solaparse (vigentes, vencidas, suspendidas y
+canceladas) con su pago, ingresos con picos de 6 a 8 h y de 17 a 20 h dentro de la vigencia, entrenadores y
+asignaciones, clases de las próximas 3 semanas con reservas dentro del cupo, y equipos por sede. No carga rutinas,
+registros de entrenamiento ni peso corporal.
+
+Datos sintéticos: los documentos (10 dígitos con formato de cédula), correos (`nombre.apellido.<n>@gmail.com`,
+`hotmail.com` u `outlook.com`; nunca se envía correo) y teléfonos se generan al azar, y los nombres de los
+gimnasios son inventados; **puede haber coincidencias fortuitas con personas o negocios reales**. No uses estas
+cuentas para nada que no sea demostración.
+
+Durante la carga de cada gimnasio se desactiva el trigger `check_ins_validate` (solo dentro de esa transacción, y
+bloquea `check_ins` con un candado exclusivo hasta confirmar). Antes de confirmar se verifica que ningún ingreso
+quede fuera de la vigencia de una membresía activa; si hay alguno, se deshace todo el gimnasio.
+
+```bash
+export NEXFIT_SEED_DATASET=massive NEXFIT_SEED_SCALE=medium
+```
+
+- Las cuentas de demo por rol están en `docs/seeds/usuarios-demo.md`. La contraseña es `NEXFIT_SEED_PASSWORD`.
+- Opcional, cuentas del grupo: `NEXFIT_SEED_TEAM_FILE=/ruta/fuera/del/repo/equipo.csv`. Una línea por persona
+  (`rol,correo,tipoDoc,numeroDoc,nombres,apellidos,AAAA-MM-DD,telefono`; rol = `admin|staff|trainer|client`; `#`
+  comenta). Se afilian al primer gimnasio `massive`, con cambio de contraseña obligatorio. Cada persona aporta sus
+  datos y su consentimiento. Guarda el archivo fuera del repositorio; `*.local.csv` está en `.gitignore`.
+- Si la base ya tenía el catálogo de EPS anterior (p. ej. «Sanitas EPS»), el `massive` agrega las EPS con el
+  nombre nuevo («Sanitas») y usa solo estas; las antiguas siguen en la tabla hasta que el Master las desactive.
