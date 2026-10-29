@@ -28,3 +28,17 @@ SaaS multiestablecimiento para gimnasios. Roles: Administrador Master (plataform
 - Requisitos: SRS de NexFit (RF, RN, RNF citados en cada issue).
 - Cada issue de Linear trae historia, criterios de aceptación y trazabilidad. Implementa exactamente esos criterios y escribe una prueba por cada uno.
 - Modelo de datos: MER v4 (23 tablas, 10 enums). Se incorpora como migración V2 en TT-05 (NEX-12).
+
+## Frontend (reglas de diseño)
+
+- Fuente visual: `docs/frontend/brief-front-nexfit.md` y `docs/frontend/mockups/`. Estructura web: mockups de Santiago; login: Jeff; home del cliente con QR y membresía: Andrés.
+- Layout web: sidebar izquierda fija. Nada de barra inferior de móvil.
+- Tokens en `styles.css`: base blanca/negra fija (sidebar oscura, fondo claro) y un solo acento por variable `--acento` (por defecto lima, como los mockups de Santiago), con `--sobre-acento` calculado por contraste. Modo claro/oscuro/sistema. El usuario cambia el acento (presets + hex) y, en una fase posterior, el fondo (hex o imagen con capa para legibilidad y paleta derivada de la imagen). Persistencia en el navegador hasta que exista endpoint.
+- No copiar de los mockups: textos de UPTC o "semestre", "Ingresos del mes" ni botones "Cobrar". "Registrar entrada" es del Staff, no del Administrador.
+- Contraseña mínima: 10 caracteres. Registro público solo para Cliente; los demás roles los crea un administrador.
+- El Master no ve clientes ni staff. El Administrador no ve datos sensibles de clientes.
+- Si no hay endpoint, usar un servicio con datos simulados en `core/mock/`, marcado `// MOCK`. No inventar endpoints; los contratos reales están en `docs/api/README.md`.
+- Listados con paginación y búsqueda en el servidor (habrá datos masivos).
+- Dependencias, fuentes e iconos nuevos solo con aprobación; fuentes autoalojadas.
+- Antes de dar algo por hecho: `npm run lint && npm run build && npm test -- --watch=false` y una captura con Playwright contra `ng serve`.
+- Nunca `Co-Authored-By`, `Claude-Session` ni mención de IA en commits ni PR.

@@ -18,9 +18,9 @@
   padding: 14px 16px;
   font: inherit;
   text-align: left;
-  color: var(--color-texto);
-  background: var(--color-fondo);
-  border: 1px solid var(--color-borde);
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--borde);
   border-radius: 10px;
   cursor: pointer;
   transition: border-color 0.15s ease;
@@ -28,7 +28,7 @@
 
 .opcion:hover:not(:disabled),
 .opcion:focus-visible {
-  border-color: var(--color-primario);
+  border-color: var(--texto);
 }
 
 .opcion:disabled {
@@ -50,15 +50,15 @@
   padding: 2px 10px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-primario);
+  color: var(--texto);
   background: transparent;
-  border: 1px solid var(--color-borde);
+  border: 1px solid var(--borde);
   border-radius: 999px;
 }
 
 .entrando {
   font-size: 0.8125rem;
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
 }
 
 .salidas {

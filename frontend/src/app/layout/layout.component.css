@@ -3,61 +3,173 @@
   min-height: 100vh;
 }
 
-header {
+.lateral {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 260px;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--espacio-2) var(--espacio-3);
-  padding: var(--espacio-2) var(--espacio-3);
-  background: var(--color-superficie);
-  border-bottom: 1px solid var(--color-borde);
+  flex-direction: column;
+  gap: var(--espacio-1);
+  padding: var(--espacio-4) var(--espacio-3) var(--espacio-3);
+  overflow-y: auto;
+  color: var(--lateral-texto);
+  background: var(--lateral);
+  border-right: 1px solid var(--lateral-borde);
 }
 
 .marca {
-  font-size: 1.125rem;
-  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--espacio-2);
 }
 
-.persona {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--espacio-2) var(--espacio-3);
-  font-size: 0.875rem;
-  color: var(--color-texto-suave);
+.logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  font-family: var(--fuente-titulo);
+  font-weight: 700;
+  color: var(--sobre-acento);
+  background: var(--acento);
+  border-radius: 10px;
+}
+
+.nombre-marca {
+  font-family: var(--fuente-titulo);
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.rol {
+  margin: var(--espacio-2) 0 0;
+  padding: 0 var(--espacio-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lateral-suave);
 }
 
 .gimnasio {
-  color: var(--color-texto);
-  font-weight: 600;
+  margin: 0;
+  padding: 0 var(--espacio-2);
+  font-size: 0.875rem;
+  color: var(--lateral-texto);
 }
 
 nav {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--espacio-1) var(--espacio-3);
-  padding: var(--espacio-2) var(--espacio-3);
-  border-bottom: 1px solid var(--color-borde);
+  flex-direction: column;
+  gap: var(--espacio-1);
+  margin-top: var(--espacio-4);
+  flex: 1;
 }
 
 nav a {
-  padding: var(--espacio-1) 0;
-  color: var(--color-texto-suave);
+  padding: 12px 18px;
+  color: var(--lateral-suave);
   text-decoration: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 10px;
 }
 
 nav a:hover {
-  color: var(--color-texto);
+  color: var(--lateral-texto);
 }
 
 nav a.activa {
   font-weight: 600;
-  color: var(--color-primario);
-  border-bottom-color: var(--color-primario);
+  color: var(--sobre-acento);
+  background: var(--acento);
+}
+
+.lateral :focus-visible {
+  outline-color: var(--acento);
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--lateral-borde);
+  border-radius: 12px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--lateral-texto);
+  border: 1px solid var(--lateral-suave);
+  border-radius: 50%;
+}
+
+.datos {
+  display: grid;
+  min-width: 0;
+}
+
+.nombre {
+  overflow: hidden;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.salir {
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--lateral-suave);
+  text-align: left;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.salir:hover {
+  color: var(--lateral-texto);
 }
 
 main {
-  padding: var(--espacio-3);
+  margin-left: 260px;
+  padding: var(--espacio-4) 32px;
+}
+
+/* En pantallas angostas la sidebar pasa a la parte superior (nunca a una barra inferior). */
+@media (max-width: 720px) {
+  .lateral {
+    position: static;
+    width: auto;
+  }
+
+  nav {
+    flex: none;
+    flex-direction: row;
+    margin-top: var(--espacio-2);
+    overflow-x: auto;
+  }
+
+  nav a {
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+
+  .usuario {
+    margin-top: var(--espacio-2);
+    padding: 8px 12px;
+  }
+
+  main {
+    margin-left: 0;
+    padding: var(--espacio-3);
+  }
 }
