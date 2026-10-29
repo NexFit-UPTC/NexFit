@@ -17,8 +17,17 @@ const SECCIONES: Seccion[] = [
   { ruta: '/personal', titulo: 'Personal', roles: ['admin'] },
   { ruta: '/planes', titulo: 'Planes', roles: ['admin'] },
   { ruta: '/mi-perfil', titulo: 'Mi perfil', roles: 'todos' },
+  { ruta: '/apariencia', titulo: 'Apariencia', roles: 'todos' },
   { ruta: '/cambiar-contrasena', titulo: 'Cambiar contraseña', roles: 'todos' }
 ];
+
+const ETIQUETAS_ROL: Record<string, string> = {
+  master: 'Master',
+  admin: 'Administrador',
+  staff: 'Staff',
+  trainer: 'Entrenador',
+  client: 'Cliente'
+};
 
 @Component({
   selector: 'app-layout',
@@ -32,6 +41,15 @@ export class LayoutComponent {
   protected readonly secciones = computed(() => {
     const roles = this.sesion.roles();
     return SECCIONES.filter((s) => s.roles === 'todos' || s.roles.some((r) => roles.includes(r)));
+  });
+
+  protected readonly etiquetaRol = computed(() => {
+    const rol = this.sesion.roles()[0];
+    return rol ? (ETIQUETAS_ROL[rol] ?? rol) : '';
+  });
+  protected readonly iniciales = computed(() => {
+    const u = this.sesion.usuario();
+    return u ? `${u.firstName.charAt(0)}${u.lastName.charAt(0)}`.toUpperCase() : '';
   });
 
   protected cerrarSesion(): void {

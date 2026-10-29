@@ -3,6 +3,7 @@ import { adminGuard } from './core/admin.guard';
 import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
 import { LayoutComponent } from './layout/layout.component';
+import { AparienciaComponent } from './pages/apariencia.component';
 import { AdministradorComponent } from './pages/administrador.component';
 import { AuditoriaComponent } from './pages/auditoria.component';
 import { CambiarContrasenaComponent } from './pages/cambiar-contrasena.component';
@@ -24,6 +25,7 @@ export const routes: Routes = [
     canActivate: [sessionGuard],
     children: [
       { path: 'mi-perfil', component: MiPerfilComponent },
+      { path: 'apariencia', component: AparienciaComponent },
       { path: 'establecimientos', component: EstablecimientosComponent, canActivate: [masterGuard] },
       { path: 'administrador', component: AdministradorComponent, canActivate: [masterGuard] },
       { path: 'auditoria', component: AuditoriaComponent },

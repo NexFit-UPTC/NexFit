@@ -13,14 +13,14 @@ form {
   align-items: center;
   gap: var(--espacio-2);
   font-size: 0.875rem;
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
   cursor: pointer;
 }
 
 .mostrar input {
   width: 18px;
   height: 18px;
-  accent-color: var(--color-primario);
+  accent-color: var(--texto);
 }
 
 .salidas {
