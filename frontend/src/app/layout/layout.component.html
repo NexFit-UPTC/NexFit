@@ -1,20 +1,29 @@
-<header>
-  <strong class="marca">NexFit</strong>
-  <span class="persona">
-    @if (sesion.establecimiento(); as est) {
-      <span class="gimnasio">{{ est.name }}</span>
-    }
-    @if (sesion.usuario(); as u) {
-      <span>{{ u.firstName }} {{ u.lastName }}</span>
-    }
-    <button type="button" class="nf-boton-texto" (click)="cerrarSesion()">Cerrar sesión</button>
-  </span>
-</header>
-<nav aria-label="Secciones">
-  @for (s of secciones(); track s.ruta) {
-    <a [routerLink]="s.ruta" routerLinkActive="activa">{{ s.titulo }}</a>
+<aside class="lateral">
+  <div class="marca">
+    <span class="logo" aria-hidden="true">N</span>
+    <strong class="nombre-marca">NexFit</strong>
+  </div>
+  <p class="rol">{{ etiquetaRol() }}</p>
+  @if (sesion.establecimiento(); as est) {
+    <p class="gimnasio">{{ est.name }}</p>
   }
-</nav>
+  <nav aria-label="Secciones">
+    @for (s of secciones(); track s.ruta) {
+      <a [routerLink]="s.ruta" routerLinkActive="activa">{{ s.titulo }}</a>
+    }
+  </nav>
+  <div class="usuario">
+    @if (sesion.usuario(); as u) {
+      <span class="avatar" aria-hidden="true">{{ iniciales() }}</span>
+      <span class="datos">
+        <span class="nombre">{{ u.firstName }} {{ u.lastName }}</span>
+        <button type="button" class="salir" (click)="cerrarSesion()">Cerrar sesión</button>
+      </span>
+    } @else {
+      <button type="button" class="salir" (click)="cerrarSesion()">Cerrar sesión</button>
+    }
+  </div>
+</aside>
 <main>
   @if (sesion.estado() === 'error') {
     <p class="nf-alerta" role="alert">

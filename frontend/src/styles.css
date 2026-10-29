@@ -1,46 +1,98 @@
 /*
- * Paleta de NexFit. Los valores HEX son los de la propuesta visual del grupo (pendientes de ajuste al
- * revisar los mockups). <html data-theme> elige el juego de variables: "oscuro" (por defecto) o "claro".
- * Las pantallas usan solo estas variables, nunca colores sueltos.
+ * Tokens de NexFit. Base blanca/negra fija; lo único que el usuario cambia es --acento (con --sobre-acento
+ * calculado por contraste WCAG en TemaService y en el script de index.html). <html data-theme> es "claro" u
+ * "oscuro" (el modo "sistema" se resuelve a uno de los dos). Las pantallas usan solo estas variables.
  */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/inter-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/inter-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin-700-normal.woff2') format('woff2');
+}
+
 :root,
-:root[data-theme='oscuro'] {
-  --fuente: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --color-fondo: #0b1117; /* Negro profundo: fondos principales y navegación */
-  --color-superficie: #151e28; /* Carbón: tarjetas, paneles y superficies elevadas */
-  --color-texto: #f4f7fa; /* Blanco frío: texto principal en modo oscuro */
-  --color-texto-suave: #94a3b3; /* Gris azulado: texto secundario, iconos y etiquetas */
-  --color-borde: #293644; /* Borde oscuro: separadores y bordes de componentes */
-  --color-primario: #45c8f5; /* Celeste NexFit: botones principales, enlaces y selección */
-  --color-primario-hover: #72d7f8;
-  --color-primario-texto: #0b1117; /* Texto sobre el celeste */
-  --color-acento: #087eac; /* Celeste oscuro: acentos sobre fondos claros */
-  --color-error: #ff8f8f;
-  --color-error-fondo: rgba(255, 99, 99, 0.12);
-  --sombra: 0 24px 60px rgba(0, 0, 0, 0.45);
+:root[data-theme='claro'] {
+  --fuente: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fuente-titulo: 'Space Grotesk', var(--fuente);
+
+  /* Acento: lima por defecto. TemaService lo reemplaza en línea sobre <html>. */
+  --acento: #c8f03a;
+  --sobre-acento: #11151a;
+
+  --fondo: #f4f4f0;
+  --superficie: #ffffff;
+  --texto: #11151a;
+  --texto-suave: #565e68;
+  --borde: #e1e1d9;
+  --error: #b42318;
+  --error-fondo: rgba(180, 35, 24, 0.08);
+  --sombra: 0 24px 60px rgba(17, 21, 26, 0.12);
+
+  /* La sidebar es oscura en ambos modos (mockups de Santiago). */
+  --lateral: #11151a;
+  --lateral-texto: #f4f4f0;
+  --lateral-suave: #a3abb4;
+  --lateral-borde: #262d34;
+
   --espacio-1: 4px;
   --espacio-2: 8px;
   --espacio-3: 16px;
   --espacio-4: 24px;
   --radio: 12px;
+
+  /* Alias de compatibilidad: otras ramas aún usan --color-*. No eliminar. */
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-borde: var(--borde);
+  --color-primario: var(--acento);
+  --color-primario-hover: var(--acento);
+  --color-primario-texto: var(--sobre-acento);
+  --color-acento: var(--acento);
+  --color-error: var(--error);
+  --color-error-fondo: var(--error-fondo);
+
   font-family: var(--fuente);
-  color-scheme: dark;
+  color-scheme: light;
 }
 
-:root[data-theme='claro'] {
-  --color-fondo: #f4f7fa;
-  --color-superficie: #ffffff;
-  --color-texto: #0b1117;
-  --color-texto-suave: #4a5b6c;
-  --color-borde: #d3dce5;
-  --color-primario: #087eac;
-  --color-primario-hover: #066a92;
-  --color-primario-texto: #ffffff;
-  --color-acento: #087eac;
-  --color-error: #b42318;
-  --color-error-fondo: rgba(180, 35, 24, 0.08);
-  --sombra: 0 24px 60px rgba(11, 17, 23, 0.12);
-  color-scheme: light;
+:root[data-theme='oscuro'] {
+  --fondo: #0c0f12;
+  --superficie: #151a1f;
+  --texto: #f4f4f0;
+  --texto-suave: #9aa4ae;
+  --borde: #262d34;
+  --error: #ff8f8f;
+  --error-fondo: rgba(255, 99, 99, 0.12);
+  --sombra: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --lateral: #090b0e;
+  color-scheme: dark;
 }
 
 * {
@@ -49,17 +101,27 @@
 
 body {
   margin: 0;
-  background: var(--color-fondo);
-  color: var(--color-texto);
+  background: var(--fondo);
+  color: var(--texto);
   line-height: 1.5;
 }
 
+h1,
+h2,
+h3 {
+  font-family: var(--fuente-titulo);
+  letter-spacing: -0.01em;
+}
+
 a {
-  color: var(--color-primario);
+  color: var(--texto);
+  text-decoration-color: var(--acento);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-primario);
+  outline: 3px solid var(--texto);
   outline-offset: 2px;
 }
 
@@ -73,7 +135,7 @@ a {
 .nf-campo label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
 }
 
 /* 16 px evita el zoom automático de los navegadores móviles al enfocar un campo. */
@@ -83,29 +145,29 @@ a {
   padding: 10px 14px;
   font: inherit;
   font-size: 1rem;
-  color: var(--color-texto);
-  background: var(--color-fondo);
-  border: 1px solid var(--color-borde);
+  color: var(--texto);
+  background: var(--fondo);
+  border: 1px solid var(--borde);
   border-radius: 10px;
   transition: border-color 0.15s ease;
 }
 
 .nf-entrada::placeholder {
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
   opacity: 0.7;
 }
 
 .nf-entrada:hover {
-  border-color: var(--color-texto-suave);
+  border-color: var(--texto-suave);
 }
 
 .nf-entrada:focus-visible {
-  border-color: var(--color-primario);
+  border-color: var(--texto);
   outline-offset: 0;
 }
 
 .nf-entrada[aria-invalid='true'] {
-  border-color: var(--color-error);
+  border-color: var(--error);
 }
 
 .nf-boton {
@@ -116,19 +178,19 @@ a {
   min-height: 46px;
   padding: 10px 20px;
   font: inherit;
-  font-weight: 700;
-  color: var(--color-primario-texto);
-  background: var(--color-primario);
+  font-weight: 600;
+  color: var(--sobre-acento);
+  background: var(--acento);
   border: 0;
   border-radius: 10px;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
+    filter 0.15s ease,
     transform 0.1s ease;
 }
 
 .nf-boton:hover:not(:disabled) {
-  background: var(--color-primario-hover);
+  filter: brightness(0.92);
 }
 
 .nf-boton:active:not(:disabled) {
@@ -149,14 +211,14 @@ a {
   font: inherit;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
   background: none;
   border: 0;
   cursor: pointer;
 }
 
 .nf-boton-texto:hover {
-  color: var(--color-texto);
+  color: var(--texto);
   text-decoration: underline;
 }
 
@@ -164,22 +226,22 @@ a {
   margin: 0;
   padding: 10px 14px;
   font-size: 0.9rem;
-  color: var(--color-error);
-  background: var(--color-error-fondo);
-  border: 1px solid var(--color-error);
+  color: var(--error);
+  background: var(--error-fondo);
+  border: 1px solid var(--error);
   border-radius: 10px;
 }
 
 .nf-ayuda {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--color-texto-suave);
+  color: var(--texto-suave);
 }
 
 .nf-error-campo {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--color-error);
+  color: var(--error);
 }
 
 @media (prefers-reduced-motion: reduce) {
