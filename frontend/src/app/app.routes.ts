@@ -10,6 +10,7 @@ import { EstablecimientoComponent } from './pages/establecimiento.component';
 import { EstablecimientosComponent } from './pages/establecimientos.component';
 import { LoginComponent } from './pages/login.component';
 import { MiPerfilComponent } from './pages/mi-perfil.component';
+import { PersonalComponent } from './pages/personal.component';
 import { PlanesComponent } from './pages/planes.component';
 import { SedesComponent } from './pages/sedes.component';
 
@@ -27,6 +28,7 @@ export const routes: Routes = [
       { path: 'administrador', component: AdministradorComponent, canActivate: [masterGuard] },
       { path: 'auditoria', component: AuditoriaComponent },
       { path: 'sedes', component: SedesComponent, canActivate: [adminGuard] },
+      { path: 'personal', component: PersonalComponent, canActivate: [adminGuard] },
       { path: 'planes', component: PlanesComponent, canActivate: [adminGuard] },
       { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
     ]
