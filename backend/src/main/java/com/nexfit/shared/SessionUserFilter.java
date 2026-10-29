@@ -56,6 +56,16 @@ public class SessionUserFilter extends OncePerRequestFilter {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Los GET públicos de gimnasios (NEX-97) no leen la sesión: una cookie vencida o un usuario sin
+     * establecimiento activo no debe afectar lo que ve un visitante. Solo GET y solo /public/gyms.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = pathWithinApp(request);
+        return "GET".equals(request.getMethod()) && (path.equals("/public/gyms") || path.startsWith("/public/gyms/"));
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
