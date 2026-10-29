@@ -195,6 +195,10 @@ class AuthorizationMatrixTests {
 
         // --- Autenticación y cuenta propia ---
         list.add(new Case("POST /auth/login", Kind.PUBLIC, Set.of(), c -> "/auth/login", c -> "{}", null, false));
+        // Públicos de solo lectura (NEX-97): los abre SecurityConfig; el handler lleva @AnyAuthenticated.
+        list.add(new Case("GET /public/gyms", Kind.PUBLIC, Set.of(), c -> "/public/gyms", c -> null, null, false));
+        list.add(new Case("GET /public/gyms/{id}", Kind.PUBLIC, Set.of(), c -> "/public/gyms/" + c.a().id(),
+            c -> null, null, false));
         list.add(any("GET /auth/establishments", "/auth/establishments", c -> null, null, false));
         list.add(any("POST /auth/establishment", "/auth/establishment", c -> "{\"organizationId\":" + c.b().id() + "}",
             byBody("/auth/establishment", "{\"organizationId\":%d}", c -> c.b().id(), Set.of(400)), true));
@@ -587,7 +591,8 @@ class AuthorizationMatrixTests {
 
         assertThat(ALL).hasSize(5);
         assertThat(ctx.accounts().keySet()).containsExactlyInAnyOrderElementsOf(ALL);
-        assertThat(byKind.getOrDefault("PUBLIC", 0L)).as("solo el login es público").isEqualTo(1L);
+        assertThat(byKind.getOrDefault("PUBLIC", 0L)).as("solo el login y los 2 GET de /public/gyms son públicos")
+            .isEqualTo(3L);
         assertThat(cases.stream().filter(c -> c.foreign() != null)).as("endpoints con recurso ajeno").isNotEmpty();
     }
 }

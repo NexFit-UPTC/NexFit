@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -32,6 +33,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Configuración de seguridad.
  *
  * - /actuator/health y /auth/login son públicos (health lo usa Cloud Run y no toca la base de datos).
+ * - GET /public/gyms y GET /public/gyms/{id} también (NEX-97).
  * - Todo lo demás exige sesión; sin sesión responde 401 (no redirige a un formulario).
  * - CSRF con cookie XSRF-TOKEN legible por Angular (US-01, NEX-20).
  */
@@ -62,6 +64,8 @@ public class SecurityConfig {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/health/**", "/auth/login").permitAll()
+                // NEX-97: única excepción pública de lectura; cualquier otro método o ruta sigue exigiendo sesión.
+                .requestMatchers(HttpMethod.GET, "/public/gyms", "/public/gyms/*").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .csrf(csrf -> csrf
