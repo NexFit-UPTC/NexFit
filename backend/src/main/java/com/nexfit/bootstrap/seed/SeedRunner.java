@@ -3,6 +3,7 @@ package com.nexfit.bootstrap.seed;
 import com.nexfit.bootstrap.seed.SeedService.Result;
 import com.nexfit.bootstrap.seed.SeedService.Size;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
@@ -20,7 +21,11 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>{@code NEXFIT_SEED_PASSWORD} (obligatoria, mínimo 12 caracteres): contraseña de todas las cuentas
  *       ficticias. No va en el repositorio.</li>
- *   <li>{@code NEXFIT_SEED_DATASET}: {@code functional} (por defecto), {@code reference} o {@code all}.</li>
+ *   <li>{@code NEXFIT_SEED_DATASET}: {@code functional} (por defecto), {@code reference}, {@code massive} o
+ *       {@code all} (funcional + referencia).</li>
+ *   <li>{@code NEXFIT_SEED_SCALE}: {@code small} (por defecto), {@code medium} o {@code large}; solo {@code massive}.</li>
+ *   <li>{@code NEXFIT_SEED_TEAM_FILE}: ruta opcional a un archivo local (fuera del repositorio) con cuentas del
+ *       equipo; solo {@code massive}.</li>
  *   <li>{@code NEXFIT_SEED_ALLOW_REMOTE=true}: necesaria para cargar en una base que no sea local, para no
  *       llenar de datos falsos la base de producción por error.</li>
  * </ul>
@@ -30,13 +35,17 @@ import org.springframework.stereotype.Component;
 class SeedRunner implements ApplicationRunner {
 
     static final int MIN_PASSWORD_LENGTH = 12;
+    static final String MASSIVE = "massive";
 
     private final SeedService service;
+    private final MassiveSeedService massive;
     private final Environment env;
     private final ConfigurableApplicationContext context;
 
-    SeedRunner(SeedService service, Environment env, ConfigurableApplicationContext context) {
+    SeedRunner(SeedService service, MassiveSeedService massive, Environment env,
+               ConfigurableApplicationContext context) {
         this.service = service;
+        this.massive = massive;
         this.env = env;
         this.context = context;
     }
@@ -49,6 +58,13 @@ class SeedRunner implements ApplicationRunner {
             String password = password();
             List<String> lines = new ArrayList<>();
             for (String dataset : datasets()) {
+                if (MASSIVE.equals(dataset)) {
+                    String team = env.getProperty("NEXFIT_SEED_TEAM_FILE", "");
+                    lines.addAll(massiveSummary(massive.load(password,
+                        MassiveScale.parse(env.getProperty("NEXFIT_SEED_SCALE", "small")),
+                        team.isBlank() ? null : Path.of(team))));
+                    continue;
+                }
                 Result result = SeedService.FUNCTIONAL.equals(dataset)
                     ? service.loadFunctional(password)
                     : service.loadReference(password, Size.REFERENCE_DEFAULT);
@@ -87,9 +103,10 @@ class SeedRunner implements ApplicationRunner {
         return switch (value) {
             case SeedService.FUNCTIONAL -> List.of(SeedService.FUNCTIONAL);
             case SeedService.REFERENCE -> List.of(SeedService.REFERENCE);
+            case MASSIVE -> List.of(MASSIVE);
             case "all" -> List.of(SeedService.FUNCTIONAL, SeedService.REFERENCE);
             default -> throw new IllegalArgumentException(
-                "NEXFIT_SEED_DATASET debe ser functional, reference o all (recibido: " + value + ").");
+                "NEXFIT_SEED_DATASET debe ser functional, reference, massive o all (recibido: " + value + ").");
         };
     }
 
@@ -104,6 +121,14 @@ class SeedRunner implements ApplicationRunner {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    static List<String> massiveSummary(MassiveSeedService.Result r) {
+        List<String> lines = new ArrayList<>();
+        lines.add("Conjunto massive: %d gimnasios cargados, %d ya estaban cargados.".formatted(r.gymsLoaded(),
+            r.gymsSkipped()));
+        r.counts().forEach((table, count) -> lines.add("  %-22s %,d".formatted(table, count)));
+        return lines;
     }
 
     static String summary(Result r) {
