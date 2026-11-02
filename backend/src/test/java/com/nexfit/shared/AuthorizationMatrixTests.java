@@ -196,6 +196,7 @@ class AuthorizationMatrixTests {
             + "\"phone\":\"3001234567\",\"epsId\":1,"
             + "\"emergencyContact\":{\"fullName\":\"Luis Pérez\",\"relationship\":\"Padre\",\"phone\":\"3000000000\"},"
             + "\"healthConsent\":true,\"privacyAccepted\":true}";
+    private static final String CONTACT_BODY = "{\"phone\":\"3001234567\"}";
 
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
@@ -301,6 +302,18 @@ class AuthorizationMatrixTests {
         list.add(gated("GET /clients/search", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
                 "/clients/search?documentType=CC&documentNumber=TEST-MATRIZ-CLIENTE-1&documentVerified=true&personPresent=true",
                 null));
+
+        // --- Contacto del cliente (NEX-42) ---
+        // GET: la matriz EPS_Y_CONTACTOS/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT,
+        // pero el servicio solo deja consultar a Staff, Admin y al propio Cliente;
+        // el positivo solo exige que no sea 401 ni 5xx, así que el 403 del servicio pasa.
+        // PATCH: la matriz EPS_Y_CONTACTOS/MODIFICAR da STAFF y CLIENT; Admin y
+        // Entrenador quedan fuera por la compuerta (403 ACCESS_DENIED).
+        list.add(gated("GET /clients/{memberId}/contact",
+                roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                c -> "/clients/" + c.userB() + "/contact", null, null));
+        list.add(gated("PATCH /clients/{memberId}/contact", roles(Rol.STAFF, Rol.CLIENT),
+                c -> "/clients/" + c.userB() + "/contact", CONTACT_BODY, null));
 
         return list;
     }

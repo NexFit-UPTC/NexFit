@@ -27,9 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 class ProfileController {
 
     /** Lo único que el titular puede enviar. Identidad, establecimiento y estado no existen aquí (RN-34). */
-    private static final Set<String> EDITABLE = Set.of("phone", "epsId", "emergencyContacts");
+    private static final Set<String> EDITABLE = Set.of("phone", "epsId", "emergencyContacts", "healthConsent");
     /** EPS y contactos de emergencia solo existen para quien es cliente en el establecimiento activo (RN-25). */
-    private static final Set<String> CLIENT_ONLY = Set.of("epsId", "emergencyContacts");
+    private static final Set<String> CLIENT_ONLY = Set.of("epsId", "emergencyContacts", "healthConsent");
 
     private final ProfileService profile;
 
