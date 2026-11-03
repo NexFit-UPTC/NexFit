@@ -75,3 +75,32 @@ Respuestas:
 Lista: `{content: [{id, name, branches: [{name, addressLine1, addressLine2, city, department}]}], page, size, totalElements, totalPages}`.
 
 Detalle: `{id, name, branches: [{name, addressLine1, addressLine2, city, department}], plans: [{name, price, durationDays}]}`; los planes van de menor a mayor precio.
+
+## Clases del gimnasio (NEX-40, US-29)
+
+Rutas bajo `/api/classes`. El gimnasio sale siempre de la sesión; una clase, sede o entrenador de otro gimnasio responde igual que uno inexistente (`404`, o `400` si va dentro del cuerpo).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/classes` | Administrador | Programa una clase (`scheduled`). Devuelve `201` con la clase. |
+| `GET /api/classes` | Administrador, Staff, Entrenador, Cliente | Página de clases por fecha de inicio. Quien no administra clases solo ve las programadas. |
+| `GET /api/classes/{id}` | Ídem | Detalle de una clase. Una cancelada solo la ve el Administrador (los demás, `404`). |
+| `PUT /api/classes/{id}` | Administrador | Reemplaza los datos editables de una clase programada. |
+
+Cuerpo de `POST` y `PUT`: `{"name": "Spinning", "description": "…", "branchId": 3, "trainerMemberId": 12, "startsAt": "2026-11-10T18:00:00-05:00", "durationMinutes": 60, "capacity": 12}`. `description` y `trainerMemberId` son opcionales. `startsAt` lleva fecha, hora y zona (ISO-8601). Nombre máx. 150 caracteres; duración entre 1 y 1440 minutos; capacidad entre 1 y 10000.
+
+Clase devuelta: `{id, name, description, branchId, branchName, trainerMemberId, trainerName, startsAt, durationMinutes, capacity, status, confirmedBookings, freeSlots}`. `freeSlots` es la capacidad menos las reservas confirmadas.
+
+Filtros de `GET /api/classes` (todos opcionales): `branchId`, `trainerMemberId`, `from` (incluye) y `to` (excluye), ambos con fecha, hora y zona, `status` (`scheduled` o `cancelled`; solo lo respeta el Administrador), `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+
+Reglas:
+- La sede debe ser del gimnasio y estar activa (RN-33). El entrenador debe ser un afiliado activo del gimnasio con rol Entrenador.
+- Un entrenador no puede tener dos clases programadas que se crucen (RN-36); las pegadas (una termina cuando empieza la otra) no se cruzan, y las canceladas no cuentan.
+- La capacidad no puede bajar de las reservas confirmadas (RN-36).
+- Con reservas confirmadas no se puede cambiar la fecha ni la hora (D-21); sin reservas sí, y se revalida el cruce del entrenador.
+- Una clase cancelada no admite cambios. Cancelar una clase es US-30 (NEX-68).
+
+Errores:
+- `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `name`, `description`, `branchId`, `trainerMemberId`, `startsAt`, `durationMinutes`, `capacity` o `status`.
+- `409` con `{code, field, message}`: `TRAINER_OVERLAP`, `CAPACITY_BELOW_BOOKINGS`, `CLASS_HAS_BOOKINGS` o `CLASS_CANCELLED`.
+- `403 ACCESS_DENIED` si el rol no puede la acción; `404` si la clase no existe en el gimnasio; `401` sin sesión.

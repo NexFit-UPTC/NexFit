@@ -115,13 +115,14 @@ class AuthorizationMatrixTests {
     private static final String SECRET_PLAN = "Plan secreto B";
     private static final String SECRET_BRANCH = "Sede secreta B";
     private static final String SECRET_EVENT = "evento-secreto-B";
+    private static final String SECRET_CLASS = "Clase secreta B";
 
     /**
      * Datos de dos establecimientos (A y B) y una sesión por rol en A. B es "el
      * otro establecimiento".
      */
     private record Ctx(Org a, Org b, Map<Rol, Account> accounts, Map<Rol, Cookie> cookies,
-            long planA, long planB, long branchA, long branchB, long userB) {
+            long planA, long planB, long branchA, long branchB, long classB, long userB) {
     }
 
     private enum Kind {
@@ -180,6 +181,8 @@ class AuthorizationMatrixTests {
     private static final String PLAN_BODY = "{\"name\":\"Plan matriz\",\"price\":1000,\"durationDays\":30}";
     private static final String BRANCH_BODY = "{\"name\":\"Sede matriz\",\"addressLine1\":\"Calle 1\","
             + "\"city\":\"Tunja\",\"department\":\"Boyacá\"}";
+    private static final String CLASS_BODY_TEMPLATE = "{\"name\":\"Clase matriz\",\"branchId\":%d,"
+            + "\"startsAt\":\"2031-03-10T18:00:00-05:00\",\"durationMinutes\":60,\"capacity\":10}";
     private static final String ESTABLISHMENT_BODY = "{\"name\":\"Gimnasio matriz\",\"contactEmail\":\"matriz@nexfit.test\",\"timezone\":\"America/Bogota\"}";
 
     private static final String STAFF_BODY = "{\"documentType\":\"CC\",\"documentNumber\":\"TEST-MATRIZ-STAFF-1\",\"firstName\":\"Nuevo\","
@@ -293,6 +296,22 @@ class AuthorizationMatrixTests {
         list.add(gated("POST /staff/{memberId}/deactivate", roles(Rol.ADMIN),
                 c -> "/staff/" + c.userB() + "/deactivate", null, null));
 
+        // --- Clases (NEX-40) ---
+        // La matriz CLASES da CREAR y MODIFICAR solo a ADMIN y CONSULTAR a los cuatro roles del gimnasio.
+        // Los cuerpos usan la sede de A; PUT con una clase de B debe dar el mismo 404 que un id inexistente.
+        list.add(new Case("POST /classes", Kind.GATED, roles(Rol.ADMIN), c -> "/classes",
+                c -> CLASS_BODY_TEMPLATE.formatted(c.branchA()), null, false));
+        list.add(gated("GET /classes", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/classes", null));
+        list.add(gated("GET /classes/{id}", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                c -> "/classes/" + c.classB(), null,
+                byPath("/classes/%d", c -> c.classB(), null, NOT_FOUND)));
+        list.add(new Case("PUT /classes/{id}", Kind.GATED, roles(Rol.ADMIN), c -> "/classes/" + c.classB(),
+                c -> CLASS_BODY_TEMPLATE.formatted(c.branchA()),
+                new Foreign(c -> "/classes/" + c.classB(), c -> "/classes/" + (c.classB() + 1_000_000),
+                        c -> CLASS_BODY_TEMPLATE.formatted(c.branchA()),
+                        c -> CLASS_BODY_TEMPLATE.formatted(c.branchA()), NOT_FOUND),
+                false));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -348,11 +367,15 @@ class AuthorizationMatrixTests {
         long planB = plan(b.id(), SECRET_PLAN);
         long branchA = branch(a.id(), "Sede propia A");
         long branchB = branch(b.id(), SECRET_BRANCH);
+        long classB = jdbc.queryForObject("""
+                INSERT INTO classes (organization_id, branch_id, name, starts_at, duration_minutes, capacity, status)
+                VALUES (?, ?, 'Clase secreta B', now() + interval '30 days', 60, 10, 'scheduled') RETURNING id
+                """, Long.class, b.id(), branchB);
         long userB = fx.actor(b.id(), "client").id();
         jdbc.update("INSERT INTO audit_events (organization_id, event_type, metadata) "
                 + "VALUES (?, 'LOGIN', CAST(? AS jsonb))", b.id(), "{\"secret\":\"" + SECRET_EVENT + "\"}");
 
-        ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, userB);
+        ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB);
         cases = cases();
     }
 
@@ -413,6 +436,8 @@ class AuthorizationMatrixTests {
                           ';' ORDER BY id)), '') FROM organizations),
                   (SELECT coalesce(md5(string_agg(concat_ws(',', id, email, password_hash, must_change_password,
                           is_active), ';' ORDER BY id)), '') FROM users),
+                  (SELECT coalesce(md5(string_agg(concat_ws(',', id, organization_id, branch_id, trainer_member_id, name,
+                          starts_at, duration_minutes, capacity, status), ';' ORDER BY id)), '') FROM classes),
                   (SELECT count(*) FROM organization_members),
                   (SELECT count(*) FROM member_roles))
                 """, String.class);
@@ -521,7 +546,7 @@ class AuthorizationMatrixTests {
                             .isEqualTo(missing.getResponse().getStatus());
                     assertThat(bodyOf(foreign)).as("mismo cuerpo que un id inexistente")
                             .isEqualTo(bodyOf(missing));
-                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT);
+                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
                     assertThat(state()).as("el recurso de B no cambia").isEqualTo(before);
                 }));
             }
@@ -565,7 +590,7 @@ class AuthorizationMatrixTests {
                     MvcResult r = call(c, session(c, role), uri, null);
 
                     assertThat(r.getResponse().getStatus()).isEqualTo(200);
-                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT);
+                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
                 }));
             }
         }
