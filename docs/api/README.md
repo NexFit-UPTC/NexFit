@@ -104,3 +104,27 @@ Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `name`, `description`, `branchId`, `trainerMemberId`, `startsAt`, `durationMinutes`, `capacity` o `status`.
 - `409` con `{code, field, message}`: `TRAINER_OVERLAP`, `CAPACITY_BELOW_BOOKINGS`, `CLASS_HAS_BOOKINGS` o `CLASS_CANCELLED`.
 - `403 ACCESS_DENIED` si el rol no puede la acción; `404` si la clase no existe en el gimnasio; `401` sin sesión.
+
+## Buscar y consultar clientes (NEX-43, US-15)
+
+Rutas bajo `/api/clients`. El gimnasio sale de la sesión, nunca de la ruta ni de un parámetro. Solo Staff y Administrador; Entrenador y Cliente reciben `403 ACCESS_DENIED`.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/clients` | Staff, Administrador | Página de clientes del gimnasio por apellido y nombre. |
+| `GET /api/clients/{memberId}` | Staff, Administrador | Detalle de un cliente, con EPS y contactos de emergencia. La consulta queda auditada. |
+
+Filtros de `GET /api/clients` (todos opcionales): `q` busca por nombre o documento (máx. 100 caracteres; cada palabra debe aparecer en el nombre completo o en el documento, sin distinguir mayúsculas; `%` y `_` se buscan tal cual), `active` (`true` o `false`) filtra por estado de la afiliación, `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+
+Cada elemento de `content`: `{memberId, documentType, documentNumber, firstName, lastName, active, membershipStatus, membershipEndDate}`. El listado no trae EPS, contactos, teléfono ni correo, y por eso no se audita.
+
+`membershipStatus` es el de la membresía efectiva del cliente en este gimnasio, calculado con la fecha local del establecimiento: `active` (vigente), `suspended`, `scheduled` (aún no empieza), `expired` (venció) o `cancelled`; `null` si nunca tuvo. Si tiene varias, se muestra la primera de ese orden y, entre iguales, la que termina más tarde. Solo cuentan las membresías de este gimnasio.
+
+Detalle: `{memberId, documentType, documentNumber, firstName, lastName, email, birthDate, active, joinedAt, membership, phone, epsId, epsName, emergencyContacts}`. `membership` es `{status, planName, startDate, endDate}` o `null`; `emergencyContacts` es `[{id, fullName, relationship, phone, primary}]`. Muestra también clientes con la afiliación inactiva. Cada consulta registra un evento `HEALTH_CONTACT_DATA_ACCESSED` con quién consultó (D-08).
+
+Errores:
+- `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `q`.
+- `403 ACCESS_DENIED`: el rol no es Staff ni Administrador.
+- `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
+- `401` sin sesión.
+
