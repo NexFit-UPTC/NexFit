@@ -122,7 +122,7 @@ class AuthorizationMatrixTests {
      * otro establecimiento".
      */
     private record Ctx(Org a, Org b, Map<Rol, Account> accounts, Map<Rol, Cookie> cookies,
-            long planA, long planB, long branchA, long branchB, long classB, long userB) {
+            long planA, long planB, long branchA, long branchB, long classB, long userB, long memberB) {
     }
 
     private enum Kind {
@@ -322,6 +322,16 @@ class AuthorizationMatrixTests {
                 "/clients/search?documentType=CC&documentNumber=TEST-MATRIZ-CLIENTE-1&documentVerified=true&personPresent=true",
                 null));
 
+        // --- Búsqueda y detalle de clientes (NEX-43) ---
+        // La matriz CLIENTES/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT, pero el servicio limita la
+        // búsqueda y el detalle a Staff y Administrador: Entrenador y Cliente reciben 403 del servicio, que
+        // el positivo tolera. Con un cliente de B, Staff y Admin reciben el mismo 404 que un id inexistente y
+        // Entrenador y Cliente el mismo 403.
+        list.add(gated("GET /clients", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/clients", null));
+        list.add(gated("GET /clients/{memberId}", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                c -> "/clients/" + c.memberB(), null,
+                byPath("/clients/%d", c -> c.memberB(), null, FORBIDDEN_OR_NOT_FOUND)));
+
         // --- Contacto del cliente (NEX-42) ---
         // GET: la matriz EPS_Y_CONTACTOS/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT,
         // pero el servicio solo deja consultar a Staff, Admin y al propio Cliente;
@@ -371,11 +381,15 @@ class AuthorizationMatrixTests {
                 INSERT INTO classes (organization_id, branch_id, name, starts_at, duration_minutes, capacity, status)
                 VALUES (?, ?, 'Clase secreta B', now() + interval '30 days', 60, 10, 'scheduled') RETURNING id
                 """, Long.class, b.id(), branchB);
-        long userB = fx.actor(b.id(), "client").id();
+        Account clientB = fx.actor(b.id(), "client");
+        long userB = clientB.id();
+        long memberB = jdbc.queryForObject(
+                "SELECT id FROM organization_members WHERE organization_id = ? AND user_id = ?", Long.class, b.id(),
+                userB);
         jdbc.update("INSERT INTO audit_events (organization_id, event_type, metadata) "
                 + "VALUES (?, 'LOGIN', CAST(? AS jsonb))", b.id(), "{\"secret\":\"" + SECRET_EVENT + "\"}");
 
-        ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB);
+        ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
     }
 
