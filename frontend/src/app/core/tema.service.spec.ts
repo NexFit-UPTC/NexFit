@@ -19,20 +19,20 @@ describe('TemaService', () => {
     expect(contraste('#ffffff', '#ffffff')).toBeCloseTo(1, 5);
   });
 
-  it('elige texto oscuro sobre lima y blanco sobre azul oscuro', () => {
-    expect(sobreAcento('#c8f03a')).toBe('#11151a');
+  it('elige texto oscuro sobre amarillo y blanco sobre azul oscuro', () => {
+    expect(sobreAcento('#ffd60a')).toBe('#11151a');
     expect(sobreAcento('#1d2bd6')).toBe('#ffffff');
   });
 
   it('aplica acento, sobre-acento y modo al documento y los persiste', () => {
     const tema = TestBed.inject(TemaService);
     tema.cambiarModo('oscuro');
-    expect(tema.cambiarAcento('#2563eb')).toBe(true);
+    expect(tema.cambiarAcento('#d62828')).toBe(true);
     const raiz = document.documentElement;
     expect(raiz.getAttribute('data-theme')).toBe('oscuro');
-    expect(raiz.style.getPropertyValue('--acento')).toBe('#2563eb');
-    expect(raiz.style.getPropertyValue('--sobre-acento')).toBe(sobreAcento('#2563eb'));
-    expect(JSON.parse(localStorage.getItem(CLAVE_TEMA)!)).toEqual({ modo: 'oscuro', acento: '#2563eb' });
+    expect(raiz.style.getPropertyValue('--acento')).toBe('#d62828');
+    expect(raiz.style.getPropertyValue('--sobre-acento')).toBe(sobreAcento('#d62828'));
+    expect(JSON.parse(localStorage.getItem(CLAVE_TEMA)!)).toEqual({ modo: 'oscuro', acento: '#d62828' });
   });
 
   it('rechaza un hex inválido sin cambiar el acento', () => {
@@ -75,6 +75,10 @@ describe('TemaService', () => {
     expect(tema.contrasteBajo()).toBe(true);
     tema.cambiarAcento('#1d2bd6');
     expect(tema.contrasteBajo()).toBe(false);
+  });
+
+  it('ofrece los siete colores del arcoíris', () => {
+    expect(PRESETS.map((p) => p.nombre)).toEqual(['Rojo', 'Naranja', 'Amarillo', 'Verde', 'Azul', 'Añil', 'Violeta']);
   });
 
   it('ningún preset dispara el aviso de contraste', () => {
