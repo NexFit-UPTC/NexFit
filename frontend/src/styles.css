@@ -429,3 +429,9 @@ a {
 .nf-datos dd {
   margin: 0;
 }
+
+.nf-casilla {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
