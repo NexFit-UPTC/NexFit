@@ -222,3 +222,25 @@ Errores:
 - `400 VALIDATION_ERROR`: clase o cliente que no existen en el gimnasio (o cliente inactivo); `memberId` faltante para el Staff.
 - `409` con `code`: `NO_VALID_MEMBERSHIP`, `CLASS_CANCELLED`, `CLASS_STARTED`, `ALREADY_BOOKED`, `CLASS_FULL`, `BOOKING_ALREADY_CANCELLED`.
 - `403 ACCESS_DENIED`, `404` (reserva o clase inexistente o de otro gimnasio), `401`.
+
+## Asistencia: ingreso, salida e historial (NEX-59, NEX-72, NEX-73)
+
+Rutas bajo `/api/check-ins`. El gimnasio sale de la sesión.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/check-ins` | Staff, Cliente | Registra el ingreso. Cuerpo `{"branchId": 3}`; el Staff agrega `"memberId"` (cliente, obligatorio). El Cliente solo registra el suyo (otro `memberId` → `403`). `201` con el ingreso. |
+| `PATCH /api/check-ins/{id}/check-out` | Staff, Cliente | Registra la salida con la hora actual. Un Cliente no cierra el ingreso de otro (`403`). |
+| `GET /api/check-ins` | Administrador, Staff, Entrenador, Cliente | Historial, el más reciente primero (máximo 200). El Cliente recibe siempre el suyo; el Entrenador, el de sus alumnos asignados activos. Filtros: `memberId`, `from` y `to` (`AAAA-MM-DD`, inclusivas, en la zona horaria del gimnasio) y `open=true` (quienes siguen dentro). |
+
+Cada ingreso: `{id, memberId, memberName, branchId, branchName, checkInAt, checkOutAt, autoClosed, registeredByMemberId, registeredByName}`. `registeredBy*` es nulo cuando el propio cliente se registró.
+
+Reglas:
+- El ingreso exige una membresía vigente en la **fecha local del gimnasio** (RN-27); el motivo del rechazo dice si no tiene, está vencida, suspendida, cancelada o aún no comienza.
+- Un cliente solo puede tener un ingreso abierto. Si ya hay uno abierto **hoy** se rechaza; si quedó abierto de un **día anterior**, ese se cierra con salida estimada al final de aquel día local y `autoClosed = true`, y el nuevo se acepta.
+- Cerrar un ingreso no vuelve a validar la membresía (migración V7), así que la salida funciona aunque la membresía se haya suspendido mientras el cliente estaba dentro.
+
+Errores:
+- `400 VALIDATION_ERROR`: sede o cliente que no existen en el gimnasio (o inactivos); `branchId` o `memberId` (Staff) faltante; fecha con formato inválido.
+- `409` con `code`: `NO_VALID_MEMBERSHIP`, `ALREADY_CHECKED_IN`, `ALREADY_CHECKED_OUT`.
+- `403 ACCESS_DENIED`, `404` (ingreso inexistente o de otro gimnasio), `401`.

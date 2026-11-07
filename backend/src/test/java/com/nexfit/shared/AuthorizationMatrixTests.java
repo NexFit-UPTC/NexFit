@@ -210,6 +210,9 @@ class AuthorizationMatrixTests {
     /** Reserva confirmada del gimnasio B (NEX-58): indistinguible de una inexistente para los roles de A. */
     private long bookingB;
 
+    /** Ingreso abierto del gimnasio B (NEX-59): indistinguible de uno inexistente para los roles de A. */
+    private long checkInB;
+
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
 
@@ -369,6 +372,15 @@ class AuthorizationMatrixTests {
                 c -> "/classes/" + c.classB() + "/cancel", "{}",
                 byPath("/classes/%d/cancel", c -> c.classB(), "{}", NOT_FOUND)));
 
+        // --- Asistencia (NEX-59, NEX-72, NEX-73) ---
+        // ASISTENCIA: CREAR y MODIFICAR STAFF y CLIENT; CONSULTAR ADMIN, STAFF, TRAINER y CLIENT.
+        list.add(new Case("POST /check-ins", Kind.GATED, roles(Rol.STAFF, Rol.CLIENT), c -> "/check-ins",
+                c -> "{\"branchId\":" + c.branchB() + "}", null, false));
+        list.add(gated("GET /check-ins", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/check-ins", null));
+        list.add(gated("PATCH /check-ins/{id}/check-out", roles(Rol.STAFF, Rol.CLIENT),
+                c -> "/check-ins/" + checkInB + "/check-out", null,
+                byPath("/check-ins/%d/check-out", c -> checkInB, null, NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -477,6 +489,13 @@ class AuthorizationMatrixTests {
                 INSERT INTO class_bookings (organization_id, class_id, member_id, status)
                 VALUES (?, ?, ?, 'confirmed') RETURNING id
                 """, Long.class, b.id(), classB, memberB);
+
+        // Se fecha el ingreso mañana al mediodía: la membresía de B empieza con CURRENT_DATE (zona del servidor de BD)
+        // y a ciertas horas la fecha local de Bogotá aún es la de ayer, lo que haría fallar el trigger por el reloj.
+        checkInB = jdbc.queryForObject("""
+                INSERT INTO check_ins (organization_id, member_id, branch_id, check_in_at, auto_closed)
+                VALUES (?, ?, ?, (CURRENT_DATE + 1)::timestamp + interval '12 hours', false) RETURNING id
+                """, Long.class, b.id(), memberB, branchB);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
