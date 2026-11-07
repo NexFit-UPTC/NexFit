@@ -130,6 +130,19 @@ Errores:
 - `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
 - `401` sin sesión.
 
+## Activar y desactivar la afiliación de un cliente (NEX-44, US-16)
+
+Rutas bajo `/api/clients`. Solo Staff y Administrador; Entrenador y Cliente reciben `403 ACCESS_DENIED`. El gimnasio sale de la sesión.
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /api/clients/{memberId}/deactivate` | Desactiva la afiliación del cliente en este gimnasio. Cierra sus sesiones abiertas: ya no puede elegir este gimnasio al iniciar sesión. |
+| `POST /api/clients/{memberId}/activate` | La reactiva. Su historial (membresías, reservas) sigue disponible. |
+
+Respuesta `200`: `{memberId, active}`. Repetir la misma acción responde `200` sin cambios ni auditoría. Solo afecta a este gimnasio: no desactiva la identidad global ni la afiliación en otros gimnasios (RN-33). Cada cambio queda auditado (`MEMBERSHIP_AFFILIATION_STATUS_CHANGED`).
+
+Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual para uno de otro gimnasio); `409 MEMBER_HAS_OTHER_ROLES` si además tiene otro rol (entrenador, staff, administrador): esa afiliación se gestiona desde Personal (`/api/staff`); `401` sin sesión.
+
 ## Catálogo de EPS, solo lectura (NEX-89)
 
 | Ruta | Quién | Qué hace |
