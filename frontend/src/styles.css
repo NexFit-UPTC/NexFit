@@ -565,3 +565,62 @@ a.nf-indicador:focus-visible {
 .nf-ejercicios-rutina strong {
   display: block;
 }
+
+/* Progreso y peso */
+.nf-checklist {
+  display: grid;
+  gap: var(--espacio-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nf-checklist .nf-casilla {
+  padding: var(--espacio-2) var(--espacio-3);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  cursor: pointer;
+}
+
+.nf-checklist .nf-casilla img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--radio);
+}
+
+.nf-checklist .nf-casilla span {
+  display: grid;
+}
+
+.nf-indicador progress {
+  width: 100%;
+  accent-color: var(--acento);
+}
+
+.nf-grafica {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.nf-grafica polyline {
+  fill: none;
+  stroke: var(--acento);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nf-grafica circle {
+  fill: var(--acento);
+}
+
+.nf-grafica text {
+  fill: var(--texto-suave);
+  font-size: 10px;
+}

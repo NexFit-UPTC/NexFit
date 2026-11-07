@@ -17,3 +17,7 @@ export const rutinasGuard: CanActivateFn = () => {
   const roles = inject(SessionService).roles();
   return roles.includes('trainer') || roles.includes('client') || inject(Router).parseUrl('/mi-perfil');
 };
+
+/** «Mi progreso» y «Mi peso» son solo del Cliente (ENTRENAMIENTOS). */
+export const clienteGuard: CanActivateFn = () =>
+  inject(SessionService).roles().includes('client') || inject(Router).parseUrl('/mi-perfil');
