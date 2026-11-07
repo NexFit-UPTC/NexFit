@@ -346,3 +346,23 @@ Cuerpo de creación y edición: `{clientMemberId (solo al crear), name, category
 Resumen: `{id, trainerMemberId, trainerName, clientMemberId, clientName, name, category, level, estimatedMinutes, estimatedKcal, createdAt, active, exerciseCount}`. Detalle: lo mismo sin `exerciseCount` y con `exercises: [{id, exerciseId, exerciseName, muscleGroup, imageUrl, order, series, repetitions, restSeconds}]`.
 
 Errores de validación: `400 VALIDATION_ERROR` con `field`, por ejemplo `name` o `exercises[0].series`.
+
+## Entrenamientos, racha, meta semanal y peso corporal (NEX-77, NEX-78, NEX-79)
+
+Todo es del Cliente y solo de lo suyo. La matriz da `ENTRENAMIENTOS` únicamente al Cliente: Staff, Administrador, Master y Entrenador reciben `403` (el peso es un dato de salud, RNF-08). Las fechas son las locales del gimnasio (RN-41).
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /api/workouts` | Registra un entrenamiento. Cuerpo `{routineId, completedExerciseIds: [id de ejercicio de la rutina], performedOn?}` (hoy por defecto). `201`. |
+| `GET /api/workouts` | Historial propio, más reciente primero (hasta 200). Filtros `from`, `to` (AAAA-MM-DD) y `routineId`. Cada fila: `{id, routineId, routineName, performedOn, completedCount, totalCount}`. |
+| `GET /api/workouts/{id}` | Detalle con los ejercicios marcados. |
+| `GET /api/my-progress` | `{today, streak, weeklyGoal, weekCount, weekStart, weekEnd, totalWorkouts}`. |
+| `PUT /api/my-goal` | Cuerpo `{"weeklyGoal": 1..7}`; `null` quita la meta. Devuelve el avance. |
+| `POST /api/body-weight` | Cuerpo `{weightKg, measuredOn?}`. `201` si es nuevo; `200` si reemplaza el del mismo día. |
+| `GET /api/body-weight` | Historial por fecha ascendente (la evolución). Filtros `from` y `to`. |
+
+- Solo se registra sobre una rutina **activa y propia**: archivada es `409 ROUTINE_ARCHIVED`; ajena, de otro gimnasio o inexistente, `404`. Los ejercicios marcados deben ser de esa rutina, sin repetirse.
+- Una fecha futura es `400` (`performedOn` o `measuredOn`).
+- **Racha**: días distintos consecutivos que terminan hoy o ayer; si el último entrenamiento fue antes de ayer, es `0`. Varios entrenamientos el mismo día cuentan un día. No se guarda: se calcula al consultar.
+- **Avance semanal**: días distintos con entrenamiento entre el lunes y el domingo de la semana actual.
+- **Peso**: entre 20 y 500 kg con hasta dos decimales (`400` con el campo `weightKg`); un solo registro por día.
