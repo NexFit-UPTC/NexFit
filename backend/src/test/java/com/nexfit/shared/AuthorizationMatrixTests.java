@@ -445,6 +445,16 @@ class AuthorizationMatrixTests {
                 c -> "/clients/" + c.memberB(), null,
                 byPath("/clients/%d", c -> c.memberB(), null, FORBIDDEN_OR_NOT_FOUND)));
 
+        // --- Activar y desactivar la afiliación de un cliente (NEX-44) ---
+        // La matriz CLIENTES/ACTIVAR da ADMIN y STAFF. Con un cliente de B, ambos reciben el mismo 404 que
+        // con un id inexistente.
+        list.add(gated("POST /clients/{memberId}/activate", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/clients/" + c.memberB() + "/activate", null,
+                byPath("/clients/%d/activate", c -> c.memberB(), null, Set.of(404))));
+        list.add(gated("POST /clients/{memberId}/deactivate", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/clients/" + c.memberB() + "/deactivate", null,
+                byPath("/clients/%d/deactivate", c -> c.memberB(), null, Set.of(404))));
+
         // --- Contacto del cliente (NEX-42) ---
         // GET: la matriz EPS_Y_CONTACTOS/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT,
         // pero el servicio solo deja consultar a Staff, Admin y al propio Cliente;
