@@ -30,10 +30,12 @@ export class SessionService {
   readonly mensaje = signal<string | null>(null);
 
   /** Consulta /api/me y deriva el estado. Se vuelve a llamar tras login, selección de establecimiento o reintento. */
-  cargar(): Promise<void> {
+  cargar(conTimeout = false): Promise<void> {
     this.estado.set('cargando');
     return new Promise((resolve) => {
-      this.http.get<Perfil>('/api/me').pipe(timeout(TIMEOUT_ME_MS)).subscribe({
+      const peticion = this.http.get<Perfil>('/api/me');
+      // El timeout solo vale al arrancar la app; en login/reintento un timeout expulsaría a quien ya se autenticó.
+      (conTimeout ? peticion.pipe(timeout(TIMEOUT_ME_MS)) : peticion).subscribe({
         next: (perfil) => {
           this.usuario.set(perfil.identity);
           // affiliation nula solo ocurre para el Master (sin establecimiento, D-13).

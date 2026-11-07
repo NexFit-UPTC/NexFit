@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -43,7 +43,8 @@ export class LoginComponent {
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {
       const destino = DESTINOS[this.sesion.estado()];
-      if (destino) {
+      // Mientras se envía el formulario, AuthService ya navega: evita la doble navegación.
+      if (destino && !untracked(() => this.enviando())) {
         this.router.navigateByUrl(destino);
       }
     });

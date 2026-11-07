@@ -62,9 +62,15 @@ describe('LoginComponent', () => {
     const hecho = enviar();
     const req = http.expectOne({ method: 'POST', url: '/api/auth/login' });
     expect(req.request.body).toEqual({ email: 'ana@x.co', password: 'secreto' });
+    // Como el router real, al navegar fuera de /login se destruye el componente (y su effect).
+    vi.mocked(router.navigateByUrl).mockImplementation(async () => {
+      fixture.destroy();
+      return true;
+    });
     req.flush({ userId: 1, mustChangePassword: true, establishments: [] });
     await hecho;
     expect(router.navigateByUrl).toHaveBeenCalledWith('/cambiar-contrasena');
+    expect(router.navigateByUrl).toHaveBeenCalledTimes(1);
   });
 
   it('401: mensaje genérico, sin revelar si el correo existe, y limpia la contraseña', async () => {
