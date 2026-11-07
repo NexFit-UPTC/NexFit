@@ -5,45 +5,30 @@ import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
 import { staffGuard } from './core/staff.guard';
 import { LayoutComponent } from './layout/layout.component';
-import { AparienciaComponent } from './pages/apariencia.component';
-import { AdministradorComponent } from './pages/administrador.component';
-import { AuditoriaComponent } from './pages/auditoria.component';
-import { CambiarContrasenaComponent } from './pages/cambiar-contrasena.component';
-import { ClasesComponent } from './pages/clases.component';
-import { ClientesComponent } from './pages/clientes.component';
-import { EstablecimientoComponent } from './pages/establecimiento.component';
-import { EstablecimientosComponent } from './pages/establecimientos.component';
-import { LoginComponent } from './pages/login.component';
-import { MembresiasComponent } from './pages/membresias.component';
-import { MiPerfilComponent } from './pages/mi-perfil.component';
-import { PagosComponent } from './pages/pagos.component';
-import { PersonalComponent } from './pages/personal.component';
-import { PlanesComponent } from './pages/planes.component';
-import { ReservasComponent } from './pages/reservas.component';
-import { SedesComponent } from './pages/sedes.component';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent, canActivate: [sessionGuard], data: { public: true } },
-  { path: 'establecimiento', component: EstablecimientoComponent, canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
-  { path: 'cambiar-contrasena', component: CambiarContrasenaComponent, canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
+  { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent), canActivate: [sessionGuard], data: { public: true } },
+  { path: 'establecimiento', loadComponent: () => import('./pages/establecimiento.component').then((m) => m.EstablecimientoComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
+  { path: 'cambiar-contrasena', loadComponent: () => import('./pages/cambiar-contrasena.component').then((m) => m.CambiarContrasenaComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   {
     path: '',
     component: LayoutComponent,
     canActivate: [sessionGuard],
     children: [
-      { path: 'mi-perfil', component: MiPerfilComponent },
-      { path: 'apariencia', component: AparienciaComponent },
-      { path: 'establecimientos', component: EstablecimientosComponent, canActivate: [masterGuard] },
-      { path: 'administrador', component: AdministradorComponent, canActivate: [masterGuard] },
-      { path: 'auditoria', component: AuditoriaComponent },
-      { path: 'sedes', component: SedesComponent, canActivate: [adminGuard] },
-      { path: 'personal', component: PersonalComponent, canActivate: [adminGuard] },
-      { path: 'planes', component: PlanesComponent, canActivate: [adminGuard] },
-      { path: 'clientes', component: ClientesComponent, canActivate: [staffGuard] },
-      { path: 'membresias', component: MembresiasComponent, canActivate: [gestionGuard] },
-      { path: 'pagos', component: PagosComponent },
-      { path: 'clases', component: ClasesComponent },
-      { path: 'reservas', component: ReservasComponent },
+      { path: 'mi-perfil', loadComponent: () => import('./pages/mi-perfil.component').then((m) => m.MiPerfilComponent) },
+      { path: 'apariencia', loadComponent: () => import('./pages/apariencia.component').then((m) => m.AparienciaComponent) },
+      { path: 'establecimientos', loadComponent: () => import('./pages/establecimientos.component').then((m) => m.EstablecimientosComponent), canActivate: [masterGuard] },
+      { path: 'administrador', loadComponent: () => import('./pages/administrador.component').then((m) => m.AdministradorComponent), canActivate: [masterGuard] },
+      { path: 'auditoria', loadComponent: () => import('./pages/auditoria.component').then((m) => m.AuditoriaComponent) },
+      { path: 'sedes', loadComponent: () => import('./pages/sedes.component').then((m) => m.SedesComponent), canActivate: [adminGuard] },
+      { path: 'personal', loadComponent: () => import('./pages/personal.component').then((m) => m.PersonalComponent), canActivate: [adminGuard] },
+      { path: 'planes', loadComponent: () => import('./pages/planes.component').then((m) => m.PlanesComponent), canActivate: [adminGuard] },
+      { path: 'clientes', loadComponent: () => import('./pages/clientes.component').then((m) => m.ClientesComponent), canActivate: [staffGuard] },
+      { path: 'membresias', loadComponent: () => import('./pages/membresias.component').then((m) => m.MembresiasComponent), canActivate: [gestionGuard] },
+      { path: 'pagos', loadComponent: () => import('./pages/pagos.component').then((m) => m.PagosComponent) },
+      { path: 'clases', loadComponent: () => import('./pages/clases.component').then((m) => m.ClasesComponent) },
+      { path: 'reservas', loadComponent: () => import('./pages/reservas.component').then((m) => m.ReservasComponent) },
+      { path: 'asistencia', loadComponent: () => import('./pages/asistencia.component').then((m) => m.AsistenciaComponent) },
       { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
     ]
   },
