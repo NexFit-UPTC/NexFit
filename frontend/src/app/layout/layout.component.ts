@@ -23,6 +23,8 @@ const SECCIONES: Seccion[] = [
   { ruta: '/clases', titulo: 'Clases', roles: ['admin', 'staff', 'trainer', 'client'] },
   { ruta: '/reservas', titulo: 'Reservas', roles: ['admin', 'staff', 'trainer', 'client'] },
   { ruta: '/equipos', titulo: 'Equipo', roles: ['admin', 'staff'] },
+  { ruta: '/alumnos', titulo: 'Alumnos', roles: ['admin', 'staff'] },
+  { ruta: '/mis-alumnos', titulo: 'Mis alumnos', roles: ['trainer'] },
   { ruta: '/ejercicios', titulo: 'Ejercicios', roles: ['master', 'admin', 'staff', 'trainer', 'client'] },
   { ruta: '/asistencia', titulo: 'Asistencia', roles: ['admin', 'staff', 'trainer', 'client'] },
   { ruta: '/mi-perfil', titulo: 'Mi perfil', roles: 'todos' },
