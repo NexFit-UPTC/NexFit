@@ -381,6 +381,11 @@ class AuthorizationMatrixTests {
                 c -> "/check-ins/" + checkInB + "/check-out", null,
                 byPath("/check-ins/%d/check-out", c -> checkInB, null, NOT_FOUND)));
 
+        // --- Indicadores (NEX-74, NEX-62) ---
+        // INDICADORES: CONSULTAR ADMIN; CONSULTAR_AGREGADO MASTER.
+        list.add(gated("GET /dashboard/gym", roles(Rol.ADMIN), "/dashboard/gym", null));
+        list.add(gated("GET /dashboard/platform", roles(Rol.MASTER), "/dashboard/platform", null));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,

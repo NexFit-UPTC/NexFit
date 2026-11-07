@@ -244,3 +244,22 @@ Errores:
 - `400 VALIDATION_ERROR`: sede o cliente que no existen en el gimnasio (o inactivos); `branchId` o `memberId` (Staff) faltante; fecha con formato inválido.
 - `409` con `code`: `NO_VALID_MEMBERSHIP`, `ALREADY_CHECKED_IN`, `ALREADY_CHECKED_OUT`.
 - `403 ACCESS_DENIED`, `404` (ingreso inexistente o de otro gimnasio), `401`.
+
+## Indicadores (NEX-74, NEX-62)
+
+Rutas bajo `/api/dashboard`. Solo lectura; todo se calcula con consultas agregadas.
+
+| Ruta | Quién | Qué devuelve |
+|---|---|---|
+| `GET /api/dashboard/gym` | Administrador | Panel del gimnasio activo de la sesión. |
+| `GET /api/dashboard/platform` | Master | Cifras globales de la plataforma, sin listar personas. |
+
+`/dashboard/gym` devuelve `{date, timezone, activeClients, currentMemberships, expiringMemberships, expiringInDays, monthRevenue, todayCheckIns, upcomingOccupancy: {classes, confirmedBookings, capacity, percent}}`:
+- «Hoy» y «mes» son los de la **zona horaria del gimnasio**.
+- `currentMemberships`: membresías activas cuya vigencia incluye hoy. `expiringMemberships`: de esas, las que terminan entre hoy y hoy + 7 (`expiringInDays`).
+- `monthRevenue`: suma de pagos **completados** con fecha de pago en el mes local; los pendientes y los anulados no cuentan (RN-20).
+- `upcomingOccupancy`: reservas confirmadas / capacidad de las clases programadas (no canceladas) que empiezan en los próximos 7 días; `percent` es 0 si no hay capacidad.
+
+`/dashboard/platform` devuelve `{gyms, branches, clients, currentMemberships}`: solo gimnasios, sedes, clientes y membresías de gimnasios activos, con la fecha local de cada gimnasio para la vigencia.
+
+Errores: `403` para cualquier otro rol (incluido el Master en `/gym` y el Administrador en `/platform`), `401` sin sesión.
