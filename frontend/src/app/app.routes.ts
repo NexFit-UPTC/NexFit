@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { gestionGuard } from './core/personal-gestion.guard';
-import { asignacionesGuard, entrenadorGuard, rutinasGuard } from './core/asignaciones.guard';
+import { asignacionesGuard, clienteGuard, entrenadorGuard, rutinasGuard } from './core/asignaciones.guard';
 import { equiposGuard } from './core/equipos.guard';
 import { panelGuard } from './core/panel.guard';
 import { SessionService } from './core/session.service';
@@ -37,6 +37,8 @@ export const routes: Routes = [
       { path: 'alumnos', loadComponent: () => import('./pages/asignaciones.component').then((m) => m.AsignacionesComponent), canActivate: [asignacionesGuard] },
       { path: 'mis-alumnos', loadComponent: () => import('./pages/mis-alumnos.component').then((m) => m.MisAlumnosComponent), canActivate: [entrenadorGuard] },
       { path: 'rutinas', loadComponent: () => import('./pages/rutinas.component').then((m) => m.RutinasComponent), canActivate: [rutinasGuard] },
+      { path: 'progreso', loadComponent: () => import('./pages/progreso.component').then((m) => m.ProgresoComponent), canActivate: [clienteGuard] },
+      { path: 'peso', loadComponent: () => import('./pages/peso.component').then((m) => m.PesoComponent), canActivate: [clienteGuard] },
       { path: 'ejercicios', loadComponent: () => import('./pages/ejercicios.component').then((m) => m.EjerciciosComponent) },
       { path: 'reservas', loadComponent: () => import('./pages/reservas.component').then((m) => m.ReservasComponent) },
       { path: 'asistencia', loadComponent: () => import('./pages/asistencia.component').then((m) => m.AsistenciaComponent) },
@@ -45,7 +47,8 @@ export const routes: Routes = [
         pathMatch: 'full',
         redirectTo: () => {
           const sesion = inject(SessionService);
-          return sesion.esMaster() || sesion.roles().includes('admin') ? 'panel' : 'mi-perfil';
+          if (sesion.esMaster() || sesion.roles().includes('admin')) return 'panel';
+          return sesion.roles().includes('client') && !sesion.roles().includes('trainer') ? 'progreso' : 'mi-perfil';
         }
       }
     ]
