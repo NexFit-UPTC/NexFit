@@ -263,3 +263,22 @@ Rutas bajo `/api/dashboard`. Solo lectura; todo se calcula con consultas agregad
 `/dashboard/platform` devuelve `{gyms, branches, clients, currentMemberships}`: solo gimnasios, sedes, clientes y membresías de gimnasios activos, con la fecha local de cada gimnasio para la vigencia.
 
 Errores: `403` para cualquier otro rol (incluido el Master en `/gym` y el Administrador en `/platform`), `401` sin sesión.
+
+## Equipo de las sedes (NEX-38)
+
+Rutas bajo `/api/equipment`. El gimnasio sale de la sesión. Migración **V8** (`image_url` en equipos, ejercicios, sedes y gimnasios).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/equipment` | Administrador | Registra un equipo. Cuerpo `{branchId, name, category?, status?, acquisitionDate?, imageUrl?}`; `status` por defecto `available`. `201`. |
+| `GET /api/equipment` | Administrador, Staff | Inventario ordenado por sede y nombre. Filtros: `branchId`, `status`, `category` (sin distinguir mayúsculas). |
+| `GET /api/equipment/{id}` | Administrador, Staff | Un equipo. |
+| `PUT /api/equipment/{id}` | Administrador | Cambia nombre, categoría, fecha de adquisición e imagen. La sede y el estado no cambian por aquí. |
+| `PATCH /api/equipment/{id}/status` | Administrador | Cuerpo `{"status": "available" \| "maintenance" \| "out_of_service" \| "retired"}`. |
+
+Cada equipo: `{id, branchId, branchName, name, category, status, acquisitionDate, imageUrl}`.
+
+- `retired` (dado de baja) es **final**: cualquier otro estado se rechaza con `409 EQUIPMENT_RETIRED`; repetir `retired` no falla.
+- `imageUrl` debe empezar por `https://` o por `/` (ruta del propio sitio); la BD lo exige con `ck_*_image_url`.
+
+Errores: `400 VALIDATION_ERROR` (sede de otro gimnasio o inactiva, nombre vacío, estado/fecha/imagen inválidos), `403`, `404` (equipo inexistente o de otro gimnasio), `401`.
