@@ -60,9 +60,12 @@ class ClassService {
 
     public record ClassPage(List<GymClass> content, int page, int size, long totalElements, int totalPages) { }
 
-    /** Filtros del listado; todos opcionales. {@code from} incluye, {@code to} excluye. */
+    /**
+     * Filtros del listado; todos opcionales. {@code from} incluye, {@code to} excluye. {@code availableOnly}
+     * deja solo las clases que se pueden reservar ahora: programadas, que aún no empiezan y con cupo libre.
+     */
     public record ClassFilter(Long branchId, Long trainerMemberId, OffsetDateTime from, OffsetDateTime to,
-                              String status) { }
+                              String status, boolean availableOnly) { }
 
     /** Dato rechazado con el campo al que corresponde (400). */
     static class InvalidClassException extends RuntimeException {
@@ -164,6 +167,11 @@ class ClassService {
         if (status != null) {
             where.append(" AND c.status = CAST(:status AS class_status)");
             params.add(new Object[] {"status", status});
+        }
+        if (filter.availableOnly()) {
+            where.append(" AND c.status = 'scheduled' AND c.starts_at > now()")
+                .append(" AND c.capacity > (SELECT count(*) FROM class_bookings cb")
+                .append(" WHERE cb.class_id = c.id AND cb.status = 'confirmed')");
         }
 
         JdbcClient.StatementSpec count = jdbc.sql("SELECT count(*) FROM classes c" + where).param("org", organizationId);

@@ -141,4 +141,27 @@ public class ClientQueryRepository {
             })
             .optional();
     }
+
+    /** Afiliación de un cliente del gimnasio; {@code onlyClient} es falso si además tiene otro rol. */
+    public record Affiliation(long userId, boolean active, boolean onlyClient) { }
+
+    /** La afiliación del cliente (activa o no) en este gimnasio; vacío si no existe, no es cliente o es de otro. */
+    public Optional<Affiliation> findAffiliation(long orgId, long memberId) {
+        return jdbc.sql("""
+                SELECT om.user_id, om.is_active,
+                       NOT EXISTS (SELECT 1 FROM member_roles mr WHERE mr.member_id = om.id
+                                   AND mr.role <> CAST('client' AS member_role)) AS only_client
+                  FROM organization_members om
+                 WHERE om.id = :member AND om.organization_id = :org AND\s""" + IS_CLIENT)
+            .param("member", memberId).param("org", orgId)
+            .query((rs, n) -> new Affiliation(rs.getLong("user_id"), rs.getBoolean("is_active"),
+                rs.getBoolean("only_client")))
+            .optional();
+    }
+
+    public void setActive(long orgId, long memberId, boolean active) {
+        jdbc.sql("UPDATE organization_members SET is_active = :active WHERE id = :id AND organization_id = :org")
+            .param("active", active).param("id", memberId).param("org", orgId)
+            .update();
+    }
 }
