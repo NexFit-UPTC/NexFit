@@ -2,6 +2,7 @@ package com.nexfit.payment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -233,8 +234,7 @@ class PaymentTests {
         Account staff = fx.actor(org.id(), "staff");
         long id = payment(org.id(), client.memberId(), org.adminMemberId(), "1000", "completed");
 
-        MvcResult r = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-            .delete("/payments/" + id).with(csrf()).cookie(fx.login(staff))).andReturn();
+        MvcResult r = mvc.perform(delete("/payments/" + id).with(csrf()).cookie(fx.login(staff))).andReturn();
 
         assertThat(status(r)).isIn(403, 404, 405);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM payments WHERE id = ?", Integer.class, id)).isEqualTo(1);
