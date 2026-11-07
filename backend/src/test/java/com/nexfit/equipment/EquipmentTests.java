@@ -1,6 +1,7 @@
 package com.nexfit.equipment;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -13,6 +14,7 @@ import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -250,8 +252,8 @@ class EquipmentTests {
         Org org = fx.orgWithAdmin();
         long branch = fx.branch(org.id());
 
-        org.springframework.dao.DataIntegrityViolationException e = org.junit.jupiter.api.Assertions.assertThrows(
-            org.springframework.dao.DataIntegrityViolationException.class, () -> jdbc.update("""
+        DataIntegrityViolationException e = assertThrows(DataIntegrityViolationException.class,
+            () -> jdbc.update("""
                 INSERT INTO equipment (organization_id, branch_id, name, status, image_url)
                 VALUES (?, ?, 'X', 'available', 'javascript:alert(1)')""", org.id(), branch));
         assertThat(e.getMessage()).contains("ck_equipment_image_url");
