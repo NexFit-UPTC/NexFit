@@ -426,7 +426,7 @@ class AuthorizationMatrixTests {
                 c -> "/trainer-assignments",
                 c -> "{\"trainerMemberId\":" + c.memberB() + ",\"clientMemberId\":" + c.memberB() + "}", null,
                 false));
-        list.add(gated("PATCH /trainer-assignments/{trainer}/{client}", roles(Rol.ADMIN, Rol.STAFF),
+        list.add(gated("PATCH /trainer-assignments/{trainerMemberId}/{clientMemberId}", roles(Rol.ADMIN, Rol.STAFF),
                 c -> "/trainer-assignments/" + c.memberB() + "/" + c.memberB(), "{\"active\":false}",
                 byPath("/trainer-assignments/%d/1", c -> c.memberB(), "{\"active\":false}", NOT_FOUND)));
         list.add(gated("GET /trainer-assignments", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER), "/trainer-assignments",
