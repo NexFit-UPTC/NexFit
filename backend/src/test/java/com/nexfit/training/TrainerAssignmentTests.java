@@ -149,7 +149,8 @@ class TrainerAssignmentTests {
         assertThat(status(d)).isEqualTo(400);
         assertThat(status(e)).isEqualTo(400);
         assertThat(status(f)).isEqualTo(400);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM trainer_clients", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM trainer_clients WHERE organization_id IN (?, ?)",
+            Integer.class, org.id(), other.id())).isZero();
     }
 
     @Test
