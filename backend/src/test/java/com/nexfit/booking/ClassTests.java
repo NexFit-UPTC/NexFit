@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-/** NEX-40 (US-29): programar y gestionar clases. */
+/** NEX-40 (US-29): programar y gestionar clases. NEX-46 (US-31): consultar las disponibles. */
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -507,6 +507,95 @@ class ClassTests {
         assertThat(body(list(admin, ""))).contains("\"totalElements\":2");
         assertThat(body(list(admin, "?status=cancelled"))).contains("\"totalElements\":1");
         assertThat(status(one(admin, cancelled))).isEqualTo(200);
+    }
+
+    // ---- NEX-46 (US-31): clases disponibles por sede -----------------------------------------
+
+    /** Clase que ya empezó (solo se puede crear directo en la base). */
+    private static final String PAST = "2020-01-06T18:00:00-05:00";
+
+    private long reservedClass(long orgId, long branchId, int capacity) {
+        return classRow(orgId, branchId, null, at(9), 60, capacity);
+    }
+
+    @Test
+    void elClienteSoloVeLasClasesQuePuedeReservar() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long branch = branch(org.id(), true);
+        long free = reservedClass(org.id(), branch, 5);
+        long full = reservedClass(org.id(), branch, 1);
+        book(org, full);
+        long started = classRow(org.id(), branch, null, PAST, 60, 5);
+        long cancelled = reservedClass(org.id(), branch, 5);
+        cancel(cancelled);
+        Org other = fx.orgWithAdmin();
+        long foreign = reservedClass(other.id(), branch(other.id(), true), 5);
+
+        Cookie client = fx.login(fx.actor(org.id(), "client"));
+        String seen = body(list(client, ""));
+        assertThat(seen).contains("\"totalElements\":1", "\"id\":" + free + ",");
+        assertThat(seen).doesNotContain("\"id\":" + full + ",", "\"id\":" + started + ",", "\"id\":" + cancelled + ",",
+            "\"id\":" + foreign + ",");
+        // El Cliente no se salta el filtro pidiendo otro estado.
+        assertThat(body(list(client, "?status=cancelled"))).contains("\"totalElements\":1");
+    }
+
+    @Test
+    void conAvailableTodosLosRolesVenSoloLasReservables() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long branch = branch(org.id(), true);
+        long free = reservedClass(org.id(), branch, 5);
+        long full = reservedClass(org.id(), branch, 1);
+        book(org, full);
+        long started = classRow(org.id(), branch, null, PAST, 60, 5);
+        cancel(reservedClass(org.id(), branch, 5));
+
+        Cookie admin = fx.login(org.admin());
+        assertThat(body(list(admin, ""))).contains("\"totalElements\":4");
+        assertThat(body(list(admin, "?available=true"))).contains("\"totalElements\":1", "\"id\":" + free + ",");
+        // Staff y Entrenador ven también las ya iniciadas y las llenas, salvo que pidan solo las disponibles.
+        for (String role : new String[] {"staff", "trainer"}) {
+            Cookie session = fx.login(fx.actor(org.id(), role));
+            assertThat(body(list(session, ""))).as(role).contains("\"id\":" + started + ",", "\"id\":" + full + ",");
+            assertThat(body(list(session, "?available=true"))).as(role)
+                .contains("\"totalElements\":1", "\"id\":" + free + ",");
+        }
+    }
+
+    @Test
+    void elCupoLibreReflejaLasReservasConfirmadasYCanceladas() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long id = reservedClass(org.id(), branch(org.id(), true), 2);
+        Cookie client = fx.login(fx.actor(org.id(), "client"));
+
+        assertThat(body(list(client, ""))).contains("\"confirmedBookings\":0", "\"freeSlots\":2");
+        book(org, id);
+        assertThat(body(list(client, ""))).contains("\"confirmedBookings\":1", "\"freeSlots\":1");
+        book(org, id);
+        assertThat(body(list(client, ""))).contains("\"totalElements\":0");
+
+        jdbc.update("UPDATE class_bookings SET status = 'cancelled', cancelled_at = now() WHERE id = "
+            + "(SELECT min(id) FROM class_bookings WHERE class_id = ?)", id);
+        assertThat(body(list(client, ""))).contains("\"confirmedBookings\":1", "\"freeSlots\":1");
+    }
+
+    @Test
+    void sePuedeConsultarPorSedeYNoSeVenLasDeOtroGimnasio() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long north = branch(org.id(), true);
+        long south = branch(org.id(), true);
+        long inNorth = reservedClass(org.id(), north, 5);
+        long inSouth = reservedClass(org.id(), south, 5);
+        Org other = fx.orgWithAdmin();
+        long otherBranch = branch(other.id(), true);
+        reservedClass(other.id(), otherBranch, 5);
+
+        Cookie client = fx.login(fx.actor(org.id(), "client"));
+        String byBranch = body(list(client, "?branchId=" + north));
+        assertThat(byBranch).contains("\"totalElements\":1", "\"id\":" + inNorth + ",").doesNotContain("\"id\":" + inSouth + ",");
+        // Una sede de otro gimnasio no devuelve nada: es indistinguible de una inexistente.
+        assertThat(body(list(client, "?branchId=" + otherBranch))).contains("\"totalElements\":0");
+        assertThat(body(list(client, "?available=true&branchId=" + south))).contains("\"id\":" + inSouth + ",");
     }
 
     @Test
