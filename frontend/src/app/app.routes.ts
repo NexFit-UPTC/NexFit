@@ -37,6 +37,7 @@ export const routes: Routes = [
       { path: 'alumnos', loadComponent: () => import('./pages/asignaciones.component').then((m) => m.AsignacionesComponent), canActivate: [asignacionesGuard] },
       { path: 'mis-alumnos', loadComponent: () => import('./pages/mis-alumnos.component').then((m) => m.MisAlumnosComponent), canActivate: [entrenadorGuard] },
       { path: 'rutinas', loadComponent: () => import('./pages/rutinas.component').then((m) => m.RutinasComponent), canActivate: [rutinasGuard] },
+      { path: 'inicio', loadComponent: () => import('./pages/inicio.component').then((m) => m.InicioComponent), canActivate: [clienteGuard] },
       { path: 'progreso', loadComponent: () => import('./pages/progreso.component').then((m) => m.ProgresoComponent), canActivate: [clienteGuard] },
       { path: 'peso', loadComponent: () => import('./pages/peso.component').then((m) => m.PesoComponent), canActivate: [clienteGuard] },
       { path: 'ejercicios', loadComponent: () => import('./pages/ejercicios.component').then((m) => m.EjerciciosComponent) },
@@ -48,7 +49,7 @@ export const routes: Routes = [
         redirectTo: () => {
           const sesion = inject(SessionService);
           if (sesion.esMaster() || sesion.roles().includes('admin')) return 'panel';
-          return sesion.roles().includes('client') && !sesion.roles().includes('trainer') ? 'progreso' : 'mi-perfil';
+          return sesion.roles().includes('client') && !sesion.roles().includes('trainer') ? 'inicio' : 'mi-perfil';
         }
       }
     ]
