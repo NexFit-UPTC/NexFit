@@ -29,8 +29,15 @@
       } catch (e) {}
     })();
   </script>
+  <style>
+    /* Splash hasta que Angular reemplaza el contenido de <app-root>. Usa solo los tokens de styles.css. */
+    .splash { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; background: var(--fondo); }
+    .splash-barra { width: 56px; height: 6px; border-radius: 6px; background: var(--acento); animation: splash-pulso 1.2s ease-in-out infinite; }
+    @keyframes splash-pulso { 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) { .splash-barra { animation: none; } }
+  </style>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root><div class="splash" role="status" aria-label="Cargando NexFit"><span class="splash-barra"></span></div></app-root>
 </body>
 </html>

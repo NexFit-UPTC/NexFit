@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth.service';
@@ -26,10 +26,10 @@ export function mensajeDeLogin(e: unknown): string {
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly sesion = inject(SessionService);
+  protected readonly sesion = inject(SessionService);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email]],
@@ -39,12 +39,14 @@ export class LoginComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly verClave = signal(false);
 
-  ngOnInit(): void {
-    // Quien ya tiene sesión no necesita esta pantalla.
-    const destino = DESTINOS[this.sesion.estado()];
-    if (destino) {
-      this.router.navigateByUrl(destino);
-    }
+  constructor() {
+    // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
+    effect(() => {
+      const destino = DESTINOS[this.sesion.estado()];
+      if (destino) {
+        this.router.navigateByUrl(destino);
+      }
+    });
   }
 
   protected async ingresar(): Promise<void> {

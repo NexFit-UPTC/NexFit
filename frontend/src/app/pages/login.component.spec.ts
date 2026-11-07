@@ -94,6 +94,26 @@ describe('LoginComponent', () => {
     expect(entrada('password').type).toBe('text');
   });
 
+  it('mientras la sesión carga muestra «Verificando sesión…» y el formulario sigue usable', () => {
+    sesion.estado.set('cargando');
+    fixture.detectChanges();
+    expect(el().querySelector('[role=status]')?.textContent).toContain('Verificando sesión');
+    expect(el().querySelector('form')).toBeTruthy();
+    expect(el().querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+    sesion.estado.set('anonimo');
+    fixture.detectChanges();
+    expect(el().querySelector('[role=status]')).toBeNull();
+  });
+
+  it('si /api/me llega con sesión después de pintar, redirige a /', () => {
+    sesion.estado.set('cargando');
+    fixture.detectChanges();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    sesion.estado.set('activa');
+    fixture.detectChanges();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
   it('quien ya tiene sesión es llevado fuera del login', () => {
     sesion.estado.set('activa');
     const otro = TestBed.createComponent(LoginComponent);
