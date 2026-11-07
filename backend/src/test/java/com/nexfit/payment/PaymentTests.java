@@ -126,6 +126,10 @@ class PaymentTests {
             """, Long.class, orgId, memberId, registeredBy, amount, status, status, status, status, registeredBy);
     }
 
+    private int paymentCount(long orgId) {
+        return jdbc.queryForObject("SELECT count(*) FROM payments WHERE organization_id = ?", Integer.class, orgId);
+    }
+
     private Map<String, Object> row(long id) {
         return jdbc.queryForMap("""
             SELECT organization_id, member_id, membership_id, registered_by_member_id, amount,
@@ -188,7 +192,7 @@ class PaymentTests {
         assertThat(status(unknown)).isEqualTo(400);
         assertThat(body(unknown)).contains("\"field\":\"memberId\"");
 
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM payments", Integer.class)).isZero();
+        assertThat(paymentCount(org.id())).isZero();
     }
 
     // Una membresía de otro cliente se rechaza; sin membresía o con la propia se acepta.
@@ -222,7 +226,7 @@ class PaymentTests {
         assertThat(status(register(fx.login(fx.actor(org.id(), "trainer")), json(client.memberId(), "1000"))))
             .isEqualTo(403);
         assertThat(status(register(fx.login(client.account()), json(client.memberId(), "1000")))).isEqualTo(403);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM payments", Integer.class)).isZero();
+        assertThat(paymentCount(org.id())).isZero();
     }
 
     // RN-31: no existe la operación de borrar un pago.
