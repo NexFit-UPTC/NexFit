@@ -1147,3 +1147,25 @@ a.nf-indicador:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Reservas por clase (Entrenador) ---------- */
+.nf-clases-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--espacio-3);
+}
+.nf-clase-reservas h2 {
+  margin: 0;
+}
+.nf-asistentes {
+  display: grid;
+  gap: 6px;
+  margin: var(--espacio-2) 0;
+  padding: 0;
+  list-style: none;
+}
+.nf-asistentes li {
+  padding: 8px 12px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
