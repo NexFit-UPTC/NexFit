@@ -173,3 +173,31 @@ Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; para `memberId` y `membershipId` indica un cliente o una membresía que no existen en el gimnasio o que no corresponden entre sí.
 - `409 PAYMENT_NOT_PENDING`: el pago ya está completado o anulado. Por el trigger de RN-40 (V4) un pago completado es final: no se anula ni se vuelve a completar.
 - `403 ACCESS_DENIED` si el rol no tiene permiso; `404` si el pago no existe o es de otro gimnasio; `401` sin sesión.
+
+
+## Membresías (NEX-49, NEX-55, NEX-56, NEX-57, NEX-66, NEX-67)
+
+Rutas bajo `/api/memberships`. El gimnasio sale de la sesión. La fecha de hoy y el estado efectivo se calculan con la zona horaria del gimnasio (RN-27); «vencida» no se guarda.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/memberships` | Staff | Contrata un plan activo para un cliente, con pago opcional en la misma transacción. `201` con `{membership, payment}`. |
+| `POST /api/memberships/{id}/renew` | Staff | Renueva una membresía **vigente**: la nueva inicia el día siguiente al vencimiento. `201` con `{membership, payment}`. |
+| `GET /api/memberships` | Administrador, Staff, Cliente | Lista ordenada por inicio descendente. El Cliente recibe siempre solo las suyas. |
+| `GET /api/memberships/{id}` | Administrador, Staff, Cliente | Detalle. `404` si es de otro cliente (para el Cliente) o de otro gimnasio. |
+| `PATCH /api/memberships/{id}/suspend` | Administrador, Staff | Suspende una activa. Cancela las reservas futuras del cliente. Audita `MEMBERSHIP_SUSPENDED`. |
+| `PATCH /api/memberships/{id}/reactivate` | Administrador, Staff | Reactiva una suspendida que no ha vencido; conserva el vencimiento. Audita `MEMBERSHIP_REACTIVATED`. |
+| `PATCH /api/memberships/{id}/cancel` | Administrador, Staff | Cancela una activa o suspendida (definitivo). Cancela las reservas futuras. Audita `MEMBERSHIP_CANCELLED`. |
+
+Cuerpo de `POST /api/memberships`: `{"memberId": 12, "planId": 3, "startDate": "2026-11-10", "payment": {"amount": 50000, "method": "cash", "reference": "…", "status": "completed"}}`. Obligatorios: `memberId` (cliente del gimnasio) y `planId` (plan activo del gimnasio). `startDate` es opcional (por defecto hoy) y no puede ser anterior a hoy. El vencimiento es inicio + duración − 1. En `payment`, `method` es obligatorio; `amount` por defecto es el precio del plan; `status` es `pending` o `completed` (por defecto). El concepto del pago se arma con el nombre del plan. `suspend`, `reactivate` y `cancel` exigen `{"reason": "…"}`.
+
+Filtros de `GET /api/memberships`: `memberId` (ignorado para el Cliente), `status` (estado efectivo: `scheduled`, `current`, `expired`, `suspended`, `cancelled`) y `expiringInDays` (vigentes que vencen de hoy a hoy + N, ambos incluidos; N entre 0 y 365; el valor típico es 7).
+
+Cada membresía: `{id, memberId, memberName, planId, planName, startDate, endDate, status, effectiveStatus, statusReason, statusChangedAt, createdAt}`.
+
+Errores:
+- `400 VALIDATION_ERROR` con `{code, field, message}` (cliente o plan inexistente, inactivo o de otro gimnasio; inicio anterior a hoy; método de pago inválido; motivo vacío).
+- `409 MEMBERSHIP_OVERLAP`: el cliente ya tiene una membresía activa o suspendida que se solapa (RN-28).
+- `409 MEMBERSHIP_NOT_RENEWABLE`: solo se renueva una vigente; si ya venció se contrata de nuevo (D-06).
+- `409 MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_NOT_SUSPENDED`, `MEMBERSHIP_CANCELLED`, `MEMBERSHIP_EXPIRED`: la operación no aplica al estado actual.
+- `403 ACCESS_DENIED` si el rol no tiene permiso; `404` si no existe o es de otro gimnasio; `401` sin sesión.
