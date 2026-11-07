@@ -455,6 +455,19 @@ class AuthorizationMatrixTests {
         list.add(gated("GET /routines/{id}", roles(Rol.TRAINER, Rol.CLIENT), c -> "/routines/" + routineB, null,
                 byPath("/routines/%d", c -> routineB, null, NOT_FOUND)));
 
+        // --- Entrenamientos, racha, meta y peso (NEX-77, NEX-78, NEX-79) ---
+        // ENTRENAMIENTOS: solo el CLIENT (CREAR, CONSULTAR y MODIFICAR); el peso es un dato de salud (RNF-08).
+        list.add(new Case("POST /workouts", Kind.GATED, roles(Rol.CLIENT), c -> "/workouts",
+                c -> "{\"routineId\":" + routineB + ",\"completedExerciseIds\":[1]}", null, false));
+        list.add(gated("GET /workouts", roles(Rol.CLIENT), "/workouts", null));
+        list.add(gated("GET /workouts/{id}", roles(Rol.CLIENT), c -> "/workouts/999999999", null,
+                byPath("/workouts/%d", c -> 999_999_999L, null, NOT_FOUND)));
+        list.add(gated("GET /my-progress", roles(Rol.CLIENT), "/my-progress", null));
+        list.add(gated("PUT /my-goal", roles(Rol.CLIENT), "/my-goal", "{\"weeklyGoal\":3}"));
+        list.add(new Case("POST /body-weight", Kind.GATED, roles(Rol.CLIENT), c -> "/body-weight",
+                c -> "{\"weightKg\":70}", null, false));
+        list.add(gated("GET /body-weight", roles(Rol.CLIENT), "/body-weight", null));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
