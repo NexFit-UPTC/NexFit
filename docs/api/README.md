@@ -201,3 +201,24 @@ Errores:
 - `409 MEMBERSHIP_NOT_RENEWABLE`: solo se renueva una vigente; si ya venció se contrata de nuevo (D-06).
 - `409 MEMBERSHIP_NOT_ACTIVE`, `MEMBERSHIP_NOT_SUSPENDED`, `MEMBERSHIP_CANCELLED`, `MEMBERSHIP_EXPIRED`: la operación no aplica al estado actual.
 - `403 ACCESS_DENIED` si el rol no tiene permiso; `404` si no existe o es de otro gimnasio; `401` sin sesión.
+
+
+## Reservas y cancelación de clases (NEX-58, NEX-69, NEX-70, NEX-68)
+
+Rutas bajo `/api/bookings` y `PATCH /api/classes/{id}/cancel`. El gimnasio sale de la sesión.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/bookings` | Staff, Cliente | Reserva un cupo. Cuerpo `{"classId": 5}`; el Staff agrega `"memberId"` (cliente). El Cliente solo reserva para sí (otro `memberId` → `403`). `201` con la reserva. |
+| `GET /api/bookings` | Administrador, Staff, Entrenador, Cliente | Reservas ordenadas por inicio de la clase (recientes primero). El Cliente recibe siempre las suyas (confirmadas y canceladas); el Entrenador, las de sus clases. Filtros: `memberId`, `classId`, `status` (`confirmed`, `cancelled`). |
+| `PATCH /api/bookings/{id}/cancel` | Staff, Cliente | Cancela hasta el inicio de la clase y libera el cupo. Un Cliente no cancela la de otro (`403`). |
+| `PATCH /api/classes/{id}/cancel` | Administrador | Cancela la clase (estado final) y todas sus reservas confirmadas en la misma transacción; audita `CLASS_CANCELLED`. Cuerpo opcional `{"reason": "…"}` (obligatorio si la clase ya inició). |
+
+Cada reserva: `{id, classId, className, classStartsAt, branchName, memberId, memberName, status, bookedAt, cancelledAt}`.
+
+La membresía se valida el **día de la clase** (zona horaria del gimnasio), no el de la reserva.
+
+Errores:
+- `400 VALIDATION_ERROR`: clase o cliente que no existen en el gimnasio (o cliente inactivo); `memberId` faltante para el Staff.
+- `409` con `code`: `NO_VALID_MEMBERSHIP`, `CLASS_CANCELLED`, `CLASS_STARTED`, `ALREADY_BOOKED`, `CLASS_FULL`, `BOOKING_ALREADY_CANCELLED`.
+- `403 ACCESS_DENIED`, `404` (reserva o clase inexistente o de otro gimnasio), `401`.
