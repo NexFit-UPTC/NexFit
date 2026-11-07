@@ -121,7 +121,7 @@ class ExerciseTests {
         assertThat(jdbc.queryForObject("SELECT organization_id IS NULL FROM exercises WHERE id = ?", Boolean.class,
             idOf(body(r)))).isTrue();
         for (Org org : new Org[] {a, b}) {
-            assertThat(body(send(fx.login(org.admin()), "GET", "/exercises?q=" + name.replace(" ", "%20"), null)))
+            assertThat(body(send(fx.login(org.admin()), "GET", "/exercises?q=" + name, null)))
                 .contains(name);
         }
     }
@@ -284,14 +284,14 @@ class ExerciseTests {
 
         assertThat(status(off)).isEqualTo(200);
         assertThat(body(off)).contains("\"active\":false");
-        assertThat(body(send(admin, "GET", "/exercises?q=" + name.replace(" ", "%20"), null))).doesNotContain(name);
+        assertThat(body(send(admin, "GET", "/exercises?q=" + name, null))).doesNotContain(name);
         assertThat(status(send(admin, "GET", "/exercises/" + id, null))).isEqualTo(404);
-        assertThat(body(send(master, "GET", "/exercises?active=false&q=" + name.replace(" ", "%20"), null)))
+        assertThat(body(send(master, "GET", "/exercises?active=false&q=" + name, null)))
             .contains(name);
         assertThat(status(send(master, "PATCH", "/exercises/" + id + "/active", "{}"))).isEqualTo(400);
 
         send(master, "PATCH", "/exercises/" + id + "/active", "{\"active\":true}");
-        assertThat(body(send(admin, "GET", "/exercises?q=" + name.replace(" ", "%20"), null))).contains(name);
+        assertThat(body(send(admin, "GET", "/exercises?q=" + name, null))).contains(name);
     }
 
     @Test
@@ -312,9 +312,9 @@ class ExerciseTests {
         create(admin, tag + " Elevaciones", ",\"muscleGroup\":\"Hombros\"");
         create(admin, tag + " Remo", ",\"muscleGroup\":\"Espalda\"");
 
-        String byName = body(send(admin, "GET", "/exercises?q=" + tag.toLowerCase() + "%20press", null));
+        String byName = body(send(admin, "GET", "/exercises?q=" + tag.toLowerCase() + " press", null));
         String byGroup = body(send(admin, "GET", "/exercises?scope=own&muscleGroup=hombros", null));
-        String wildcard = body(send(admin, "GET", "/exercises?q=%25", null));
+        String wildcard = body(send(admin, "GET", "/exercises?q=%", null));
         String underscore = body(send(admin, "GET", "/exercises?q=" + tag + "_Remo", null));
 
         assertThat(byName).contains("Press militar").doesNotContain("Elevaciones");
