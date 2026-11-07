@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { gestionGuard } from './core/personal-gestion.guard';
+import { equiposGuard } from './core/equipos.guard';
 import { panelGuard } from './core/panel.guard';
 import { SessionService } from './core/session.service';
 import { masterGuard } from './core/master.guard';
@@ -31,6 +32,8 @@ export const routes: Routes = [
       { path: 'membresias', loadComponent: () => import('./pages/membresias.component').then((m) => m.MembresiasComponent), canActivate: [gestionGuard] },
       { path: 'pagos', loadComponent: () => import('./pages/pagos.component').then((m) => m.PagosComponent) },
       { path: 'clases', loadComponent: () => import('./pages/clases.component').then((m) => m.ClasesComponent) },
+      { path: 'equipos', loadComponent: () => import('./pages/equipos.component').then((m) => m.EquiposComponent), canActivate: [equiposGuard] },
+      { path: 'ejercicios', loadComponent: () => import('./pages/ejercicios.component').then((m) => m.EjerciciosComponent) },
       { path: 'reservas', loadComponent: () => import('./pages/reservas.component').then((m) => m.ReservasComponent) },
       { path: 'asistencia', loadComponent: () => import('./pages/asistencia.component').then((m) => m.AsistenciaComponent) },
       {
