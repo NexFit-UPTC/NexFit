@@ -92,7 +92,8 @@ Hay dos conjuntos, y cada uno es **idempotente** (si ya está cargado no se toca
 | `functional` (por defecto) | 2 gimnasios (*Gimnasio Demo Norte* y *Sur*) con una sede cada uno; un Master; en cada gimnasio un Administrador, un Staff, un Entrenador y clientes con membresías (una vencida) y pagos; ingresos de ejemplo; y **una persona afiliada a ambos gimnasios** (`cliente.compartido@nexfit.test`) para probar aislamiento. |
 | `reference` | Conjunto de carga para rendimiento: 5 gimnasios (*Gimnasio Carga 1…5*), 1.000 clientes y 20.000 ingresos **por gimnasio** (100.000 en total), cada cliente con su membresía anual vigente y su pago. Sin clases ni reservas por ahora. |
 | `massive` | Demo a gran escala (ver abajo), con `NEXFIT_SEED_SCALE` = `small`, `medium` o `large`. |
-| `all` | `functional` + `reference` (no incluye `massive`). |
+| `demo` | Dos gimnasios completos para mostrar toda la interfaz: personal, 12 clientes por gimnasio, equipos con imagen, clases con reservas, asistencias, alumnos asignados, rutinas, entrenamientos con racha, meta semanal y peso. |
+| `all` | `functional` + `reference` (no incluye `massive` ni `demo`). |
 
 Cuentas del conjunto funcional (misma contraseña para todas): `master@nexfit.test`, `admin.norte@nexfit.test`,
 `staff.norte@nexfit.test`, `trainer.norte@nexfit.test`, `cliente1.norte@nexfit.test` (y lo mismo con `.sur`),
@@ -107,7 +108,7 @@ set -a; source ../.env; set +a
 
 read -rsp "Contraseña de las cuentas ficticias (mínimo 12 caracteres): " NEXFIT_SEED_PASSWORD; echo
 export NEXFIT_SEED_PASSWORD
-export NEXFIT_SEED_DATASET=functional      # functional | reference | massive | all
+export NEXFIT_SEED_DATASET=functional      # functional | reference | massive | demo | all
 
 mvn spring-boot:run -Dspring-boot.run.profiles=seed
 
@@ -163,3 +164,11 @@ export NEXFIT_SEED_DATASET=massive NEXFIT_SEED_SCALE=medium
   datos y su consentimiento. Guarda el archivo fuera del repositorio; `*.local.csv` está en `.gitignore`.
 - Si la base ya tenía el catálogo de EPS anterior (p. ej. «Sanitas EPS»), el `massive` agrega las EPS con el
   nombre nuevo («Sanitas») y usa solo estas; las antiguas siguen en la tabla hasta que el Master las desactive.
+
+## Conjunto `demo` (pantallas con datos reales de ejemplo)
+
+`NEXFIT_SEED_DATASET=demo` crea **Iron Peak Fitness** (Tunja, dos sedes) y **Vital Studio** (Sogamoso, una sede). Cada
+gimnasio trae 1 administrador, 2 staff, 3 entrenadores, 12 clientes, 4 planes, equipos con imagen, 8 clases en los
+próximos días con reservas, asistencias de las últimas dos semanas, 6 alumnos asignados, rutinas, entrenamientos y peso.
+Es idempotente: si «Iron Peak Fitness» ya existe no cambia nada. Todo es ficticio (`@nexfit.test`, documentos `DEMO-…`).
+Cuentas y estados de ejemplo: ver `docs/seeds/usuarios-demo.md`.
