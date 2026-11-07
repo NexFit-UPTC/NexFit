@@ -89,4 +89,18 @@ describe('ReservasComponent', () => {
     await estabilizar();
     expect(el().textContent).toContain('La clase ya inició');
   });
+
+  it('el Entrenador ve cada clase con sus inscritos confirmados', async () => {
+    const otra = { ...reserva, id: 3, memberId: 8, memberName: 'Beto Gil' };
+    const otraClase = { ...reserva, id: 4, classId: 9, className: 'Yoga', classStartsAt: '2026-11-09T13:00:00Z' };
+    await montar(['trainer'], [reserva, cancelada, otra, otraClase]);
+
+    const tarjetas = el().querySelectorAll('.nf-clase-reservas');
+    expect(tarjetas).toHaveLength(2);
+    expect(tarjetas[0].textContent).toContain('Yoga');
+    expect(tarjetas[1].textContent).toContain('2 inscritos');
+    expect(tarjetas[1].textContent).toContain('1 reserva cancelada');
+    expect(Array.from(tarjetas[1].querySelectorAll('li')).map((l) => l.textContent)).toEqual(['Ana Pérez', 'Beto Gil']);
+    expect(el().querySelector('table')).toBeNull();
+  });
 });

@@ -35,6 +35,32 @@ import { SessionService } from '../core/session.service';
         <p class="nf-ayuda">Cargando…</p>
       } @else if (reservas().length === 0) {
         <p class="nf-vacio">No hay reservas.</p>
+      } @else if (soloEntrenador()) {
+        <div class="nf-clases-lista">
+          @for (g of porClase(); track g.classId) {
+            <article class="nf-tarjeta nf-clase-reservas">
+              <div class="nf-cabecera">
+                <div>
+                  <h2>{{ g.className }}</h2>
+                  <p class="nf-ayuda">{{ g.startsAt | date: 'EEEE dd/MM HH:mm' }} · {{ g.branchName }}</p>
+                </div>
+                <span class="nf-insignia ok">{{ g.confirmadas.length }} {{ g.confirmadas.length === 1 ? 'inscrito' : 'inscritos' }}</span>
+              </div>
+              @if (g.confirmadas.length === 0) {
+                <p class="nf-ayuda">Nadie tiene cupo confirmado.</p>
+              } @else {
+                <ul class="nf-asistentes">
+                  @for (r of g.confirmadas; track r.id) {
+                    <li>{{ r.memberName }}</li>
+                  }
+                </ul>
+              }
+              @if (g.canceladas > 0) {
+                <p class="nf-ayuda">{{ g.canceladas }} {{ g.canceladas === 1 ? 'reserva cancelada' : 'reservas canceladas' }}</p>
+              }
+            </article>
+          }
+        </div>
       } @else {
         <table class="nf-tabla">
           <thead>
@@ -88,7 +114,24 @@ export class ReservasComponent implements OnInit {
     const roles = this.sesion.roles();
     return roles.includes('client') || roles.includes('staff');
   });
+  /** El Entrenador (sin otro rol) ve sus clases con la lista de inscritos (US-35, NEX-71). */
+  protected readonly soloEntrenador = computed(() => {
+    const roles = this.sesion.roles();
+    return roles.includes('trainer') && !roles.includes('admin') && !roles.includes('staff') && !roles.includes('client');
+  });
   protected readonly reservas = signal<Reserva[]>([]);
+  protected readonly porClase = computed(() => {
+    const grupos = new Map<number, { classId: number; className: string; startsAt: string; branchName: string; confirmadas: Reserva[]; canceladas: number }>();
+    for (const r of this.reservas()) {
+      const g = grupos.get(r.classId) ?? { classId: r.classId, className: r.className, startsAt: r.classStartsAt, branchName: r.branchName, confirmadas: [], canceladas: 0 };
+      if (r.status === 'confirmed') g.confirmadas.push(r);
+      else g.canceladas++;
+      grupos.set(r.classId, g);
+    }
+    return [...grupos.values()]
+      .map((g) => ({ ...g, confirmadas: g.confirmadas.sort((a, b) => a.memberName.localeCompare(b.memberName)) }))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  });
   protected readonly estado = signal<'' | 'confirmed' | 'cancelled'>('');
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
