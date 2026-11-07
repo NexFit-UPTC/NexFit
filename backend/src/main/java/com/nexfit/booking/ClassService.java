@@ -1,10 +1,13 @@
 package com.nexfit.booking;
 
+import com.nexfit.audit.AuditEventType;
+import com.nexfit.audit.AuditService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -38,9 +41,11 @@ class ClassService {
         """;
 
     private final JdbcClient jdbc;
+    private final AuditService audit;
 
-    ClassService(JdbcClient jdbc) {
+    ClassService(JdbcClient jdbc, AuditService audit) {
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     /** Clase con sus reservas confirmadas y cupos libres (nunca negativos). */
@@ -231,6 +236,43 @@ class ClassService {
             .param("trainer", data.trainerMemberId()).param("startsAt", data.startsAt())
             .param("duration", data.durationMinutes()).param("capacity", data.capacity())
             .update();
+        return find(organizationId, id);
+    }
+
+    /**
+     * Cancela la clase (estado final) y, en la misma transacción, todas sus reservas confirmadas (US-30). Si la
+     * clase ya inició el motivo es obligatorio (lo exige también el trigger). Vacío si no existe en el gimnasio.
+     */
+    @Transactional
+    public Optional<GymClass> cancel(long organizationId, long actorUserId, long id, String reason, String ip) {
+        Optional<ClassRow> current = jdbc.sql("""
+                SELECT starts_at, duration_minutes, capacity, status::text AS status, 0 AS confirmed
+                  FROM classes WHERE id = :id AND organization_id = :org FOR UPDATE""")
+            .param("id", id).param("org", organizationId)
+            .query((rs, n) -> new ClassRow(rs.getObject("starts_at", OffsetDateTime.class),
+                rs.getInt("duration_minutes"), rs.getInt("capacity"), rs.getString("status"), 0))
+            .optional();
+        if (current.isEmpty()) {
+            return Optional.empty();
+        }
+        ClassRow row = current.get();
+        if (!"scheduled".equals(row.status())) {
+            throw new ClassCancelledException();
+        }
+        if (!row.startsAt().isAfter(OffsetDateTime.now()) && reason == null) {
+            throw new InvalidClassException("reason", "La clase ya inició: indica el motivo de la cancelación");
+        }
+        int bookings = jdbc.sql("""
+                UPDATE class_bookings SET status = 'cancelled', cancelled_at = now()
+                 WHERE class_id = :id AND organization_id = :org AND status = 'confirmed'""")
+            .param("id", id).param("org", organizationId).update();
+        jdbc.sql("""
+                UPDATE classes SET status = 'cancelled', cancelled_at = now(), cancel_reason = :reason
+                 WHERE id = :id AND organization_id = :org""")
+            .param("reason", reason).param("id", id).param("org", organizationId).update();
+        Map<String, Object> metadata = reason == null ? Map.of("cancelledBookings", bookings)
+            : Map.of("cancelledBookings", bookings, "reason", reason);
+        audit.record(AuditEventType.CLASS_CANCELLED, actorUserId, organizationId, "class", id, ip, metadata);
         return find(organizationId, id);
     }
 
