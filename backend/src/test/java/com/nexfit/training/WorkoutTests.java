@@ -155,7 +155,8 @@ class WorkoutTests {
         assertThat(status(r)).as(body(r)).isEqualTo(201);
         assertThat(body(r)).contains("\"performedOn\":\"" + today() + "\"").contains("\"routineId\":" + plan.routineId())
             .contains("\"routineExerciseId\":" + plan.ids()[1]).doesNotContain("\"routineExerciseId\":" + plan.ids()[0]);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_log_items", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_log_items i JOIN workout_logs l ON l.id = i.workout_log_id "
+            + "WHERE l.organization_id = ?", Integer.class, org.id())).isEqualTo(1);
         long id = jdbc.queryForObject("SELECT max(id) FROM workout_logs WHERE member_id = ?", Long.class, c.memberId());
         assertThat(body(send(s, "GET", "/workouts", null))).contains("\"completedCount\":1").contains("\"totalCount\":2");
         assertThat(status(send(s, "GET", "/workouts/" + id, null))).isEqualTo(200);
@@ -203,7 +204,8 @@ class WorkoutTests {
 
         assertThat(status(mixed)).isEqualTo(400);
         assertThat(status(repeated)).isEqualTo(201);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_log_items", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_log_items i JOIN workout_logs l ON l.id = i.workout_log_id "
+            + "WHERE l.organization_id = ?", Integer.class, org.id())).isEqualTo(1);
     }
 
     @Test
@@ -230,7 +232,8 @@ class WorkoutTests {
         assertThat(status(b)).isEqualTo(404);
         assertThat(status(d)).isEqualTo(404);
         assertThat(status(e)).isEqualTo(404);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_logs", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM workout_logs WHERE organization_id IN (?, ?)", Integer.class,
+            org.id(), other.id())).isZero();
     }
 
     @Test
