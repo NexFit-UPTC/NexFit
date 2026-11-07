@@ -1,6 +1,7 @@
 package com.nexfit.training;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -20,6 +21,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -323,8 +325,8 @@ class ExerciseTests {
 
     @Test
     void laBaseRechazaDireccionesDeImagenInvalidas() {
-        org.springframework.dao.DataIntegrityViolationException e = org.junit.jupiter.api.Assertions.assertThrows(
-            org.springframework.dao.DataIntegrityViolationException.class, () -> jdbc.update("""
+        DataIntegrityViolationException e = assertThrows(DataIntegrityViolationException.class,
+            () -> jdbc.update("""
                 INSERT INTO exercises (name, is_active, image_url) VALUES (?, true, 'data:text/html,x')""",
                 unique("Mala imagen")));
         assertThat(e.getMessage()).contains("ck_exercises_image_url");
