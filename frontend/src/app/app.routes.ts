@@ -2,11 +2,13 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
+import { staffGuard } from './core/staff.guard';
 import { LayoutComponent } from './layout/layout.component';
 import { AparienciaComponent } from './pages/apariencia.component';
 import { AdministradorComponent } from './pages/administrador.component';
 import { AuditoriaComponent } from './pages/auditoria.component';
 import { CambiarContrasenaComponent } from './pages/cambiar-contrasena.component';
+import { ClientesComponent } from './pages/clientes.component';
 import { EstablecimientoComponent } from './pages/establecimiento.component';
 import { EstablecimientosComponent } from './pages/establecimientos.component';
 import { LoginComponent } from './pages/login.component';
@@ -32,6 +34,7 @@ export const routes: Routes = [
       { path: 'sedes', component: SedesComponent, canActivate: [adminGuard] },
       { path: 'personal', component: PersonalComponent, canActivate: [adminGuard] },
       { path: 'planes', component: PlanesComponent, canActivate: [adminGuard] },
+      { path: 'clientes', component: ClientesComponent, canActivate: [staffGuard] },
       { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
     ]
   },

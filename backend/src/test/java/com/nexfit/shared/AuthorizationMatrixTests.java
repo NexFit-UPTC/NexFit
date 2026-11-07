@@ -322,6 +322,11 @@ class AuthorizationMatrixTests {
                 "/clients/search?documentType=CC&documentNumber=TEST-MATRIZ-CLIENTE-1&documentVerified=true&personPresent=true",
                 null));
 
+        // --- Catálogo de EPS, solo lectura (NEX-89): la matriz CATALOGO_EPS/CONSULTAR da MASTER, ADMIN, STAFF
+        // y CLIENT; es un catálogo global, sin recursos de un gimnasio que aislar. ---
+        list.add(gated("GET /health-insurance-providers", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.CLIENT),
+                "/health-insurance-providers", null));
+
         // --- Búsqueda y detalle de clientes (NEX-43) ---
         // La matriz CLIENTES/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT, pero el servicio limita la
         // búsqueda y el detalle a Staff y Administrador: Entrenador y Cliente reciben 403 del servicio, que

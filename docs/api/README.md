@@ -128,3 +128,11 @@ Errores:
 - `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
 - `401` sin sesión.
 
+## Catálogo de EPS, solo lectura (NEX-89)
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/health-insurance-providers` | Master, Administrador, Staff, Cliente | Lista las EPS activas por nombre: `[{id, name}]`. Es un catálogo global. Sirve para elegir la EPS al registrar un cliente. |
+
+El Entrenador recibe `403 ACCESS_DENIED` y sin sesión, `401`. Crear, editar y activar EPS es US-18 (NEX-30), solo del Master.
+
