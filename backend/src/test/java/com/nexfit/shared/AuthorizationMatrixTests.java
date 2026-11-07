@@ -116,6 +116,8 @@ class AuthorizationMatrixTests {
     private static final String SECRET_BRANCH = "Sede secreta B";
     private static final String SECRET_EVENT = "evento-secreto-B";
     private static final String SECRET_CLASS = "Clase secreta B";
+    private static final String SECRET_EQUIPMENT = "Equipo secreto B";
+    private static final String SECRET_EXERCISE = "Ejercicio secreto B";
 
     /**
      * Datos de dos establecimientos (A y B) y una sesión por rol en A. B es "el
@@ -215,6 +217,9 @@ class AuthorizationMatrixTests {
 
     /** Equipo del gimnasio B (NEX-38): indistinguible de uno inexistente para los roles de A. */
     private long equipmentB;
+
+    /** Ejercicio propio del gimnasio B (NEX-41): indistinguible de uno inexistente para los roles de A. */
+    private long exerciseB;
 
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
@@ -402,6 +407,19 @@ class AuthorizationMatrixTests {
                 "{\"status\":\"maintenance\"}",
                 byPath("/equipment/%d/status", c -> equipmentB, "{\"status\":\"maintenance\"}", NOT_FOUND)));
 
+        // --- Catálogo de ejercicios (NEX-41) ---
+        // CATALOGO_EJERCICIOS: CREAR MASTER, ADMIN y TRAINER; MODIFICAR MASTER y ADMIN; ACTIVAR MASTER; CONSULTAR todos.
+        list.add(new Case("POST /exercises", Kind.GATED, roles(Rol.MASTER, Rol.ADMIN, Rol.TRAINER), c -> "/exercises",
+                c -> "{\"name\":\"Ejercicio de la matriz\"}", null, false));
+        list.add(gated("GET /exercises", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                "/exercises", null));
+        list.add(gated("GET /exercises/{id}", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                c -> "/exercises/" + exerciseB, null, byPath("/exercises/%d", c -> exerciseB, null, NOT_FOUND)));
+        list.add(gated("PUT /exercises/{id}", roles(Rol.MASTER, Rol.ADMIN), c -> "/exercises/" + exerciseB,
+                "{\"name\":\"Matriz\"}", byPath("/exercises/%d", c -> exerciseB, "{\"name\":\"Matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /exercises/{id}/active", roles(Rol.MASTER), c -> "/exercises/" + exerciseB + "/active",
+                "{\"active\":false}", byPath("/exercises/%d/active", c -> exerciseB, "{\"active\":false}", NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -510,8 +528,12 @@ class AuthorizationMatrixTests {
 
         equipmentB = jdbc.queryForObject("""
                 INSERT INTO equipment (organization_id, branch_id, name, status)
-                VALUES (?, ?, 'Equipo secreto B', 'available') RETURNING id
-                """, Long.class, b.id(), branchB);
+                VALUES (?, ?, ?, 'available') RETURNING id
+                """, Long.class, b.id(), branchB, SECRET_EQUIPMENT);
+
+        exerciseB = jdbc.queryForObject("""
+                INSERT INTO exercises (organization_id, name, is_active) VALUES (?, ?, true) RETURNING id
+                """, Long.class, b.id(), SECRET_EXERCISE);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
@@ -684,7 +706,7 @@ class AuthorizationMatrixTests {
                             .isEqualTo(missing.getResponse().getStatus());
                     assertThat(bodyOf(foreign)).as("mismo cuerpo que un id inexistente")
                             .isEqualTo(bodyOf(missing));
-                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
+                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
                     assertThat(state()).as("el recurso de B no cambia").isEqualTo(before);
                 }));
             }
@@ -728,7 +750,7 @@ class AuthorizationMatrixTests {
                     MvcResult r = call(c, session(c, role), uri, null);
 
                     assertThat(r.getResponse().getStatus()).isEqualTo(200);
-                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
+                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
                 }));
             }
         }

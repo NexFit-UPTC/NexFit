@@ -267,3 +267,23 @@ Cada equipo: `{id, branchId, branchName, name, category, status, acquisitionDate
 - `imageUrl` debe empezar por `https://` o por `/` (ruta del propio sitio); la BD lo exige con `ck_*_image_url`.
 
 Errores: `400 VALIDATION_ERROR` (sede de otro gimnasio o inactiva, nombre vacío, estado/fecha/imagen inválidos), `403`, `404` (equipo inexistente o de otro gimnasio), `401`.
+
+## Catálogo de ejercicios (NEX-41)
+
+Rutas bajo `/api/exercises`. Hay dos ámbitos: **globales** (los gestiona el Master y los ven todos los gimnasios) y **propios** (los crea el Administrador o el Entrenador y solo los ve su gimnasio, RN-39).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/exercises` | Master, Administrador, Entrenador | Crea un ejercicio: global si lo crea el Master, propio en los demás casos. Cuerpo `{name, muscleGroup?, description?, imageUrl?}`. `201`. |
+| `GET /api/exercises` | Todos los roles | Lista ordenada por nombre. Un gimnasio recibe los globales activos y los suyos; el Master, solo los globales (con inactivos). Filtros: `q` (parte del nombre), `muscleGroup`, `scope` (`all`, `global`, `own`) y, solo para el Master, `active`. |
+| `GET /api/exercises/{id}` | Todos los roles | Un ejercicio visible. |
+| `PUT /api/exercises/{id}` | Master, Administrador | El Master modifica globales; el Administrador, propios. |
+| `PATCH /api/exercises/{id}/active` | Master | Activa o desactiva un ejercicio global (`{"active": false}`). Uno inactivo deja de verse en los gimnasios. |
+
+Cada ejercicio: `{id, scope, name, muscleGroup, description, imageUrl, active}`.
+
+- Un nombre no se repite dentro del mismo ámbito, sin distinguir mayúsculas (`409 EXERCISE_NAME_TAKEN`); uno propio sí puede llamarse como uno global.
+- Un gimnasio no puede modificar un global (`403 EXERCISE_GLOBAL_READ_ONLY`); un ejercicio propio de otro gimnasio es `404`.
+- Staff y Cliente solo leen (`403` al crear o modificar); el Entrenador crea pero no modifica.
+
+Errores: `400 VALIDATION_ERROR` (nombre vacío o de más de 100 caracteres, imagen inválida, `scope` desconocido), `401`.
