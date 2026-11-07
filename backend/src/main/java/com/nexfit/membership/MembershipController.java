@@ -103,7 +103,11 @@ class MembershipController {
         if (expiringInDays != null && (expiringInDays < 0 || expiringInDays > EXPIRING_MAX_DAYS)) {
             throw new Invalid("expiringInDays", "Los días deben estar entre 0 y " + EXPIRING_MAX_DAYS);
         }
-        Long member = canSeeAll() ? memberId : actorMemberId(orgId);
+        // Ojo: un ternario Long/long desempaquetaría memberId nulo; por eso if explícito.
+        Long member = memberId;
+        if (!canSeeAll()) {
+            member = actorMemberId(orgId);
+        }
         return memberships.list(orgId, new Filter(member, status, expiringInDays));
     }
 
