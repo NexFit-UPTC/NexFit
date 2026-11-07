@@ -14,50 +14,56 @@ const ZONA_POR_DEFECTO = 'America/Bogota';
   selector: 'app-establecimientos',
   imports: [FormsModule],
   template: `
-    <h1>Establecimientos</h1>
-    <button type="button" (click)="nuevo()">Crear establecimiento</button>
+    <section class="nf-pagina">
+      <div class="nf-cabecera">
+        <h1>Establecimientos</h1>
+        <button type="button" class="nf-boton" (click)="nuevo()">Crear establecimiento</button>
+      </div>
 
     @if (formulario(); as f) {
-      <form (ngSubmit)="guardar()" novalidate>
+      <form class="nf-tarjeta nf-formulario" (ngSubmit)="guardar()" novalidate>
         <h2>{{ editandoId() === null ? 'Nuevo establecimiento' : 'Editar establecimiento' }}</h2>
-        <label>
+        <label class="nf-campo">
           Nombre
-          <input name="name" [(ngModel)]="f.name" />
+          <input class="nf-entrada" name="name" [(ngModel)]="f.name" />
         </label>
         @if (errores()['name']) {
-          <p role="alert">{{ errores()['name'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['name'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Correo de contacto
-          <input name="contactEmail" type="email" [(ngModel)]="f.contactEmail" />
+          <input class="nf-entrada" name="contactEmail" type="email" [(ngModel)]="f.contactEmail" />
         </label>
         @if (errores()['contactEmail']) {
-          <p role="alert">{{ errores()['contactEmail'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['contactEmail'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Zona horaria
-          <input name="timezone" [(ngModel)]="f.timezone" />
+          <input class="nf-entrada" name="timezone" [(ngModel)]="f.timezone" />
         </label>
         @if (errores()['timezone']) {
-          <p role="alert">{{ errores()['timezone'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['timezone'] }}</p>
         }
         @if (errorGeneral()) {
-          <p role="alert">{{ errorGeneral() }}</p>
+          <p class="nf-alerta" role="alert">{{ errorGeneral() }}</p>
         }
-        <button type="submit" [disabled]="guardando()">Guardar</button>
-        <button type="button" (click)="cancelar()">Cancelar</button>
+        <div class="nf-acciones">
+          <button type="submit" class="nf-boton" [disabled]="guardando()">Guardar</button>
+          <button type="button" class="nf-boton-sec" (click)="cancelar()">Cancelar</button>
+        </div>
       </form>
     }
 
     @if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <p class="nf-alerta" role="alert">{{ error() }}</p>
     }
     @if (cargando()) {
-      <p>Cargando…</p>
+      <p class="nf-ayuda">Cargando…</p>
     } @else if (lista().length === 0) {
-      <p>No hay establecimientos.</p>
+      <p class="nf-vacio">No hay establecimientos.</p>
     } @else {
-      <table>
+      <div class="nf-tabla-envoltorio">
+      <table class="nf-tabla">
         <thead>
           <tr>
             <th>Nombre</th>
@@ -75,15 +81,19 @@ const ZONA_POR_DEFECTO = 'America/Bogota';
               <td>{{ e.name }}</td>
               <td>{{ e.contactEmail }}</td>
               <td>{{ e.timezone }}</td>
-              <td>{{ e.active ? 'Activo' : 'Inactivo' }}</td>
+              <td>
+                <span class="nf-insignia" [class.ok]="e.active">{{ e.active ? 'Activo' : 'Inactivo' }}</span>
+              </td>
               <td>{{ e.branchCount }}</td>
               <td>{{ e.clientCount }}</td>
-              <td><button type="button" (click)="editar(e)">Editar</button></td>
+              <td class="nf-acciones-celda"><button type="button" class="nf-boton-sec" (click)="editar(e)">Editar</button></td>
             </tr>
           }
         </tbody>
       </table>
+      </div>
     }
+    </section>
   `
 })
 export class EstablecimientosComponent implements OnInit {

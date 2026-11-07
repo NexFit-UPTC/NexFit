@@ -51,33 +51,36 @@ function vacio(): Formulario {
   selector: 'app-personal',
   imports: [FormsModule],
   template: `
-    <h1>Personal</h1>
-    <button type="button" (click)="nuevo()">Agregar personal</button>
+    <section class="nf-pagina">
+      <div class="nf-cabecera">
+        <h1>Personal</h1>
+        <button type="button" class="nf-boton" (click)="nuevo()">Agregar personal</button>
+      </div>
 
     @if (resultado(); as r) {
       @if (r.temporaryPassword) {
-        <section role="status">
+        <section class="nf-tarjeta nf-aviso" role="status">
           <p>Cuenta creada. Contraseña temporal (se muestra una sola vez):</p>
           <p>
             <code>{{ r.temporaryPassword }}</code>
           </p>
-          <button type="button" (click)="cerrarResultado()">Ya la copié</button>
+          <button type="button" class="nf-boton-sec" (click)="cerrarResultado()">Ya la copié</button>
         </section>
       } @else {
-        <section role="status">
+        <section class="nf-tarjeta nf-aviso" role="status">
           <p>{{ r.firstName }} {{ r.lastName }} ya existía y quedó afiliado al gimnasio.</p>
-          <button type="button" (click)="cerrarResultado()">Cerrar</button>
+          <button type="button" class="nf-boton-sec" (click)="cerrarResultado()">Cerrar</button>
         </section>
       }
     }
 
     @if (formulario(); as f) {
-      <form (ngSubmit)="guardar()" novalidate>
+      <form class="nf-tarjeta nf-formulario" (ngSubmit)="guardar()" novalidate>
         <h2>{{ editandoId() === null ? 'Nuevo miembro del personal' : 'Editar roles' }}</h2>
         @if (editandoId() === null) {
-          <label>
+          <label class="nf-campo">
             Tipo de documento
-            <select name="documentType" [(ngModel)]="f.documentType">
+            <select class="nf-entrada" name="documentType" [(ngModel)]="f.documentType">
               <option value="CC">CC</option>
               <option value="CE">CE</option>
               <option value="PPT">PPT</option>
@@ -85,98 +88,101 @@ function vacio(): Formulario {
             </select>
           </label>
           @if (errores()['documentType']) {
-            <p role="alert">{{ errores()['documentType'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['documentType'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Número de documento
-            <input name="documentNumber" [(ngModel)]="f.documentNumber" />
+            <input class="nf-entrada" name="documentNumber" [(ngModel)]="f.documentNumber" />
           </label>
           @if (errores()['documentNumber']) {
-            <p role="alert">{{ errores()['documentNumber'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['documentNumber'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Nombre
-            <input name="firstName" [(ngModel)]="f.firstName" />
+            <input class="nf-entrada" name="firstName" [(ngModel)]="f.firstName" />
           </label>
           @if (errores()['firstName']) {
-            <p role="alert">{{ errores()['firstName'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['firstName'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Apellido
-            <input name="lastName" [(ngModel)]="f.lastName" />
+            <input class="nf-entrada" name="lastName" [(ngModel)]="f.lastName" />
           </label>
           @if (errores()['lastName']) {
-            <p role="alert">{{ errores()['lastName'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['lastName'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Fecha de nacimiento
-            <input name="birthDate" type="date" [(ngModel)]="f.birthDate" />
+            <input class="nf-entrada" name="birthDate" type="date" [(ngModel)]="f.birthDate" />
           </label>
           @if (errores()['birthDate']) {
-            <p role="alert">{{ errores()['birthDate'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['birthDate'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Correo
-            <input name="email" type="email" [(ngModel)]="f.email" />
+            <input class="nf-entrada" name="email" type="email" [(ngModel)]="f.email" />
           </label>
           @if (errores()['email']) {
-            <p role="alert">{{ errores()['email'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['email'] }}</p>
           }
         }
-        <fieldset>
+        <fieldset class="nf-conjunto">
           <legend>Roles</legend>
-          <label>
+          <label class="nf-casilla">
             <input name="staff" type="checkbox" [(ngModel)]="f.staff" />
             Staff
           </label>
-          <label>
+          <label class="nf-casilla">
             <input name="trainer" type="checkbox" [(ngModel)]="f.trainer" />
             Entrenador
           </label>
         </fieldset>
         @if (errores()['roles']) {
-          <p role="alert">{{ errores()['roles'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['roles'] }}</p>
         }
         @if (f.trainer) {
-          <label>
+          <label class="nf-campo">
             Especialidad
-            <input name="specialty" [(ngModel)]="f.specialty" />
+            <input class="nf-entrada" name="specialty" [(ngModel)]="f.specialty" />
           </label>
           @if (errores()['specialty']) {
-            <p role="alert">{{ errores()['specialty'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['specialty'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Certificación
-            <input name="certification" [(ngModel)]="f.certification" />
+            <input class="nf-entrada" name="certification" [(ngModel)]="f.certification" />
           </label>
           @if (errores()['certification']) {
-            <p role="alert">{{ errores()['certification'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['certification'] }}</p>
           }
-          <label>
+          <label class="nf-campo">
             Fecha de contratación
-            <input name="hireDate" type="date" [(ngModel)]="f.hireDate" />
+            <input class="nf-entrada" name="hireDate" type="date" [(ngModel)]="f.hireDate" />
           </label>
           @if (errores()['hireDate']) {
-            <p role="alert">{{ errores()['hireDate'] }}</p>
+            <p class="nf-error-campo" role="alert">{{ errores()['hireDate'] }}</p>
           }
         }
         @if (errorGeneral()) {
-          <p role="alert">{{ errorGeneral() }}</p>
+          <p class="nf-alerta" role="alert">{{ errorGeneral() }}</p>
         }
-        <button type="submit" [disabled]="guardando()">Guardar</button>
-        <button type="button" (click)="cancelar()">Cancelar</button>
+        <div class="nf-acciones">
+          <button type="submit" class="nf-boton" [disabled]="guardando()">Guardar</button>
+          <button type="button" class="nf-boton-sec" (click)="cancelar()">Cancelar</button>
+        </div>
       </form>
     }
 
     @if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <p class="nf-alerta" role="alert">{{ error() }}</p>
     }
     @if (cargando()) {
-      <p>Cargando…</p>
+      <p class="nf-ayuda">Cargando…</p>
     } @else if (lista().length === 0) {
-      <p>No hay personal registrado.</p>
+      <p class="nf-vacio">No hay personal registrado.</p>
     } @else {
-      <table>
+      <div class="nf-tabla-envoltorio">
+      <table class="nf-tabla">
         <thead>
           <tr>
             <th>Nombre</th>
@@ -194,10 +200,12 @@ function vacio(): Formulario {
               <td>{{ p.documentType }} {{ p.documentNumber }}</td>
               <td>{{ p.email }}</td>
               <td>{{ etiquetas(p.roles) }}</td>
-              <td>{{ p.active ? 'Activo' : 'Inactivo' }}</td>
               <td>
-                <button type="button" class="editar" (click)="editar(p)">Editar roles</button>
-                <button type="button" class="alternar" (click)="alternar(p)">
+                <span class="nf-insignia" [class.ok]="p.active">{{ p.active ? 'Activo' : 'Inactivo' }}</span>
+              </td>
+              <td class="nf-acciones-celda">
+                <button type="button" class="editar nf-boton-sec" (click)="editar(p)">Editar roles</button>
+                <button type="button" class="alternar nf-boton-sec" (click)="alternar(p)">
                   {{ p.active ? 'Desactivar' : 'Activar' }}
                 </button>
               </td>
@@ -205,7 +213,9 @@ function vacio(): Formulario {
           }
         </tbody>
       </table>
+      </div>
     }
+    </section>
   `
 })
 export class PersonalComponent implements OnInit {

@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { CurrencyPipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { errorDeApi } from '../core/establecimientos.service';
@@ -15,66 +16,72 @@ interface FormularioPlan {
 
 @Component({
   selector: 'app-planes',
-  imports: [FormsModule],
+  imports: [CurrencyPipe, FormsModule],
   template: `
-    <h1>Planes de membresía</h1>
-    <button type="button" (click)="nuevo()">Crear plan</button>
+    <section class="nf-pagina">
+      <div class="nf-cabecera">
+        <h1>Planes de membresía</h1>
+        <button type="button" class="nf-boton" (click)="nuevo()">Crear plan</button>
+      </div>
 
     @if (formulario(); as f) {
-      <form (ngSubmit)="guardar()" novalidate>
+      <form class="nf-tarjeta nf-formulario" (ngSubmit)="guardar()" novalidate>
         <h2>{{ editandoId() === null ? 'Nuevo plan' : 'Editar plan' }}</h2>
-        <label>
+        <label class="nf-campo">
           Nombre
-          <input name="name" [(ngModel)]="f.name" />
+          <input class="nf-entrada" name="name" [(ngModel)]="f.name" />
         </label>
         @if (errores()['name']) {
-          <p role="alert">{{ errores()['name'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['name'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Precio (COP)
-          <input name="price" type="number" min="0" step="0.01" [(ngModel)]="f.price" />
+          <input class="nf-entrada" name="price" type="number" min="0" step="0.01" [(ngModel)]="f.price" />
         </label>
         @if (errores()['price']) {
-          <p role="alert">{{ errores()['price'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['price'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Duración (días)
-          <input name="durationDays" type="number" min="1" step="1" [(ngModel)]="f.durationDays" />
+          <input class="nf-entrada" name="durationDays" type="number" min="1" step="1" [(ngModel)]="f.durationDays" />
         </label>
         @if (errores()['durationDays']) {
-          <p role="alert">{{ errores()['durationDays'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['durationDays'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Descripción
-          <textarea name="description" [(ngModel)]="f.description"></textarea>
+          <textarea class="nf-entrada" name="description" [(ngModel)]="f.description"></textarea>
         </label>
         @if (errores()['description']) {
-          <p role="alert">{{ errores()['description'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['description'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Beneficios
-          <textarea name="benefits" [(ngModel)]="f.benefits"></textarea>
+          <textarea class="nf-entrada" name="benefits" [(ngModel)]="f.benefits"></textarea>
         </label>
         @if (errores()['benefits']) {
-          <p role="alert">{{ errores()['benefits'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['benefits'] }}</p>
         }
         @if (errorGeneral()) {
-          <p role="alert">{{ errorGeneral() }}</p>
+          <p class="nf-alerta" role="alert">{{ errorGeneral() }}</p>
         }
-        <button type="submit" [disabled]="guardando()">Guardar</button>
-        <button type="button" (click)="cancelar()">Cancelar</button>
+        <div class="nf-acciones">
+          <button type="submit" class="nf-boton" [disabled]="guardando()">Guardar</button>
+          <button type="button" class="nf-boton-sec" (click)="cancelar()">Cancelar</button>
+        </div>
       </form>
     }
 
     @if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <p class="nf-alerta" role="alert">{{ error() }}</p>
     }
     @if (cargando()) {
-      <p>Cargando…</p>
+      <p class="nf-ayuda">Cargando…</p>
     } @else if (lista().length === 0) {
-      <p>No hay planes.</p>
+      <p class="nf-vacio">No hay planes.</p>
     } @else {
-      <table>
+      <div class="nf-tabla-envoltorio">
+      <table class="nf-tabla">
         <thead>
           <tr>
             <th>Nombre</th>
@@ -88,12 +95,14 @@ interface FormularioPlan {
           @for (p of lista(); track p.id) {
             <tr>
               <td>{{ p.name }}</td>
-              <td>{{ p.price }}</td>
-              <td>{{ p.durationDays }} días</td>
-              <td>{{ p.active ? 'Activo' : 'Inactivo' }}</td>
+              <td>{{ p.price | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}</td>
+              <td>{{ p.durationDays }} {{ p.durationDays === 1 ? 'día' : 'días' }}</td>
               <td>
-                <button type="button" (click)="editar(p)">Editar</button>
-                <button type="button" class="alternar" (click)="alternar(p)">
+                <span class="nf-insignia" [class.ok]="p.active">{{ p.active ? 'Activo' : 'Inactivo' }}</span>
+              </td>
+              <td class="nf-acciones-celda">
+                <button type="button" class="nf-boton-sec" (click)="editar(p)">Editar</button>
+                <button type="button" class="alternar nf-boton-sec" (click)="alternar(p)">
                   {{ p.active ? 'Desactivar' : 'Activar' }}
                 </button>
               </td>
@@ -101,7 +110,9 @@ interface FormularioPlan {
           }
         </tbody>
       </table>
+      </div>
     }
+    </section>
   `
 })
 export class PlanesComponent implements OnInit {

@@ -17,10 +17,13 @@ function vacio(): DatosAdministrador {
   selector: 'app-administrador',
   imports: [FormsModule],
   template: `
-    <h1>Administrador</h1>
-    <label>
+    <section class="nf-pagina">
+      <div class="nf-cabecera">
+        <h1>Administrador</h1>
+      </div>
+    <label class="nf-campo">
       Establecimiento
-      <select name="org" [ngModel]="orgId()" (ngModelChange)="elegir($event)">
+      <select class="nf-entrada" name="org" [ngModel]="orgId()" (ngModelChange)="elegir($event)">
         <option [ngValue]="null">Selecciona…</option>
         @for (e of establecimientos(); track e.id) {
           <option [ngValue]="e.id">{{ e.name }}</option>
@@ -29,81 +32,82 @@ function vacio(): DatosAdministrador {
     </label>
 
     @if (orgId() !== null) {
-      <form (ngSubmit)="asignar()" novalidate>
-        <label>
+      <form class="nf-tarjeta nf-formulario" (ngSubmit)="asignar()" novalidate>
+        <label class="nf-campo">
           Tipo de documento
-          <select name="documentType" [(ngModel)]="datos.documentType">
+          <select class="nf-entrada" name="documentType" [(ngModel)]="datos.documentType">
             <option value="CC">CC</option>
             <option value="CE">CE</option>
             <option value="PPT">PPT</option>
             <option value="PA">PA</option>
           </select>
         </label>
-        <label>
+        <label class="nf-campo">
           Número de documento
-          <input name="documentNumber" [(ngModel)]="datos.documentNumber" />
+          <input class="nf-entrada" name="documentNumber" [(ngModel)]="datos.documentNumber" />
         </label>
-        <button type="button" (click)="buscar()">Buscar persona</button>
+        <button type="button" class="nf-boton-sec" (click)="buscar()">Buscar persona</button>
         @if (existente()) {
           <p>{{ existente() }}</p>
         }
         @if (errores()['documentType']) {
-          <p role="alert">{{ errores()['documentType'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['documentType'] }}</p>
         }
         @if (errores()['documentNumber']) {
-          <p role="alert">{{ errores()['documentNumber'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['documentNumber'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Nombre
-          <input name="firstName" [(ngModel)]="datos.firstName" />
+          <input class="nf-entrada" name="firstName" [(ngModel)]="datos.firstName" />
         </label>
         @if (errores()['firstName']) {
-          <p role="alert">{{ errores()['firstName'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['firstName'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Apellido
-          <input name="lastName" [(ngModel)]="datos.lastName" />
+          <input class="nf-entrada" name="lastName" [(ngModel)]="datos.lastName" />
         </label>
         @if (errores()['lastName']) {
-          <p role="alert">{{ errores()['lastName'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['lastName'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Fecha de nacimiento
-          <input name="birthDate" type="date" [(ngModel)]="datos.birthDate" />
+          <input class="nf-entrada" name="birthDate" type="date" [(ngModel)]="datos.birthDate" />
         </label>
         @if (errores()['birthDate']) {
-          <p role="alert">{{ errores()['birthDate'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['birthDate'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Correo
-          <input name="email" type="email" [(ngModel)]="datos.email" />
+          <input class="nf-entrada" name="email" type="email" [(ngModel)]="datos.email" />
         </label>
         @if (errores()['email']) {
-          <p role="alert">{{ errores()['email'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['email'] }}</p>
         }
         @if (errorGeneral()) {
-          <p role="alert">{{ errorGeneral() }}</p>
+          <p class="nf-alerta" role="alert">{{ errorGeneral() }}</p>
         }
-        <button type="submit" [disabled]="guardando()">Crear / asignar Administrador</button>
+        <button type="submit" class="nf-boton" [disabled]="guardando()">Crear / asignar Administrador</button>
       </form>
     }
 
     @if (resultado(); as r) {
       @if (r.temporaryPassword) {
-        <section role="status">
+        <section class="nf-tarjeta nf-aviso" role="status">
           <p>Administrador creado. Contraseña temporal (se muestra una sola vez):</p>
           <p>
             <code>{{ r.temporaryPassword }}</code>
           </p>
-          <button type="button" (click)="cerrarResultado()">Ya la copié</button>
+          <button type="button" class="nf-boton-sec" (click)="cerrarResultado()">Ya la copié</button>
         </section>
       } @else {
-        <section role="status">
+        <section class="nf-tarjeta nf-aviso" role="status">
           <p>{{ r.firstName }} {{ r.lastName }} ya existía y quedó asignado como Administrador.</p>
-          <button type="button" (click)="cerrarResultado()">Cerrar</button>
+          <button type="button" class="nf-boton-sec" (click)="cerrarResultado()">Cerrar</button>
         </section>
       }
     }
+    </section>
   `
 })
 export class AdministradorComponent implements OnInit {
