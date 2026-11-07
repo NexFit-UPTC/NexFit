@@ -147,9 +147,12 @@ Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual par
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
-| `GET /api/health-insurance-providers` | Master, Administrador, Staff, Cliente | Lista las EPS activas por nombre: `[{id, name}]`. Es un catálogo global. Sirve para elegir la EPS al registrar un cliente. |
+| `GET /api/health-insurance-providers` | Master, Administrador, Staff, Cliente | Lista las EPS activas por nombre: `[{id, name, active}]`. Es un catálogo global. Con `?includeInactive=true` el Master recibe también las inactivas; para los demás roles se ignora. |
+| `POST /api/health-insurance-providers` | Master | Crea una EPS activa con `{name}` (hasta 150 caracteres). Responde `201`. Un nombre repetido, sin distinguir mayúsculas, da `409 HEALTH_INSURER_NAME_TAKEN`. |
+| `PUT /api/health-insurance-providers/{id}` | Master | Renombra la EPS con `{name}`. Misma regla de nombre repetido; `404` si no existe. |
+| `PATCH /api/health-insurance-providers/{id}/active` | Master | Activa o desactiva con `{active: true|false}`. Una EPS inactiva no se ofrece al registrar clientes, pero los que ya la tienen la conservan. |
 
-El Entrenador recibe `403 ACCESS_DENIED` y sin sesión, `401`. Crear, editar y activar EPS es US-18 (NEX-30), solo del Master.
+El Entrenador recibe `403 ACCESS_DENIED` y sin sesión, `401`. Quien no es Master recibe `403` al crear, renombrar o activar (US-18, NEX-30).
 
 
 ## Pagos (NEX-45, NEX-51, NEX-50, NEX-54)

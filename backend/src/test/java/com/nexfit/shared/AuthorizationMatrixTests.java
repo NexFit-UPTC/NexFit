@@ -482,6 +482,13 @@ class AuthorizationMatrixTests {
         // y CLIENT; es un catálogo global, sin recursos de un gimnasio que aislar. ---
         list.add(gated("GET /health-insurance-providers", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.CLIENT),
                 "/health-insurance-providers", null));
+        // Mantenimiento del catálogo (NEX-30): CATALOGO_EPS CREAR, MODIFICAR y ACTIVAR solo MASTER.
+        list.add(gated("POST /health-insurance-providers", roles(Rol.MASTER), "/health-insurance-providers",
+                "{\"name\":\"EPS matriz\"}"));
+        list.add(gated("PUT /health-insurance-providers/{id}", roles(Rol.MASTER),
+                "/health-insurance-providers/999999999", "{\"name\":\"EPS matriz\"}"));
+        list.add(gated("PATCH /health-insurance-providers/{id}/active", roles(Rol.MASTER),
+                "/health-insurance-providers/999999999/active", "{\"active\":false}"));
 
         // --- Búsqueda y detalle de clientes (NEX-43) ---
         // La matriz CLIENTES/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT, pero el servicio limita la

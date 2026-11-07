@@ -24,6 +24,7 @@ export const routes: Routes = [
       { path: 'mi-perfil', loadComponent: () => import('./pages/mi-perfil.component').then((m) => m.MiPerfilComponent) },
       { path: 'apariencia', loadComponent: () => import('./pages/apariencia.component').then((m) => m.AparienciaComponent) },
       { path: 'establecimientos', loadComponent: () => import('./pages/establecimientos.component').then((m) => m.EstablecimientosComponent), canActivate: [masterGuard] },
+      { path: 'eps', loadComponent: () => import('./pages/eps.component').then((m) => m.EpsComponent), canActivate: [masterGuard] },
       { path: 'administrador', loadComponent: () => import('./pages/administrador.component').then((m) => m.AdministradorComponent), canActivate: [masterGuard] },
       { path: 'auditoria', loadComponent: () => import('./pages/auditoria.component').then((m) => m.AuditoriaComponent) },
       { path: 'sedes', loadComponent: () => import('./pages/sedes.component').then((m) => m.SedesComponent), canActivate: [adminGuard] },
