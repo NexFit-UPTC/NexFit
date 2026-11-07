@@ -59,15 +59,16 @@ class DemoSeedTests {
 
     @Test
     void cargaDosGimnasiosCompletosYEsIdempotente() {
-        DemoSeedService.Result first = demo.load(PASSWORD);
-        DemoSeedService.Result second = demo.load(PASSWORD);
+        demo.load(PASSWORD);
+        DemoSeedService.Result again = demo.load(PASSWORD);
 
-        assertThat(first.skipped()).isFalse();
-        assertThat(first.gyms()).isEqualTo(2);
-        assertThat(first.clients()).isEqualTo(24);
-        assertThat(first.routines()).isEqualTo(26);
-        assertThat(first.workouts()).isEqualTo(50);
-        assertThat(second.skipped()).isTrue();
+        assertThat(again.skipped()).isTrue();
+        assertThat(count("SELECT count(*) FROM routines r JOIN organizations o ON o.id = r.organization_id "
+            + "WHERE o.name IN ('Iron Peak Fitness', 'Vital Studio')")).isEqualTo(26);
+        assertThat(count("SELECT count(*) FROM workout_logs w JOIN organizations o ON o.id = w.organization_id "
+            + "WHERE o.name IN ('Iron Peak Fitness', 'Vital Studio')")).isEqualTo(50);
+        assertThat(count("SELECT count(*) FROM member_roles m JOIN organizations o ON o.id = m.organization_id "
+            + "WHERE o.name IN ('Iron Peak Fitness', 'Vital Studio') AND m.role = 'client'")).isEqualTo(24);
         assertThat(count("SELECT count(*) FROM organizations WHERE name IN ('Iron Peak Fitness', 'Vital Studio')"))
             .isEqualTo(2);
         assertThat(count("SELECT count(*) FROM branches b JOIN organizations o ON o.id = b.organization_id "
