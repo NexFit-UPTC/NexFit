@@ -118,6 +118,7 @@ class AuthorizationMatrixTests {
     private static final String SECRET_CLASS = "Clase secreta B";
     private static final String SECRET_EQUIPMENT = "Equipo secreto B";
     private static final String SECRET_EXERCISE = "Ejercicio secreto B";
+    private static final String SECRET_ROUTINE = "Rutina secreta B";
 
     /**
      * Datos de dos establecimientos (A y B) y una sesión por rol en A. B es "el
@@ -180,6 +181,8 @@ class AuthorizationMatrixTests {
     private static final Set<Integer> NOT_FOUND = Set.of(404);
     private static final Set<Integer> FORBIDDEN_OR_NOT_FOUND = Set.of(403, 404);
 
+    private static final String ROUTINE_BODY = "{\"name\":\"Matriz\",\"exercises\":[{\"exerciseId\":1,"
+            + "\"series\":3,\"repetitions\":10,\"restSeconds\":60}]}";
     private static final String PLAN_BODY = "{\"name\":\"Plan matriz\",\"price\":1000,\"durationDays\":30}";
     private static final String BRANCH_BODY = "{\"name\":\"Sede matriz\",\"addressLine1\":\"Calle 1\","
             + "\"city\":\"Tunja\",\"department\":\"Boyacá\"}";
@@ -220,6 +223,9 @@ class AuthorizationMatrixTests {
 
     /** Ejercicio propio del gimnasio B (NEX-41): indistinguible de uno inexistente para los roles de A. */
     private long exerciseB;
+
+    /** Rutina del gimnasio B (NEX-53): indistinguible de una inexistente para los roles de A. */
+    private long routineB;
 
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
@@ -435,6 +441,20 @@ class AuthorizationMatrixTests {
         // "Mis alumnos" es del entrenador: se fija con RUTINAS/CREAR, que solo el TRAINER tiene.
         list.add(gated("GET /my-students", roles(Rol.TRAINER), "/my-students", null));
 
+        // --- Rutinas (NEX-53, NEX-60, NEX-61, NEX-76) ---
+        // RUTINAS: CREAR y MODIFICAR TRAINER; CONSULTAR TRAINER y CLIENT.
+        list.add(new Case("POST /routines", Kind.GATED, roles(Rol.TRAINER), c -> "/routines",
+                c -> "{\"clientMemberId\":" + c.memberB() + ",\"name\":\"Matriz\",\"exercises\":[{\"exerciseId\":"
+                        + exerciseB + ",\"order\":1,\"series\":3,\"repetitions\":10,\"restSeconds\":60}]}",
+                null, false));
+        list.add(gated("PUT /routines/{id}", roles(Rol.TRAINER), c -> "/routines/" + routineB, ROUTINE_BODY,
+                byPath("/routines/%d", c -> routineB, ROUTINE_BODY, NOT_FOUND)));
+        list.add(gated("PATCH /routines/{id}/archive", roles(Rol.TRAINER), c -> "/routines/" + routineB + "/archive",
+                null, byPath("/routines/%d/archive", c -> routineB, null, NOT_FOUND)));
+        list.add(gated("GET /routines", roles(Rol.TRAINER, Rol.CLIENT), "/routines", null));
+        list.add(gated("GET /routines/{id}", roles(Rol.TRAINER, Rol.CLIENT), c -> "/routines/" + routineB, null,
+                byPath("/routines/%d", c -> routineB, null, NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -559,6 +579,26 @@ class AuthorizationMatrixTests {
         exerciseB = jdbc.queryForObject("""
                 INSERT INTO exercises (organization_id, name, is_active) VALUES (?, ?, true) RETURNING id
                 """, Long.class, b.id(), SECRET_EXERCISE);
+
+        long trainerUserB = jdbc.queryForObject("""
+                INSERT INTO users (document_type, document_number, first_name, last_name, birth_date, email,
+                                   password_hash, is_platform_admin, is_active)
+                VALUES ('CC', 'MATRIZ-ENTRENADOR-B', 'Eli', 'Entrenador', DATE '1990-01-01',
+                        'entrenador-b@nexfit.test', 'x', false, true) RETURNING id
+                """, Long.class);
+        long trainerB = jdbc.queryForObject("""
+                INSERT INTO organization_members (organization_id, user_id, is_active) VALUES (?, ?, true)
+                RETURNING id
+                """, Long.class, b.id(), trainerUserB);
+        jdbc.update("INSERT INTO member_roles (member_id, role, organization_id) VALUES (?, 'trainer', ?)",
+                trainerB, b.id());
+        jdbc.update("INSERT INTO trainer_profiles (member_id, organization_id) VALUES (?, ?)", trainerB, b.id());
+        routineB = jdbc.queryForObject("""
+                INSERT INTO routines (organization_id, trainer_member_id, client_member_id, name, is_active)
+                VALUES (?, ?, ?, ?, true) RETURNING id
+                """, Long.class, b.id(), trainerB, memberB, SECRET_ROUTINE);
+        jdbc.update("INSERT INTO routine_exercises (routine_id, exercise_id, exec_order, series, repetitions, "
+                + "rest_seconds) VALUES (?, ?, 1, 3, 10, 60)", routineB, exerciseB);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
@@ -731,7 +771,7 @@ class AuthorizationMatrixTests {
                             .isEqualTo(missing.getResponse().getStatus());
                     assertThat(bodyOf(foreign)).as("mismo cuerpo que un id inexistente")
                             .isEqualTo(bodyOf(missing));
-                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
+                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE, SECRET_ROUTINE);
                     assertThat(state()).as("el recurso de B no cambia").isEqualTo(before);
                 }));
             }
@@ -775,7 +815,7 @@ class AuthorizationMatrixTests {
                     MvcResult r = call(c, session(c, role), uri, null);
 
                     assertThat(r.getResponse().getStatus()).isEqualTo(200);
-                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
+                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE, SECRET_ROUTINE);
                 }));
             }
         }
