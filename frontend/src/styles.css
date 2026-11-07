@@ -435,3 +435,39 @@ a {
   align-items: center;
   gap: 0.5rem;
 }
+
+.nf-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--espacio-3);
+}
+
+.nf-indicador {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  padding: var(--espacio-4);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-left: 6px solid var(--acento);
+  border-radius: var(--radio);
+  color: var(--texto);
+  text-decoration: none;
+}
+
+a.nf-indicador:hover,
+a.nf-indicador:focus-visible {
+  border-color: var(--acento);
+}
+
+.nf-indicador-valor {
+  font-family: var(--fuente-titulo);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.nf-indicador-nombre {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}

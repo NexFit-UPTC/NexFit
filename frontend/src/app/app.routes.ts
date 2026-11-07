@@ -1,6 +1,9 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { gestionGuard } from './core/personal-gestion.guard';
+import { panelGuard } from './core/panel.guard';
+import { SessionService } from './core/session.service';
 import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
 import { staffGuard } from './core/staff.guard';
@@ -15,6 +18,7 @@ export const routes: Routes = [
     component: LayoutComponent,
     canActivate: [sessionGuard],
     children: [
+      { path: 'panel', loadComponent: () => import('./pages/panel.component').then((m) => m.PanelComponent), canActivate: [panelGuard] },
       { path: 'mi-perfil', loadComponent: () => import('./pages/mi-perfil.component').then((m) => m.MiPerfilComponent) },
       { path: 'apariencia', loadComponent: () => import('./pages/apariencia.component').then((m) => m.AparienciaComponent) },
       { path: 'establecimientos', loadComponent: () => import('./pages/establecimientos.component').then((m) => m.EstablecimientosComponent), canActivate: [masterGuard] },
@@ -29,7 +33,14 @@ export const routes: Routes = [
       { path: 'clases', loadComponent: () => import('./pages/clases.component').then((m) => m.ClasesComponent) },
       { path: 'reservas', loadComponent: () => import('./pages/reservas.component').then((m) => m.ReservasComponent) },
       { path: 'asistencia', loadComponent: () => import('./pages/asistencia.component').then((m) => m.AsistenciaComponent) },
-      { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: () => {
+          const sesion = inject(SessionService);
+          return sesion.esMaster() || sesion.roles().includes('admin') ? 'panel' : 'mi-perfil';
+        }
+      }
     ]
   },
   { path: '**', redirectTo: '' }
