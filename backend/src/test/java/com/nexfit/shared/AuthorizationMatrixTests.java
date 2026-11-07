@@ -116,6 +116,8 @@ class AuthorizationMatrixTests {
     private static final String SECRET_BRANCH = "Sede secreta B";
     private static final String SECRET_EVENT = "evento-secreto-B";
     private static final String SECRET_CLASS = "Clase secreta B";
+    private static final String SECRET_EQUIPMENT = "Equipo secreto B";
+    private static final String SECRET_EXERCISE = "Ejercicio secreto B";
 
     /**
      * Datos de dos establecimientos (A y B) y una sesión por rol en A. B es "el
@@ -203,6 +205,21 @@ class AuthorizationMatrixTests {
 
     /** Pago pendiente del gimnasio B (NEX-45): ningún rol de A puede verlo, anularlo ni completarlo. */
     private long paymentB;
+
+    /** Membresía del gimnasio B (NEX-49): indistinguible de una inexistente para los roles de A. */
+    private long membershipB;
+
+    /** Reserva confirmada del gimnasio B (NEX-58): indistinguible de una inexistente para los roles de A. */
+    private long bookingB;
+
+    /** Ingreso abierto del gimnasio B (NEX-59): indistinguible de uno inexistente para los roles de A. */
+    private long checkInB;
+
+    /** Equipo del gimnasio B (NEX-38): indistinguible de uno inexistente para los roles de A. */
+    private long equipmentB;
+
+    /** Ejercicio propio del gimnasio B (NEX-41): indistinguible de uno inexistente para los roles de A. */
+    private long exerciseB;
 
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
@@ -330,6 +347,79 @@ class AuthorizationMatrixTests {
                 c -> "/payments/" + paymentB + "/complete", null,
                 byPath("/payments/%d/complete", c -> paymentB, null, NOT_FOUND)));
 
+        // --- Membresías (NEX-49, NEX-55, NEX-56, NEX-57, NEX-66, NEX-67) ---
+        // MEMBRESIAS: CREAR y RENOVAR solo STAFF; CONSULTAR ADMIN, STAFF y CLIENT; SUSPENDER y CANCELAR ADMIN y STAFF.
+        list.add(new Case("POST /memberships", Kind.GATED, roles(Rol.STAFF), c -> "/memberships",
+                c -> "{\"memberId\":" + c.memberB() + ",\"planId\":" + c.planB() + "}", null, false));
+        list.add(gated("POST /memberships/{id}/renew", roles(Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/renew", "{}",
+                byPath("/memberships/%d/renew", c -> membershipB, "{}", NOT_FOUND)));
+        list.add(gated("GET /memberships", roles(Rol.ADMIN, Rol.STAFF, Rol.CLIENT), "/memberships", null));
+        list.add(gated("GET /memberships/{id}", roles(Rol.ADMIN, Rol.STAFF, Rol.CLIENT),
+                c -> "/memberships/" + membershipB, null,
+                byPath("/memberships/%d", c -> membershipB, null, NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/suspend", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/suspend", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/suspend", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/reactivate", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/reactivate", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/reactivate", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/cancel", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/cancel", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/cancel", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+
+        // --- Reservas y cancelación de clases (NEX-58, NEX-69, NEX-70, NEX-68) ---
+        // RESERVAS: CREAR y CANCELAR STAFF y CLIENT; CONSULTAR ADMIN, STAFF, TRAINER y CLIENT. CLASES.CANCELAR: ADMIN.
+        list.add(new Case("POST /bookings", Kind.GATED, roles(Rol.STAFF, Rol.CLIENT), c -> "/bookings",
+                c -> "{\"classId\":" + c.classB() + "}", null, false));
+        list.add(gated("GET /bookings", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/bookings", null));
+        list.add(gated("PATCH /bookings/{id}/cancel", roles(Rol.STAFF, Rol.CLIENT),
+                c -> "/bookings/" + bookingB + "/cancel", null,
+                byPath("/bookings/%d/cancel", c -> bookingB, null, NOT_FOUND)));
+        list.add(gated("PATCH /classes/{id}/cancel", roles(Rol.ADMIN),
+                c -> "/classes/" + c.classB() + "/cancel", "{}",
+                byPath("/classes/%d/cancel", c -> c.classB(), "{}", NOT_FOUND)));
+
+        // --- Asistencia (NEX-59, NEX-72, NEX-73) ---
+        // ASISTENCIA: CREAR y MODIFICAR STAFF y CLIENT; CONSULTAR ADMIN, STAFF, TRAINER y CLIENT.
+        list.add(new Case("POST /check-ins", Kind.GATED, roles(Rol.STAFF, Rol.CLIENT), c -> "/check-ins",
+                c -> "{\"branchId\":" + c.branchB() + "}", null, false));
+        list.add(gated("GET /check-ins", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/check-ins", null));
+        list.add(gated("PATCH /check-ins/{id}/check-out", roles(Rol.STAFF, Rol.CLIENT),
+                c -> "/check-ins/" + checkInB + "/check-out", null,
+                byPath("/check-ins/%d/check-out", c -> checkInB, null, NOT_FOUND)));
+
+        // --- Indicadores (NEX-74, NEX-62) ---
+        // INDICADORES: CONSULTAR ADMIN; CONSULTAR_AGREGADO MASTER.
+        list.add(gated("GET /dashboard/gym", roles(Rol.ADMIN), "/dashboard/gym", null));
+        list.add(gated("GET /dashboard/platform", roles(Rol.MASTER), "/dashboard/platform", null));
+
+        // --- Equipo (NEX-38) ---
+        // EQUIPO: CREAR y MODIFICAR ADMIN; CONSULTAR ADMIN y STAFF.
+        list.add(new Case("POST /equipment", Kind.GATED, roles(Rol.ADMIN), c -> "/equipment",
+                c -> "{\"branchId\":" + c.branchB() + ",\"name\":\"Matriz\"}", null, false));
+        list.add(gated("GET /equipment", roles(Rol.ADMIN, Rol.STAFF), "/equipment", null));
+        list.add(gated("GET /equipment/{id}", roles(Rol.ADMIN, Rol.STAFF), c -> "/equipment/" + equipmentB, null,
+                byPath("/equipment/%d", c -> equipmentB, null, NOT_FOUND)));
+        list.add(gated("PUT /equipment/{id}", roles(Rol.ADMIN), c -> "/equipment/" + equipmentB,
+                "{\"name\":\"Matriz\"}", byPath("/equipment/%d", c -> equipmentB, "{\"name\":\"Matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /equipment/{id}/status", roles(Rol.ADMIN), c -> "/equipment/" + equipmentB + "/status",
+                "{\"status\":\"maintenance\"}",
+                byPath("/equipment/%d/status", c -> equipmentB, "{\"status\":\"maintenance\"}", NOT_FOUND)));
+
+        // --- Catálogo de ejercicios (NEX-41) ---
+        // CATALOGO_EJERCICIOS: CREAR MASTER, ADMIN y TRAINER; MODIFICAR MASTER y ADMIN; ACTIVAR MASTER; CONSULTAR todos.
+        list.add(new Case("POST /exercises", Kind.GATED, roles(Rol.MASTER, Rol.ADMIN, Rol.TRAINER), c -> "/exercises",
+                c -> "{\"name\":\"Ejercicio de la matriz\"}", null, false));
+        list.add(gated("GET /exercises", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                "/exercises", null));
+        list.add(gated("GET /exercises/{id}", roles(Rol.MASTER, Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                c -> "/exercises/" + exerciseB, null, byPath("/exercises/%d", c -> exerciseB, null, NOT_FOUND)));
+        list.add(gated("PUT /exercises/{id}", roles(Rol.MASTER, Rol.ADMIN), c -> "/exercises/" + exerciseB,
+                "{\"name\":\"Matriz\"}", byPath("/exercises/%d", c -> exerciseB, "{\"name\":\"Matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /exercises/{id}/active", roles(Rol.MASTER), c -> "/exercises/" + exerciseB + "/active",
+                "{\"active\":false}", byPath("/exercises/%d/active", c -> exerciseB, "{\"active\":false}", NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -427,6 +517,33 @@ class AuthorizationMatrixTests {
                                       method, status)
                 VALUES (?, ?, ?, 'Pago secreto B', 1000, now(), 'cash', 'pending') RETURNING id
                 """, Long.class, b.id(), memberB, b.adminMemberId());
+
+        membershipB = jdbc.queryForObject("""
+                INSERT INTO memberships (organization_id, member_id, plan_id, created_by_member_id, start_date,
+                                         end_date, status)
+                VALUES (?, ?, ?, ?, CURRENT_DATE, CURRENT_DATE + 60, 'active') RETURNING id
+                """, Long.class, b.id(), memberB, planB, b.adminMemberId());
+
+        bookingB = jdbc.queryForObject("""
+                INSERT INTO class_bookings (organization_id, class_id, member_id, status)
+                VALUES (?, ?, ?, 'confirmed') RETURNING id
+                """, Long.class, b.id(), classB, memberB);
+
+        // Se fecha el ingreso mañana al mediodía: la membresía de B empieza con CURRENT_DATE (zona del servidor de BD)
+        // y a ciertas horas la fecha local de Bogotá aún es la de ayer, lo que haría fallar el trigger por el reloj.
+        checkInB = jdbc.queryForObject("""
+                INSERT INTO check_ins (organization_id, member_id, branch_id, check_in_at, auto_closed)
+                VALUES (?, ?, ?, (CURRENT_DATE + 1)::timestamp + interval '12 hours', false) RETURNING id
+                """, Long.class, b.id(), memberB, branchB);
+
+        equipmentB = jdbc.queryForObject("""
+                INSERT INTO equipment (organization_id, branch_id, name, status)
+                VALUES (?, ?, ?, 'available') RETURNING id
+                """, Long.class, b.id(), branchB, SECRET_EQUIPMENT);
+
+        exerciseB = jdbc.queryForObject("""
+                INSERT INTO exercises (organization_id, name, is_active) VALUES (?, ?, true) RETURNING id
+                """, Long.class, b.id(), SECRET_EXERCISE);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
@@ -599,7 +716,7 @@ class AuthorizationMatrixTests {
                             .isEqualTo(missing.getResponse().getStatus());
                     assertThat(bodyOf(foreign)).as("mismo cuerpo que un id inexistente")
                             .isEqualTo(bodyOf(missing));
-                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
+                    assertThat(bodyOf(foreign)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
                     assertThat(state()).as("el recurso de B no cambia").isEqualTo(before);
                 }));
             }
@@ -643,7 +760,7 @@ class AuthorizationMatrixTests {
                     MvcResult r = call(c, session(c, role), uri, null);
 
                     assertThat(r.getResponse().getStatus()).isEqualTo(200);
-                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS);
+                    assertThat(bodyOf(r)).doesNotContain(SECRET_PLAN, SECRET_BRANCH, SECRET_EVENT, SECRET_CLASS, SECRET_EQUIPMENT, SECRET_EXERCISE);
                 }));
             }
         }
