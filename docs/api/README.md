@@ -83,7 +83,7 @@ Rutas bajo `/api/classes`. El gimnasio sale siempre de la sesión; una clase, se
 | Ruta | Quién | Qué hace |
 |---|---|---|
 | `POST /api/classes` | Administrador | Programa una clase (`scheduled`). Devuelve `201` con la clase. |
-| `GET /api/classes` | Administrador, Staff, Entrenador, Cliente | Página de clases por fecha de inicio. Quien no administra clases solo ve las programadas. |
+| `GET /api/classes` | Administrador, Staff, Entrenador, Cliente | Página de clases por fecha de inicio. Quien no administra clases solo ve las programadas. Quien solo es Cliente ve únicamente las que puede reservar (US-31, NEX-46). |
 | `GET /api/classes/{id}` | Ídem | Detalle de una clase. Una cancelada solo la ve el Administrador (los demás, `404`). |
 | `PUT /api/classes/{id}` | Administrador | Reemplaza los datos editables de una clase programada. |
 
@@ -91,7 +91,9 @@ Cuerpo de `POST` y `PUT`: `{"name": "Spinning", "description": "…", "branchId"
 
 Clase devuelta: `{id, name, description, branchId, branchName, trainerMemberId, trainerName, startsAt, durationMinutes, capacity, status, confirmedBookings, freeSlots}`. `freeSlots` es la capacidad menos las reservas confirmadas.
 
-Filtros de `GET /api/classes` (todos opcionales): `branchId`, `trainerMemberId`, `from` (incluye) y `to` (excluye), ambos con fecha, hora y zona, `status` (`scheduled` o `cancelled`; solo lo respeta el Administrador), `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+Filtros de `GET /api/classes` (todos opcionales): `branchId`, `trainerMemberId`, `from` (incluye) y `to` (excluye), ambos con fecha, hora y zona, `status` (`scheduled` o `cancelled`; solo lo respeta el Administrador), `available` (`true` deja solo las reservables ahora: programadas, sin empezar y con cupo libre; al Cliente se le aplica siempre), `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+
+Consultar por sede (US-31): `GET /api/classes?branchId=3&available=true` devuelve las clases de esa sede que se pueden reservar, con `confirmedBookings` y `freeSlots` al día: una reserva confirmada o cancelada se refleja en la siguiente consulta. Una sede de otro gimnasio responde como una inexistente (lista vacía).
 
 Reglas:
 - La sede debe ser del gimnasio y estar activa (RN-33). El entrenador debe ser un afiliado activo del gimnasio con rol Entrenador.
@@ -127,6 +129,19 @@ Errores:
 - `403 ACCESS_DENIED`: el rol no es Staff ni Administrador.
 - `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
 - `401` sin sesión.
+
+## Activar y desactivar la afiliación de un cliente (NEX-44, US-16)
+
+Rutas bajo `/api/clients`. Solo Staff y Administrador; Entrenador y Cliente reciben `403 ACCESS_DENIED`. El gimnasio sale de la sesión.
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /api/clients/{memberId}/deactivate` | Desactiva la afiliación del cliente en este gimnasio. Cierra sus sesiones abiertas: ya no puede elegir este gimnasio al iniciar sesión. |
+| `POST /api/clients/{memberId}/activate` | La reactiva. Su historial (membresías, reservas) sigue disponible. |
+
+Respuesta `200`: `{memberId, active}`. Repetir la misma acción responde `200` sin cambios ni auditoría. Solo afecta a este gimnasio: no desactiva la identidad global ni la afiliación en otros gimnasios (RN-33). Cada cambio queda auditado (`MEMBERSHIP_AFFILIATION_STATUS_CHANGED`).
+
+Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual para uno de otro gimnasio); `409 MEMBER_HAS_OTHER_ROLES` si además tiene otro rol (entrenador, staff, administrador): esa afiliación se gestiona desde Personal (`/api/staff`); `401` sin sesión.
 
 ## Catálogo de EPS, solo lectura (NEX-89)
 
