@@ -213,6 +213,9 @@ class AuthorizationMatrixTests {
     /** Ingreso abierto del gimnasio B (NEX-59): indistinguible de uno inexistente para los roles de A. */
     private long checkInB;
 
+    /** Equipo del gimnasio B (NEX-38): indistinguible de uno inexistente para los roles de A. */
+    private long equipmentB;
+
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
 
@@ -386,6 +389,19 @@ class AuthorizationMatrixTests {
         list.add(gated("GET /dashboard/gym", roles(Rol.ADMIN), "/dashboard/gym", null));
         list.add(gated("GET /dashboard/platform", roles(Rol.MASTER), "/dashboard/platform", null));
 
+        // --- Equipo (NEX-38) ---
+        // EQUIPO: CREAR y MODIFICAR ADMIN; CONSULTAR ADMIN y STAFF.
+        list.add(new Case("POST /equipment", Kind.GATED, roles(Rol.ADMIN), c -> "/equipment",
+                c -> "{\"branchId\":" + c.branchB() + ",\"name\":\"Matriz\"}", null, false));
+        list.add(gated("GET /equipment", roles(Rol.ADMIN, Rol.STAFF), "/equipment", null));
+        list.add(gated("GET /equipment/{id}", roles(Rol.ADMIN, Rol.STAFF), c -> "/equipment/" + equipmentB, null,
+                byPath("/equipment/%d", c -> equipmentB, null, NOT_FOUND)));
+        list.add(gated("PUT /equipment/{id}", roles(Rol.ADMIN), c -> "/equipment/" + equipmentB,
+                "{\"name\":\"Matriz\"}", byPath("/equipment/%d", c -> equipmentB, "{\"name\":\"Matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /equipment/{id}/status", roles(Rol.ADMIN), c -> "/equipment/" + equipmentB + "/status",
+                "{\"status\":\"maintenance\"}",
+                byPath("/equipment/%d/status", c -> equipmentB, "{\"status\":\"maintenance\"}", NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -501,6 +517,11 @@ class AuthorizationMatrixTests {
                 INSERT INTO check_ins (organization_id, member_id, branch_id, check_in_at, auto_closed)
                 VALUES (?, ?, ?, (CURRENT_DATE + 1)::timestamp + interval '12 hours', false) RETURNING id
                 """, Long.class, b.id(), memberB, branchB);
+
+        equipmentB = jdbc.queryForObject("""
+                INSERT INTO equipment (organization_id, branch_id, name, status)
+                VALUES (?, ?, 'Equipo secreto B', 'available') RETURNING id
+                """, Long.class, b.id(), branchB);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
