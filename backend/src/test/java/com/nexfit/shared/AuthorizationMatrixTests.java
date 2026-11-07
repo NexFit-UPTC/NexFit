@@ -207,6 +207,9 @@ class AuthorizationMatrixTests {
     /** Membresía del gimnasio B (NEX-49): indistinguible de una inexistente para los roles de A. */
     private long membershipB;
 
+    /** Reserva confirmada del gimnasio B (NEX-58): indistinguible de una inexistente para los roles de A. */
+    private long bookingB;
+
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
 
@@ -354,6 +357,18 @@ class AuthorizationMatrixTests {
                 c -> "/memberships/" + membershipB + "/cancel", "{\"reason\":\"matriz\"}",
                 byPath("/memberships/%d/cancel", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
 
+        // --- Reservas y cancelación de clases (NEX-58, NEX-69, NEX-70, NEX-68) ---
+        // RESERVAS: CREAR y CANCELAR STAFF y CLIENT; CONSULTAR ADMIN, STAFF, TRAINER y CLIENT. CLASES.CANCELAR: ADMIN.
+        list.add(new Case("POST /bookings", Kind.GATED, roles(Rol.STAFF, Rol.CLIENT), c -> "/bookings",
+                c -> "{\"classId\":" + c.classB() + "}", null, false));
+        list.add(gated("GET /bookings", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT), "/bookings", null));
+        list.add(gated("PATCH /bookings/{id}/cancel", roles(Rol.STAFF, Rol.CLIENT),
+                c -> "/bookings/" + bookingB + "/cancel", null,
+                byPath("/bookings/%d/cancel", c -> bookingB, null, NOT_FOUND)));
+        list.add(gated("PATCH /classes/{id}/cancel", roles(Rol.ADMIN),
+                c -> "/classes/" + c.classB() + "/cancel", "{}",
+                byPath("/classes/%d/cancel", c -> c.classB(), "{}", NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -445,8 +460,13 @@ class AuthorizationMatrixTests {
         membershipB = jdbc.queryForObject("""
                 INSERT INTO memberships (organization_id, member_id, plan_id, created_by_member_id, start_date,
                                          end_date, status)
-                VALUES (?, ?, ?, ?, CURRENT_DATE, CURRENT_DATE + 29, 'active') RETURNING id
+                VALUES (?, ?, ?, ?, CURRENT_DATE, CURRENT_DATE + 60, 'active') RETURNING id
                 """, Long.class, b.id(), memberB, planB, b.adminMemberId());
+
+        bookingB = jdbc.queryForObject("""
+                INSERT INTO class_bookings (organization_id, class_id, member_id, status)
+                VALUES (?, ?, ?, 'confirmed') RETURNING id
+                """, Long.class, b.id(), classB, memberB);
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
