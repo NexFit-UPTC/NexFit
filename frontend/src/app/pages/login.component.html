@@ -1,6 +1,10 @@
 <app-auth-shell>
   <h1 class="titulo">Iniciar sesión</h1>
 
+  @if (sesion.estado() === 'cargando') {
+    <p class="nf-ayuda" role="status">Verificando sesión…</p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>

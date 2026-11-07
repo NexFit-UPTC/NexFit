@@ -11,11 +11,13 @@ export const sessionGuard: CanActivateFn = (route) => {
   const publica = route.data['public'] === true;
   const sinEstablecimiento = route.data['sinEstablecimiento'] === true;
 
+  // Una ruta pública se pinta ya: no espera a /api/me (la API puede estar arrancando en frío).
+  if (publica) return true;
+
   return toObservable(sesion.estado).pipe(
     filter((estado) => estado !== 'cargando'),
     take(1),
     map((estado) => {
-      if (publica) return true;
       switch (estado) {
         case 'anonimo':
           return router.parseUrl('/login');

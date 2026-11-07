@@ -32,6 +32,33 @@ describe('SessionService', () => {
     expect(sesion.establecimiento()?.name).toBe('Gym');
   });
 
+  it('cargar() sin argumento no vence por timeout', () => {
+    vi.useFakeTimers();
+    try {
+      sesion.cargar();
+      http.expectOne('/api/me');
+      vi.advanceTimersByTime(60_000);
+      expect(sesion.estado()).toBe('cargando');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cargar(true): sin respuesta en 10 s → anonimo (no se cuelga)', () => {
+    vi.useFakeTimers();
+    try {
+      sesion.cargar(true);
+      http.expectOne('/api/me');
+      expect(sesion.estado()).toBe('cargando');
+      vi.advanceTimersByTime(9_999);
+      expect(sesion.estado()).toBe('cargando');
+      vi.advanceTimersByTime(1);
+      expect(sesion.estado()).toBe('anonimo');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     [401, undefined, 'anonimo'],
     [403, 'ESTABLISHMENT_REQUIRED', 'sin-establecimiento'],

@@ -62,9 +62,15 @@ describe('LoginComponent', () => {
     const hecho = enviar();
     const req = http.expectOne({ method: 'POST', url: '/api/auth/login' });
     expect(req.request.body).toEqual({ email: 'ana@x.co', password: 'secreto' });
+    // Como el router real, al navegar fuera de /login se destruye el componente (y su effect).
+    vi.mocked(router.navigateByUrl).mockImplementation(async () => {
+      fixture.destroy();
+      return true;
+    });
     req.flush({ userId: 1, mustChangePassword: true, establishments: [] });
     await hecho;
     expect(router.navigateByUrl).toHaveBeenCalledWith('/cambiar-contrasena');
+    expect(router.navigateByUrl).toHaveBeenCalledTimes(1);
   });
 
   it('401: mensaje genérico, sin revelar si el correo existe, y limpia la contraseña', async () => {
@@ -92,6 +98,26 @@ describe('LoginComponent', () => {
     el().querySelector<HTMLButtonElement>('button[aria-pressed]')!.click();
     fixture.detectChanges();
     expect(entrada('password').type).toBe('text');
+  });
+
+  it('mientras la sesión carga muestra «Verificando sesión…» y el formulario sigue usable', () => {
+    sesion.estado.set('cargando');
+    fixture.detectChanges();
+    expect(el().querySelector('[role=status]')?.textContent).toContain('Verificando sesión');
+    expect(el().querySelector('form')).toBeTruthy();
+    expect(el().querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+    sesion.estado.set('anonimo');
+    fixture.detectChanges();
+    expect(el().querySelector('[role=status]')).toBeNull();
+  });
+
+  it('si /api/me llega con sesión después de pintar, redirige a /', () => {
+    sesion.estado.set('cargando');
+    fixture.detectChanges();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    sesion.estado.set('activa');
+    fixture.detectChanges();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
   it('quien ya tiene sesión es llevado fuera del login', () => {

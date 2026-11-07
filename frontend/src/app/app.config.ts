@@ -18,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([csrfInterceptor, errorInterceptor])),
     // Sin await: la app arranca sin bloquearse; los guards esperan a que el estado deje de ser 'cargando'.
     provideAppInitializer(() => {
-      inject(SessionService).cargar();
+      inject(SessionService).cargar(true);
     })
   ]
 };
