@@ -24,92 +24,98 @@ function vacia(): DatosSede {
   selector: 'app-sedes',
   imports: [FormsModule],
   template: `
-    <h1>Sedes</h1>
-    <button type="button" (click)="nueva()">Crear sede</button>
+    <section class="nf-pagina">
+      <div class="nf-cabecera">
+        <h1>Sedes</h1>
+        <button type="button" class="nf-boton" (click)="nueva()">Crear sede</button>
+      </div>
 
     @if (formulario(); as f) {
-      <form (ngSubmit)="guardar()" novalidate>
+      <form class="nf-tarjeta nf-formulario" (ngSubmit)="guardar()" novalidate>
         <h2>{{ editandoId() === null ? 'Nueva sede' : 'Editar sede' }}</h2>
-        <label>
+        <label class="nf-campo">
           Nombre
-          <input name="name" [(ngModel)]="f.name" />
+          <input class="nf-entrada" name="name" [(ngModel)]="f.name" />
         </label>
         @if (errores()['name']) {
-          <p role="alert">{{ errores()['name'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['name'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Dirección
-          <input name="addressLine1" [(ngModel)]="f.addressLine1" />
+          <input class="nf-entrada" name="addressLine1" [(ngModel)]="f.addressLine1" />
         </label>
         @if (errores()['addressLine1']) {
-          <p role="alert">{{ errores()['addressLine1'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['addressLine1'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Complemento de la dirección
-          <input name="addressLine2" [(ngModel)]="f.addressLine2" />
+          <input class="nf-entrada" name="addressLine2" [(ngModel)]="f.addressLine2" />
         </label>
         @if (errores()['addressLine2']) {
-          <p role="alert">{{ errores()['addressLine2'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['addressLine2'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Ciudad
-          <input name="city" [(ngModel)]="f.city" />
+          <input class="nf-entrada" name="city" [(ngModel)]="f.city" />
         </label>
         @if (errores()['city']) {
-          <p role="alert">{{ errores()['city'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['city'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Departamento
-          <input name="department" [(ngModel)]="f.department" />
+          <input class="nf-entrada" name="department" [(ngModel)]="f.department" />
         </label>
         @if (errores()['department']) {
-          <p role="alert">{{ errores()['department'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['department'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           País
-          <input name="country" [(ngModel)]="f.country" />
+          <input class="nf-entrada" name="country" [(ngModel)]="f.country" />
         </label>
         @if (errores()['country']) {
-          <p role="alert">{{ errores()['country'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['country'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Código postal
-          <input name="postalCode" [(ngModel)]="f.postalCode" />
+          <input class="nf-entrada" name="postalCode" [(ngModel)]="f.postalCode" />
         </label>
         @if (errores()['postalCode']) {
-          <p role="alert">{{ errores()['postalCode'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['postalCode'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Teléfono
-          <input name="phone" [(ngModel)]="f.phone" />
+          <input class="nf-entrada" name="phone" [(ngModel)]="f.phone" />
         </label>
         @if (errores()['phone']) {
-          <p role="alert">{{ errores()['phone'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['phone'] }}</p>
         }
-        <label>
+        <label class="nf-campo">
           Horario
-          <textarea name="schedule" [(ngModel)]="f.schedule"></textarea>
+          <textarea class="nf-entrada" name="schedule" [(ngModel)]="f.schedule"></textarea>
         </label>
         @if (errores()['schedule']) {
-          <p role="alert">{{ errores()['schedule'] }}</p>
+          <p class="nf-error-campo" role="alert">{{ errores()['schedule'] }}</p>
         }
         @if (errorGeneral()) {
-          <p role="alert">{{ errorGeneral() }}</p>
+          <p class="nf-alerta" role="alert">{{ errorGeneral() }}</p>
         }
-        <button type="submit" [disabled]="guardando()">Guardar</button>
-        <button type="button" (click)="cancelar()">Cancelar</button>
+        <div class="nf-acciones">
+          <button type="submit" class="nf-boton" [disabled]="guardando()">Guardar</button>
+          <button type="button" class="nf-boton-sec" (click)="cancelar()">Cancelar</button>
+        </div>
       </form>
     }
 
     @if (error()) {
-      <p role="alert">{{ error() }}</p>
+      <p class="nf-alerta" role="alert">{{ error() }}</p>
     }
     @if (cargando()) {
-      <p>Cargando…</p>
+      <p class="nf-ayuda">Cargando…</p>
     } @else if (lista().length === 0) {
-      <p>No hay sedes.</p>
+      <p class="nf-vacio">No hay sedes.</p>
     } @else {
-      <table>
+      <div class="nf-tabla-envoltorio">
+      <table class="nf-tabla">
         <thead>
           <tr>
             <th>Nombre</th>
@@ -127,10 +133,12 @@ function vacia(): DatosSede {
               <td>{{ s.addressLine1 }}</td>
               <td>{{ s.city }}, {{ s.department }}</td>
               <td>{{ s.phone }}</td>
-              <td>{{ s.active ? 'Activa' : 'Inactiva' }}</td>
               <td>
-                <button type="button" (click)="editar(s)">Editar</button>
-                <button type="button" class="alternar" (click)="alternar(s)">
+                <span class="nf-insignia" [class.ok]="s.active">{{ s.active ? 'Activa' : 'Inactiva' }}</span>
+              </td>
+              <td class="nf-acciones-celda">
+                <button type="button" class="nf-boton-sec" (click)="editar(s)">Editar</button>
+                <button type="button" class="alternar nf-boton-sec" (click)="alternar(s)">
                   {{ s.active ? 'Desactivar' : 'Activar' }}
                 </button>
               </td>
@@ -138,7 +146,9 @@ function vacia(): DatosSede {
           }
         </tbody>
       </table>
+      </div>
     }
+    </section>
   `
 })
 export class SedesComponent implements OnInit {
