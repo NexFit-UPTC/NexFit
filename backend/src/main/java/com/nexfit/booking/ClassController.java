@@ -14,10 +14,14 @@ import com.nexfit.shared.ActiveOrganization;
 import com.nexfit.shared.Funcion;
 import com.nexfit.shared.Permisos;
 import com.nexfit.shared.RequiresAccess;
+import com.nexfit.shared.Rol;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,7 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Clases del gimnasio (US-29, NEX-40): /api/classes. El Administrador las programa, consulta y modifica;
  * Staff, Entrenador y Cliente solo consultan y solo ven las programadas (no las canceladas). El gimnasio
- * sale siempre de la sesión (ActiveOrganization). Cancelar una clase es US-30 (NEX-68).
+ * sale siempre de la sesión (ActiveOrganization). El Cliente solo ve las clases reservables (US-31, NEX-46).
+ * Cancelar una clase es US-30 (NEX-68).
  */
 @RestController
 @RequestMapping("/classes")
@@ -61,7 +66,9 @@ class ClassController {
     /**
      * Página de clases por fecha de inicio. Filtros opcionales: {@code branchId}, {@code trainerMemberId},
      * {@code from} (incluye), {@code to} (excluye; ambos con fecha y hora y zona, p. ej.
-     * 2026-11-10T00:00:00-05:00) y {@code status} (solo lo respeta quien administra clases).
+     * 2026-11-10T00:00:00-05:00), {@code status} (solo lo respeta quien administra clases) y
+     * {@code available=true} (US-31, NEX-46): solo las que se pueden reservar ahora, es decir, programadas, sin
+     * empezar y con cupo libre. A quien solo es Cliente se le aplica siempre.
      */
     @RequiresAccess(funcion = Funcion.CLASES, accion = Accion.CONSULTAR)
     @GetMapping
@@ -70,12 +77,14 @@ class ClassController {
                    @RequestParam(required = false) String from,
                    @RequestParam(required = false) String to,
                    @RequestParam(required = false) String status,
+                   @RequestParam(defaultValue = "false") boolean available,
                    @RequestParam(defaultValue = "0") int page,
                    @RequestParam(defaultValue = "20") int size) {
         if (status != null && !status.equals("scheduled") && !status.equals("cancelled")) {
             throw new Invalid("status", "El estado debe ser scheduled o cancelled");
         }
-        ClassFilter filter = new ClassFilter(branchId, trainerMemberId, instant("from", from), instant("to", to), status);
+        ClassFilter filter = new ClassFilter(branchId, trainerMemberId, instant("from", from), instant("to", to),
+            status, available || onlyClient());
         return classes.list(ActiveOrganization.id(), filter, !canManage(), page, size);
     }
 
@@ -101,6 +110,15 @@ class ClassController {
     private static boolean canManage() {
         return Permisos.permite(Funcion.CLASES, Accion.MODIFICAR,
             SecurityContextHolder.getContext().getAuthentication().getAuthorities());
+    }
+
+    /** ¿Todos los roles de la sesión son Cliente? Solo ve las clases que puede reservar (US-31). */
+    private static boolean onlyClient() {
+        var roles = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+            .map(a -> Rol.deAutoridad(a.getAuthority()))
+            .flatMap(Optional::stream)
+            .collect(Collectors.toSet());
+        return roles.equals(Set.of(Rol.CLIENT));
     }
 
     // ---- validación -------------------------------------------------------------------------
