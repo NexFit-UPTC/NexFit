@@ -14,11 +14,8 @@ import com.nexfit.shared.ActiveOrganization;
 import com.nexfit.shared.Funcion;
 import com.nexfit.shared.Permisos;
 import com.nexfit.shared.RequiresAccess;
-<<<<<<< HEAD
-import jakarta.servlet.http.HttpServletRequest;
-=======
 import com.nexfit.shared.Rol;
->>>>>>> andres/nex-90-fe-05-pantallas-de-gestion
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
