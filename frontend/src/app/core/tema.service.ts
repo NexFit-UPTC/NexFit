@@ -8,21 +8,20 @@ export interface PresetAcento {
   hex: string;
 }
 
-export const ACENTO_DEFECTO = '#c8f03a';
+export const ACENTO_DEFECTO = '#2563eb';
 export const MODO_DEFECTO: ModoTema = 'sistema';
 export const CLAVE_TEMA = 'nexfit.tema';
 /** Mínimo WCAG AA para texto normal. */
 export const CONTRASTE_MINIMO = 4.5;
 
 export const PRESETS: PresetAcento[] = [
-  { nombre: 'Lima', hex: '#c8f03a' },
-  { nombre: 'Celeste', hex: '#45c8f5' },
-  { nombre: 'Azul', hex: '#2563eb' },
-  { nombre: 'Violeta', hex: '#7c3aed' },
-  { nombre: 'Rosa', hex: '#ff4d8d' },
+  { nombre: 'Rojo', hex: '#d62828' },
   { nombre: 'Naranja', hex: '#ff8a1f' },
   { nombre: 'Amarillo', hex: '#ffd60a' },
-  { nombre: 'Verde', hex: '#16a34a' }
+  { nombre: 'Verde', hex: '#16a34a' },
+  { nombre: 'Azul', hex: '#2563eb' },
+  { nombre: 'Añil', hex: '#4f46e5' },
+  { nombre: 'Violeta', hex: '#7c3aed' }
 ];
 
 const OSCURO = '#11151a';

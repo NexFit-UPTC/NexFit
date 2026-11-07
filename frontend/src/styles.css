@@ -40,8 +40,8 @@
   --fuente: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fuente-titulo: 'Space Grotesk', var(--fuente);
 
-  /* Acento: lima por defecto. TemaService lo reemplaza en línea sobre <html>. */
-  --acento: #c8f03a;
+  /* Acento: azul por defecto (uno de los 7 colores del arcoíris). TemaService lo reemplaza en línea sobre <html>. */
+  --acento: #2563eb;
   --sobre-acento: #11151a;
 
   --fondo: #f4f4f0;
