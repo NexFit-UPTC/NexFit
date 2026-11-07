@@ -302,3 +302,24 @@ Cada ejercicio: `{id, scope, name, muscleGroup, description, imageUrl, active}`.
 - Staff y Cliente solo leen (`403` al crear o modificar); el Entrenador crea pero no modifica.
 
 Errores: `400 VALIDATION_ERROR` (nombre vacío o de más de 100 caracteres, imagen inválida, `scope` desconocido), `401`.
+
+## Asignación de alumnos y «mis alumnos» (NEX-47, NEX-52)
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/trainers` | Administrador, Staff, Entrenador | Entrenadores activos del gimnasio con `{memberId, name, specialty, activeStudents}`. El Entrenador solo se ve a sí mismo. |
+| `POST /api/trainer-assignments` | Administrador, Staff | Cuerpo `{trainerMemberId, clientMemberId}`. `201`. Si el alumno estaba retirado, lo reactiva (no duplica la fila). |
+| `PATCH /api/trainer-assignments/{trainerMemberId}/{clientMemberId}` | Administrador, Staff | Cuerpo `{"active": false}` retira al alumno; `{"active": true}` lo asigna de nuevo. |
+| `GET /api/trainer-assignments` | Administrador, Staff, Entrenador | Filtros `trainerMemberId`, `clientMemberId`, `active`. El Entrenador recibe siempre solo las suyas. |
+| `GET /api/my-students` | Entrenador | Alumnos activos con nombre, edad, contacto de emergencia principal, rutinas activas y fecha de la última asistencia. |
+
+Cada asignación: `{trainerMemberId, clientMemberId, trainerName, clientName, assignedAt, active}`.
+
+- Un cliente puede tener varios entrenadores; un entrenador, varios alumnos.
+- El entrenador debe tener rol y perfil de entrenador y estar activo; el cliente debe tener rol de cliente y estar activo; nadie es su propio alumno. Si no, `400 VALIDATION_ERROR` con el campo (`trainerMemberId` o `clientMemberId`).
+- Asignar de nuevo una relación ya activa es `409 ALREADY_ASSIGNED`. Retirar una ya retirada no falla.
+- Una relación de otro gimnasio es `404` (no se distingue de una inexistente).
+- Mostrar el contacto de emergencia en «mis alumnos» queda auditado (`HEALTH_CONTACT_DATA_ACCESSED`, una vez por alumno con contacto).
+- Los alumnos retirados desaparecen de «mis alumnos», pero la relación queda en el historial.
+
+La migración `V9__training_constraints.sql` agrega las restricciones de entrenamiento que usan las rutinas y los entrenamientos (orden único de ejercicios por rutina, peso 20–500 kg, un peso por día, meta semanal 1–7).

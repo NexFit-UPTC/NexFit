@@ -420,6 +420,21 @@ class AuthorizationMatrixTests {
         list.add(gated("PATCH /exercises/{id}/active", roles(Rol.MASTER), c -> "/exercises/" + exerciseB + "/active",
                 "{\"active\":false}", byPath("/exercises/%d/active", c -> exerciseB, "{\"active\":false}", NOT_FOUND)));
 
+        // --- Asignación de alumnos (NEX-47, NEX-52) ---
+        // ASIGNACION_ENTRENADOR_ALUMNO: CREAR y MODIFICAR ADMIN y STAFF; CONSULTAR además TRAINER.
+        list.add(new Case("POST /trainer-assignments", Kind.GATED, roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/trainer-assignments",
+                c -> "{\"trainerMemberId\":" + c.memberB() + ",\"clientMemberId\":" + c.memberB() + "}", null,
+                false));
+        list.add(gated("PATCH /trainer-assignments/{trainerMemberId}/{clientMemberId}", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/trainer-assignments/" + c.memberB() + "/" + c.memberB(), "{\"active\":false}",
+                byPath("/trainer-assignments/%d/1", c -> c.memberB(), "{\"active\":false}", NOT_FOUND)));
+        list.add(gated("GET /trainer-assignments", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER), "/trainer-assignments",
+                null));
+        list.add(gated("GET /trainers", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER), "/trainers", null));
+        // "Mis alumnos" es del entrenador: se fija con RUTINAS/CREAR, que solo el TRAINER tiene.
+        list.add(gated("GET /my-students", roles(Rol.TRAINER), "/my-students", null));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
