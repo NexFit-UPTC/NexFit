@@ -83,7 +83,7 @@ class TrainerAssignmentController {
                           @RequestParam(required = false) Long clientMemberId,
                           @RequestParam(required = false) Boolean active) {
         long orgId = ActiveOrganization.id();
-        Long trainer = manages() ? trainerMemberId : actorMemberId(orgId);
+        Long trainer = manages() ? trainerMemberId : Long.valueOf(actorMemberId(orgId));
         return assignments.list(orgId, trainer, clientMemberId, active);
     }
 
