@@ -88,14 +88,19 @@ class DashboardTests {
             org.adminMemberId());
     }
 
-    /** {@code startsAtSql} es una expresión SQL constante de la prueba (por ejemplo {@code now() + interval '2 days'}). */
+    /**
+     * {@code startsAtSql} es una expresión SQL constante de la prueba (por ejemplo {@code now() + interval '2 days'}).
+     * Una clase solo se inserta como programada; para cancelarla se actualiza después (trg_class_validate).
+     */
     private long gymClass(Org org, long branch, String startsAtSql, int capacity, String status) {
-        return jdbc.queryForObject("""
-            INSERT INTO classes (organization_id, branch_id, name, starts_at, duration_minutes, capacity, status,
-                                 cancelled_at)
-            VALUES (?, ?, 'Spinning', %s, 60, ?, CAST(? AS class_status),
-                    CASE WHEN ? = 'cancelled' THEN now() END) RETURNING id
-            """.formatted(startsAtSql), Long.class, org.id(), branch, capacity, status, status);
+        long id = jdbc.queryForObject("""
+            INSERT INTO classes (organization_id, branch_id, name, starts_at, duration_minutes, capacity, status)
+            VALUES (?, ?, 'Spinning', %s, 60, ?, 'scheduled') RETURNING id
+            """.formatted(startsAtSql), Long.class, org.id(), branch, capacity);
+        if (status.equals("cancelled")) {
+            jdbc.update("UPDATE classes SET status = 'cancelled', cancelled_at = now() WHERE id = ?", id);
+        }
+        return id;
     }
 
     private void book(Org org, long classId, long memberId) {
