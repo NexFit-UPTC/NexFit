@@ -57,13 +57,13 @@ const MODOS: { valor: ModoTema; titulo: string }[] = [
           type="text"
           maxlength="7"
           autocomplete="off"
-          placeholder="#c8f03a"
+          placeholder="#2563eb"
           [value]="hex()"
           [attr.aria-invalid]="hexInvalido()"
           (input)="escribirHex($any($event.target).value)"
         />
         @if (hexInvalido()) {
-          <p class="nf-error-campo" role="alert">Escribe un color como #c8f03a o #cf3.</p>
+          <p class="nf-error-campo" role="alert">Escribe un color como #2563eb o #cf3.</p>
         }
         @if (tema.contrasteBajo()) {
           <p class="nf-alerta" role="status">

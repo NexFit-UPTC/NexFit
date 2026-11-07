@@ -11,17 +11,17 @@ describe('AparienciaComponent', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement, tema: TestBed.inject(TemaService) };
   }
 
-  it('muestra 3 modos y 8 presets', () => {
+  it('muestra 3 modos y 7 presets', () => {
     const { el } = montar();
     expect(el.querySelectorAll('.modo').length).toBe(3);
-    expect(el.querySelectorAll('.preset').length).toBe(8);
+    expect(el.querySelectorAll('.preset').length).toBe(7);
   });
 
   it('elegir un preset cambia el acento', () => {
     const { fixture, el, tema } = montar();
     (el.querySelectorAll('.preset')[2] as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(tema.acento()).toBe('#2563eb');
+    expect(tema.acento()).toBe('#ffd60a');
   });
 
   it('un hex válido se aplica y uno inválido muestra error', () => {
@@ -38,7 +38,7 @@ describe('AparienciaComponent', () => {
     expect(tema.acento()).toBe('#ff4d8d');
   });
 
-  it('no avisa con el lima por defecto en ningún modo', () => {
+  it('no avisa con el azul por defecto en ningún modo', () => {
     const { fixture, el, tema } = montar();
     for (const modo of ['claro', 'oscuro'] as const) {
       tema.cambiarModo(modo);
