@@ -83,7 +83,7 @@ Rutas bajo `/api/classes`. El gimnasio sale siempre de la sesión; una clase, se
 | Ruta | Quién | Qué hace |
 |---|---|---|
 | `POST /api/classes` | Administrador | Programa una clase (`scheduled`). Devuelve `201` con la clase. |
-| `GET /api/classes` | Administrador, Staff, Entrenador, Cliente | Página de clases por fecha de inicio. Quien no administra clases solo ve las programadas. |
+| `GET /api/classes` | Administrador, Staff, Entrenador, Cliente | Página de clases por fecha de inicio. Quien no administra clases solo ve las programadas. Quien solo es Cliente ve únicamente las que puede reservar (US-31, NEX-46). |
 | `GET /api/classes/{id}` | Ídem | Detalle de una clase. Una cancelada solo la ve el Administrador (los demás, `404`). |
 | `PUT /api/classes/{id}` | Administrador | Reemplaza los datos editables de una clase programada. |
 
@@ -91,7 +91,9 @@ Cuerpo de `POST` y `PUT`: `{"name": "Spinning", "description": "…", "branchId"
 
 Clase devuelta: `{id, name, description, branchId, branchName, trainerMemberId, trainerName, startsAt, durationMinutes, capacity, status, confirmedBookings, freeSlots}`. `freeSlots` es la capacidad menos las reservas confirmadas.
 
-Filtros de `GET /api/classes` (todos opcionales): `branchId`, `trainerMemberId`, `from` (incluye) y `to` (excluye), ambos con fecha, hora y zona, `status` (`scheduled` o `cancelled`; solo lo respeta el Administrador), `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+Filtros de `GET /api/classes` (todos opcionales): `branchId`, `trainerMemberId`, `from` (incluye) y `to` (excluye), ambos con fecha, hora y zona, `status` (`scheduled` o `cancelled`; solo lo respeta el Administrador), `available` (`true` deja solo las reservables ahora: programadas, sin empezar y con cupo libre; al Cliente se le aplica siempre), `page` (desde 0) y `size` (por defecto 20, máx. 50). Respuesta: `{content, page, size, totalElements, totalPages}`.
+
+Consultar por sede (US-31): `GET /api/classes?branchId=3&available=true` devuelve las clases de esa sede que se pueden reservar, con `confirmedBookings` y `freeSlots` al día: una reserva confirmada o cancelada se refleja en la siguiente consulta. Una sede de otro gimnasio responde como una inexistente (lista vacía).
 
 Reglas:
 - La sede debe ser del gimnasio y estar activa (RN-33). El entrenador debe ser un afiliado activo del gimnasio con rol Entrenador.
