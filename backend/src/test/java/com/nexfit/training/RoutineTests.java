@@ -151,7 +151,8 @@ class RoutineTests {
         // Se devuelven por orden de ejecución, no por el orden en que se enviaron.
         assertThat(json.indexOf("\"exerciseId\":" + press)).isLessThan(json.indexOf("\"exerciseId\":" + squat));
         assertThat(json).contains("\"series\":3").contains("\"repetitions\":12").contains("\"restSeconds\":60");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM routine_exercises", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM routine_exercises e JOIN routines r ON r.id = e.routine_id "
+            + "WHERE r.organization_id = ?", Integer.class, org.id())).isEqualTo(2);
     }
 
     @Test
