@@ -122,7 +122,8 @@ class EquipmentTests {
         assertThat(status(a)).isEqualTo(400);
         assertThat(body(a)).contains("VALIDATION_ERROR").contains("branchId");
         assertThat(status(b)).isEqualTo(400);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM equipment", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM equipment WHERE organization_id IN (?, ?)", Integer.class,
+            org.id(), other.id())).isZero();
     }
 
     @Test
