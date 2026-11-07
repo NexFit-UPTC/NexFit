@@ -471,3 +471,44 @@ a.nf-indicador:focus-visible {
   font-size: 0.9rem;
   color: var(--texto-suave);
 }
+
+.nf-galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nf-media {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.nf-media img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #1b222a;
+}
+
+.nf-media-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espacio-2);
+  padding: var(--espacio-3);
+}
+
+.nf-media-cuerpo h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.nf-media-cuerpo p {
+  margin: 0;
+}
