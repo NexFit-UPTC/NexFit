@@ -43,8 +43,11 @@
 }
 
 .rol {
-  margin: var(--espacio-2) 0 0;
-  padding: 0 var(--espacio-2);
+  margin: var(--espacio-3) var(--espacio-2) 0;
+  padding: 3px 10px;
+  width: fit-content;
+  border: 1px solid var(--lateral-borde);
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -71,17 +74,22 @@ nav a {
   padding: 12px 18px;
   color: var(--lateral-suave);
   text-decoration: none;
-  border-radius: 10px;
+  border-radius: 12px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 nav a:hover {
   color: var(--lateral-texto);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 nav a.activa {
   font-weight: 600;
   color: var(--sobre-acento);
   background: var(--acento);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--acento) 35%, transparent);
 }
 
 .lateral :focus-visible {
@@ -141,7 +149,7 @@ nav a.activa {
 
 main {
   margin-left: 260px;
-  padding: var(--espacio-4) 32px;
+  padding: var(--espacio-4) 40px 64px;
 }
 
 /* En pantallas angostas la sidebar pasa a la parte superior (nunca a una barra inferior). */

@@ -52,6 +52,25 @@ import { SessionService } from '../core/session.service';
             </span>
           </a>
         </div>
+        @if (g.expiringMemberships > 0 || g.upcomingOccupancy.percent >= 85) {
+          <section aria-labelledby="titulo-alertas">
+            <h2 id="titulo-alertas">Para revisar</h2>
+            <div class="nf-alertas">
+              @if (g.expiringMemberships > 0) {
+                <a class="nf-alerta-tarjeta" routerLink="/membresias">
+                  <strong>{{ g.expiringMemberships | number }} membresías por vencer</strong>
+                  <span>En los próximos {{ g.expiringInDays }} días. Ofrece la renovación.</span>
+                </a>
+              }
+              @if (g.upcomingOccupancy.percent >= 85) {
+                <a class="nf-alerta-tarjeta info" routerLink="/clases">
+                  <strong>Clases casi llenas</strong>
+                  <span>Ocupación de {{ g.upcomingOccupancy.percent | number: '1.0-0' }}% en la próxima semana.</span>
+                </a>
+              }
+            </div>
+          </section>
+        }
       } @else if (plataforma(); as p) {
         <div class="nf-indicadores">
           <div class="nf-indicador">

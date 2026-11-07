@@ -87,6 +87,12 @@ const CATEGORIAS = ['Cardio', 'Fuerza', 'Pesas libres', 'Funcional'];
               Imagen (dirección https://…, opcional)
               <input name="imagen" [(ngModel)]="f.imageUrl" />
             </label>
+            <p class="nf-ayuda">
+              Usa la ruta de un archivo del proyecto (por ejemplo /img/ejemplo.jpg) o una dirección https://.
+            </p>
+            @if (f.imageUrl.trim()) {
+              <img class="nf-vista-previa" [src]="f.imageUrl.trim()" alt="Vista previa de la imagen" />
+            }
             @if (errores()['imageUrl']) {
               <p class="nf-error-campo" role="alert">{{ errores()['imageUrl'] }}</p>
             }
