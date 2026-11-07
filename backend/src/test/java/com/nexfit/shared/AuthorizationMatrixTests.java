@@ -204,6 +204,9 @@ class AuthorizationMatrixTests {
     /** Pago pendiente del gimnasio B (NEX-45): ningún rol de A puede verlo, anularlo ni completarlo. */
     private long paymentB;
 
+    /** Membresía del gimnasio B (NEX-49): indistinguible de una inexistente para los roles de A. */
+    private long membershipB;
+
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
 
@@ -330,6 +333,27 @@ class AuthorizationMatrixTests {
                 c -> "/payments/" + paymentB + "/complete", null,
                 byPath("/payments/%d/complete", c -> paymentB, null, NOT_FOUND)));
 
+        // --- Membresías (NEX-49, NEX-55, NEX-56, NEX-57, NEX-66, NEX-67) ---
+        // MEMBRESIAS: CREAR y RENOVAR solo STAFF; CONSULTAR ADMIN, STAFF y CLIENT; SUSPENDER y CANCELAR ADMIN y STAFF.
+        list.add(new Case("POST /memberships", Kind.GATED, roles(Rol.STAFF), c -> "/memberships",
+                c -> "{\"memberId\":" + c.memberB() + ",\"planId\":" + c.planB() + "}", null, false));
+        list.add(gated("POST /memberships/{id}/renew", roles(Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/renew", "{}",
+                byPath("/memberships/%d/renew", c -> membershipB, "{}", NOT_FOUND)));
+        list.add(gated("GET /memberships", roles(Rol.ADMIN, Rol.STAFF, Rol.CLIENT), "/memberships", null));
+        list.add(gated("GET /memberships/{id}", roles(Rol.ADMIN, Rol.STAFF, Rol.CLIENT),
+                c -> "/memberships/" + membershipB, null,
+                byPath("/memberships/%d", c -> membershipB, null, NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/suspend", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/suspend", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/suspend", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/reactivate", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/reactivate", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/reactivate", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /memberships/{id}/cancel", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/memberships/" + membershipB + "/cancel", "{\"reason\":\"matriz\"}",
+                byPath("/memberships/%d/cancel", c -> membershipB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -417,6 +441,12 @@ class AuthorizationMatrixTests {
                                       method, status)
                 VALUES (?, ?, ?, 'Pago secreto B', 1000, now(), 'cash', 'pending') RETURNING id
                 """, Long.class, b.id(), memberB, b.adminMemberId());
+
+        membershipB = jdbc.queryForObject("""
+                INSERT INTO memberships (organization_id, member_id, plan_id, created_by_member_id, start_date,
+                                         end_date, status)
+                VALUES (?, ?, ?, ?, CURRENT_DATE, CURRENT_DATE + 29, 'active') RETURNING id
+                """, Long.class, b.id(), memberB, planB, b.adminMemberId());
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
