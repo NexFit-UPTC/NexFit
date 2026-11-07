@@ -136,3 +136,25 @@ Errores:
 
 El Entrenador recibe `403 ACCESS_DENIED` y sin sesión, `401`. Crear, editar y activar EPS es US-18 (NEX-30), solo del Master.
 
+
+## Pagos (NEX-45, NEX-51, NEX-50, NEX-54)
+
+Rutas bajo `/api/payments`. El gimnasio sale de la sesión. No hay ruta de borrado (RN-31) ni pasarela de pago (RN-19).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/payments` | Staff | Registra un pago. Devuelve `201` con el pago. |
+| `GET /api/payments` | Administrador, Staff, Cliente | Página de pagos. El Cliente ve solo los suyos (anulados incluidos). |
+| `PATCH /api/payments/{id}/void` | Administrador, Staff | Anula un pago pendiente. Cuerpo `{"reason": "…"}` obligatorio. Queda auditado (`PAYMENT_VOIDED`). |
+| `PATCH /api/payments/{id}/complete` | Administrador, Staff | Completa un pago pendiente: fija fecha y autor y audita (`PENDING_PAYMENT_COMPLETED`). |
+
+Cuerpo de `POST`: `{"memberId": 12, "membershipId": 3, "concept": "Mensualidad", "amount": 50000, "method": "cash", "paidAt": "2026-11-07T15:00:00Z", "reference": "…", "status": "completed"}`. Obligatorios: `memberId` (afiliación del cliente), `concept`, `amount` (> 0, 2 decimales como máximo) y `method` (`cash`, `card`, `transfer`, `other`). `membershipId`, `paidAt` (por defecto ahora), `reference` y `status` (`pending` o `completed`, por defecto `completed`) son opcionales. Un pago completado guarda quién y cuándo lo completó.
+
+Filtros de `GET /api/payments` (opcionales): `memberId` (ignorado para el Cliente), `status` (`pending`, `completed`, `voided`), `from` y `to` (fechas `AAAA-MM-DD` inclusivas, en la zona horaria del gimnasio), `page` (desde 0) y `size` (por defecto 20, máx. 100). Respuesta: `{items, total, completedTotal, page, size}`; `completedTotal` suma solo los pagos completados que cumplen los filtros.
+
+Cada pago: `{id, memberId, memberName, membershipId, concept, amount, paidAt, method, reference, status, voidReason, completedAt}`.
+
+Errores:
+- `400 VALIDATION_ERROR` con `{code, field, message}`; para `memberId` y `membershipId` indica un cliente o una membresía que no existen en el gimnasio o que no corresponden entre sí.
+- `409 PAYMENT_NOT_PENDING`: el pago ya está completado o anulado. Por el trigger de RN-40 (V4) un pago completado es final: no se anula ni se vuelve a completar.
+- `403 ACCESS_DENIED` si el rol no tiene permiso; `404` si el pago no existe o es de otro gimnasio; `401` sin sesión.
