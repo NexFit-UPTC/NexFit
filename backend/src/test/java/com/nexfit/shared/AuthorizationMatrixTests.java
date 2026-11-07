@@ -201,6 +201,9 @@ class AuthorizationMatrixTests {
             + "\"healthConsent\":true,\"privacyAccepted\":true}";
     private static final String CONTACT_BODY = "{\"phone\":\"3001234567\"}";
 
+    /** Pago pendiente del gimnasio B (NEX-45): ningún rol de A puede verlo, anularlo ni completarlo. */
+    private long paymentB;
+
     private List<Case> cases() {
         List<Case> list = new ArrayList<>();
 
@@ -312,6 +315,21 @@ class AuthorizationMatrixTests {
                         c -> CLASS_BODY_TEMPLATE.formatted(c.branchA()), NOT_FOUND),
                 false));
 
+        // --- Pagos (NEX-45, NEX-51, NEX-50, NEX-54) ---
+        // PAGOS: CREAR solo STAFF; CONSULTAR ADMIN, STAFF y CLIENT; ANULAR y COMPLETAR ADMIN y STAFF.
+        // El cuerpo de POST apunta a un cliente de B: para el Staff de A responde 400 (no existe en su gimnasio).
+        // El pago de B es indistinguible de uno inexistente: 404.
+        list.add(new Case("POST /payments", Kind.GATED, roles(Rol.STAFF), c -> "/payments",
+                c -> "{\"memberId\":" + c.memberB() + ",\"concept\":\"Matriz\",\"amount\":1000,\"method\":\"cash\"}",
+                null, false));
+        list.add(gated("GET /payments", roles(Rol.ADMIN, Rol.STAFF, Rol.CLIENT), "/payments", null));
+        list.add(gated("PATCH /payments/{id}/void", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/payments/" + paymentB + "/void", "{\"reason\":\"matriz\"}",
+                byPath("/payments/%d/void", c -> paymentB, "{\"reason\":\"matriz\"}", NOT_FOUND)));
+        list.add(gated("PATCH /payments/{id}/complete", roles(Rol.ADMIN, Rol.STAFF),
+                c -> "/payments/" + paymentB + "/complete", null,
+                byPath("/payments/%d/complete", c -> paymentB, null, NOT_FOUND)));
+
         // --- Clientes (NEX-39) ---
         // POST /clients: solo STAFF crea (matriz CLIENTES/CREAR).
         // GET /clients/search: la matriz da CONSULTAR a ADMIN, STAFF, TRAINER y CLIENT,
@@ -403,6 +421,12 @@ class AuthorizationMatrixTests {
                 userB);
         jdbc.update("INSERT INTO audit_events (organization_id, event_type, metadata) "
                 + "VALUES (?, 'LOGIN', CAST(? AS jsonb))", b.id(), "{\"secret\":\"" + SECRET_EVENT + "\"}");
+
+        paymentB = jdbc.queryForObject("""
+                INSERT INTO payments (organization_id, member_id, registered_by_member_id, concept, amount, paid_at,
+                                      method, status)
+                VALUES (?, ?, ?, 'Pago secreto B', 1000, now(), 'cash', 'pending') RETURNING id
+                """, Long.class, b.id(), memberB, b.adminMemberId());
 
         ctx = new Ctx(a, b, accounts, cookies, planA, planB, branchA, branchB, classB, userB, memberB);
         cases = cases();
