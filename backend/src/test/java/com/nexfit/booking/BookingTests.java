@@ -370,6 +370,8 @@ class BookingTests {
             Long.class, trainer.id());
         long mine = futureClass(org, 5);
         long others = futureClass(org, 5);
+        // classes.trainer_member_id referencia a trainer_profiles (fk_classes_trainer).
+        jdbc.update("INSERT INTO trainer_profiles (member_id, organization_id) VALUES (?, ?)", trainerMember, org.id());
         jdbc.update("UPDATE classes SET trainer_member_id = ? WHERE id = ?", trainerMember, mine);
         Client c = memberWithMembership(org, plan);
         long inMine = idOf(body(book(fx.login(c.account()), mine, null)));
