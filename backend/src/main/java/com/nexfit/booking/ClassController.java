@@ -15,6 +15,7 @@ import com.nexfit.shared.Funcion;
 import com.nexfit.shared.Permisos;
 import com.nexfit.shared.RequiresAccess;
 import com.nexfit.shared.Rol;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -102,6 +104,29 @@ class ClassController {
     ResponseEntity<GymClass> update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         ClassData data = parse(body);
         return classes.update(ActiveOrganization.id(), id, data)
+            .map(ResponseEntity::ok)
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Cancela la clase y sus reservas confirmadas. Cuerpo opcional {@code {"reason": "…"}}. */
+    @RequiresAccess(funcion = Funcion.CLASES, accion = Accion.CANCELAR)
+    @PatchMapping("/{id}/cancel")
+    ResponseEntity<GymClass> cancel(@PathVariable long id, @RequestBody(required = false) Map<String, Object> body,
+                                    HttpServletRequest request) {
+        String reason = null;
+        if (body != null && body.get("reason") != null) {
+            reason = text(body.get("reason"));
+            if (reason == null) {
+                throw new Invalid("reason", "El motivo debe ser texto");
+            }
+            if (reason.length() > DESCRIPTION_MAX) {
+                throw new Invalid("reason", "El motivo no puede superar " + DESCRIPTION_MAX + " caracteres");
+            }
+            reason = reason.isEmpty() ? null : reason;
+        }
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        long actor = principal instanceof Long userId ? userId : 0L;
+        return classes.cancel(ActiveOrganization.id(), actor, id, reason, request.getRemoteAddr())
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
