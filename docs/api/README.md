@@ -323,3 +323,26 @@ Cada asignación: `{trainerMemberId, clientMemberId, trainerName, clientName, as
 - Los alumnos retirados desaparecen de «mis alumnos», pero la relación queda en el historial.
 
 La migración `V9__training_constraints.sql` agrega las restricciones de entrenamiento que usan las rutinas y los entrenamientos (orden único de ejercicios por rutina, peso 20–500 kg, un peso por día, meta semanal 1–7).
+
+## Rutinas del entrenador (NEX-53, NEX-60, NEX-61, NEX-76)
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/routines` | Entrenador | Crea una rutina para un alumno activo suyo. `201`. |
+| `GET /api/routines` | Entrenador, Cliente | Lista resumida. El Entrenador ve las que armó; el Cliente, las suyas (también las archivadas). Filtros: `clientMemberId`, `category`, `active`. |
+| `GET /api/routines/{id}` | Entrenador, Cliente | Detalle con los ejercicios por orden de ejecución. |
+| `PUT /api/routines/{id}` | Entrenador | Reemplaza los datos y los ejercicios de una rutina propia. El alumno no cambia. |
+| `PATCH /api/routines/{id}/archive` | Entrenador | Archiva una rutina propia (idempotente). |
+
+Cuerpo de creación y edición: `{clientMemberId (solo al crear), name, category?, level?, estimatedMinutes?, estimatedKcal?, exercises: [{exerciseId, order?, series, repetitions, restSeconds}]}`.
+
+- `name`: obligatorio, hasta 150 caracteres. `category`: `strength`, `cardio` o `mobility`. `level`: `beginner`, `intermediate` o `advanced`. `estimatedMinutes` 1–1440 y `estimatedKcal` 1–20000, o nulos.
+- Entre 1 y 50 ejercicios. `series` 1–50, `repetitions` 1–999, `restSeconds` 0–3600. `order` no se repite; si falta se usa la posición (1, 2, 3…).
+- Cada ejercicio debe estar activo y ser global o del gimnasio. Al editar se admite uno que la rutina ya tenía aunque se haya desactivado después.
+- Solo se crea para un cliente que sea alumno activo del entrenador (`400` con el campo `clientMemberId`).
+- Una rutina archivada no se modifica: `409 ROUTINE_ARCHIVED`. Si el alumno ya no es del entrenador, tampoco se modifica (`409 NOT_ASSIGNED`), pero sí se puede archivar.
+- Una rutina ajena o de otro gimnasio es `404`. Staff, Administrador y Master reciben `403`.
+
+Resumen: `{id, trainerMemberId, trainerName, clientMemberId, clientName, name, category, level, estimatedMinutes, estimatedKcal, createdAt, active, exerciseCount}`. Detalle: lo mismo sin `exerciseCount` y con `exercises: [{id, exerciseId, exerciseName, muscleGroup, imageUrl, order, series, repetitions, restSeconds}]`.
+
+Errores de validación: `400 VALIDATION_ERROR` con `field`, por ejemplo `name` o `exercises[0].series`.
