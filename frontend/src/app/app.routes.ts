@@ -9,6 +9,7 @@ import { AparienciaComponent } from './pages/apariencia.component';
 import { AdministradorComponent } from './pages/administrador.component';
 import { AuditoriaComponent } from './pages/auditoria.component';
 import { CambiarContrasenaComponent } from './pages/cambiar-contrasena.component';
+import { ClasesComponent } from './pages/clases.component';
 import { ClientesComponent } from './pages/clientes.component';
 import { EstablecimientoComponent } from './pages/establecimiento.component';
 import { EstablecimientosComponent } from './pages/establecimientos.component';
@@ -18,6 +19,7 @@ import { MiPerfilComponent } from './pages/mi-perfil.component';
 import { PagosComponent } from './pages/pagos.component';
 import { PersonalComponent } from './pages/personal.component';
 import { PlanesComponent } from './pages/planes.component';
+import { ReservasComponent } from './pages/reservas.component';
 import { SedesComponent } from './pages/sedes.component';
 
 export const routes: Routes = [
@@ -40,6 +42,8 @@ export const routes: Routes = [
       { path: 'clientes', component: ClientesComponent, canActivate: [staffGuard] },
       { path: 'membresias', component: MembresiasComponent, canActivate: [gestionGuard] },
       { path: 'pagos', component: PagosComponent },
+      { path: 'clases', component: ClasesComponent },
+      { path: 'reservas', component: ReservasComponent },
       { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
     ]
   },
