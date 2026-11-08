@@ -87,6 +87,17 @@ describe('AuthService', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith('/');
     });
 
+    it('gimnasio guardado: se conserva si falta elegir y se borra al entrar directo', async () => {
+      sessionStorage.setItem('nexfit.gimnasio', '2');
+      const varios = login({ userId: 1, mustChangePassword: false, establishments: [gym(1, 'A'), gym(2, 'B')] });
+      await varios.promesa;
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('2');
+      const uno = login({ userId: 1, mustChangePassword: false, establishments: [gym(1, 'A')] });
+      await atenderMe({ identity, affiliation: { organizationId: 1, organizationName: 'A', roles: ['admin'] } });
+      await uno.promesa;
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+    });
+
     it('Master (sin establecimientos) → entra directo', async () => {
       const { promesa } = login({ userId: 1, mustChangePassword: false, establishments: [] });
       await atenderMe({ identity, affiliation: null });
@@ -167,9 +178,11 @@ describe('AuthService', () => {
       document.cookie = 'XSRF-TOKEN=abc; path=/';
       sesion.estado.set('activa');
       sesion.roles.set(['admin']);
+      sessionStorage.setItem('nexfit.gimnasio', '2');
       const promesa = auth.cerrarSesion();
       http.expectOne({ method: 'POST', url: '/api/auth/logout' }).flush(null, { status: 204, statusText: '' });
       await promesa;
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
       expect(sesion.estado()).toBe('anonimo');
       expect(sesion.roles()).toEqual([]);
       expect(router.navigateByUrl).toHaveBeenCalledWith('/login');

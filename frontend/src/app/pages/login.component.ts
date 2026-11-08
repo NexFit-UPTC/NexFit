@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { guardarGimnasio } from '../core/gimnasio-preseleccionado';
 import { EstadoSesion, SessionService } from '../core/session.service';
 import { AuthShellComponent } from './auth-shell.component';
 
@@ -22,7 +23,7 @@ export function mensajeDeLogin(e: unknown): string {
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, AuthShellComponent],
+  imports: [ReactiveFormsModule, RouterLink, AuthShellComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -40,6 +41,7 @@ export class LoginComponent {
   protected readonly verClave = signal(false);
 
   constructor() {
+    guardarGimnasio(inject(ActivatedRoute).snapshot.queryParamMap.get('gimnasio'));
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {
       const destino = DESTINOS[this.sesion.estado()];
