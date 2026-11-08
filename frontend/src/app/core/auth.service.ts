@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { borrarGimnasio } from './gimnasio-preseleccionado';
 import { SessionService } from './session.service';
 
 export interface Establecimiento {
@@ -64,6 +65,7 @@ export class AuthService {
 
   /** POST /api/auth/establishment. Devuelve false si, aun elegido, el establecimiento no deja operar. */
   async elegirEstablecimiento(organizationId: number): Promise<boolean> {
+    borrarGimnasio();
     await firstValueFrom(this.http.post<void>('/api/auth/establishment', { organizationId }));
     await this.sesion.cargar();
     if (this.sesion.estado() !== 'activa') {
@@ -80,6 +82,7 @@ export class AuthService {
     } catch {
       // 401: la sesión ya había terminado en el servidor.
     }
+    borrarGimnasio();
     this.sesion.limpiar();
     this.sesion.mensaje.set(null);
     this.sesion.estado.set('anonimo');
@@ -89,6 +92,8 @@ export class AuthService {
   /** Recarga /me y deja que los guards lleven a la persona a donde corresponda. */
   private async entrar(): Promise<void> {
     await this.sesion.cargar();
+    // Sesión activa por entrada directa: ya no hay nada que preseleccionar.
+    if (this.sesion.estado() === 'activa') borrarGimnasio();
     await this.router.navigateByUrl('/');
   }
 }

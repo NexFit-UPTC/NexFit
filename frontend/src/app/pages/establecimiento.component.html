@@ -21,10 +21,12 @@
             <button
               type="button"
               class="opcion"
+              [class.sugerido]="e.organizationId === sugerido"
+              [attr.data-sugerido]="e.organizationId === sugerido ? 'true' : null"
               [disabled]="eligiendo() !== null"
               (click)="elegir(e)"
             >
-              <span class="nombre">{{ e.name }}</span>
+              <span class="nombre">{{ e.name }}@if (e.organizationId === sugerido) { · Sugerido }</span>
               <span class="roles">
                 @for (rol of e.roles; track rol) {
                   <span class="rol">{{ etiqueta(rol) }}</span>

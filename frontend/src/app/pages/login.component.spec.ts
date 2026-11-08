@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { SessionService } from '../core/session.service';
 import { LoginComponent } from './login.component';
 
@@ -48,6 +48,49 @@ describe('LoginComponent', () => {
     expect(el().querySelector('h1')?.textContent).toContain('Iniciar sesión');
     expect(el().querySelector('label[for=email]')).toBeTruthy();
     expect(el().querySelector('label[for=password]')).toBeTruthy();
+  });
+
+  it('muestra debajo del formulario «¿No tienes cuenta? Regístrate» hacia /registro', () => {
+    const enlace = el().querySelector<HTMLAnchorElement>('a[href="/registro"]')!;
+    expect(enlace.textContent).toContain('Regístrate');
+    expect(el().textContent).toContain('¿No tienes cuenta?');
+    const form = el().querySelector('form')!;
+    expect(form.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  describe('parámetro gimnasio', () => {
+    function abrirCon(gimnasio?: string) {
+      TestBed.inject(Router);
+      const ruta = TestBed.inject(ActivatedRoute);
+      vi.spyOn(ruta.snapshot.queryParamMap, 'get').mockImplementation((k) => (k === 'gimnasio' ? (gimnasio ?? null) : null));
+      TestBed.createComponent(LoginComponent);
+    }
+    beforeEach(() => sessionStorage.removeItem('nexfit.gimnasio'));
+    afterEach(() => vi.restoreAllMocks());
+
+    it('válido: lo guarda', () => {
+      abrirCon('7');
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('7');
+    });
+
+    it.each(['abc', '0', '-1', '1.5', ''])('inválido «%s»: no guarda y borra el anterior', (valor) => {
+      sessionStorage.setItem('nexfit.gimnasio', '7');
+      abrirCon(valor);
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+    });
+
+    it('ausente: borra el anterior', () => {
+      sessionStorage.setItem('nexfit.gimnasio', '7');
+      abrirCon();
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+    });
+
+    it('sin sessionStorage disponible no rompe el login', () => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('bloqueado');
+      });
+      expect(() => abrirCon('7')).not.toThrow();
+    });
   });
 
   it('no llama a la API con el formulario vacío y marca los errores', async () => {
