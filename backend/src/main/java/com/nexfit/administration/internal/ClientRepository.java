@@ -74,6 +74,65 @@ public class ClientRepository {
             .single();
     }
 
+    /** Identidad de un cliente del gimnasio y lo necesario para saber si todavía se puede corregir (US-51). */
+    public record IdentityRow(long userId, String documentType, String documentNumber, String firstName,
+                              String lastName, LocalDate birthDate, String email, boolean loggedInBefore,
+                              boolean affiliatedElsewhere) { }
+
+    /**
+     * El cliente de este gimnasio con su cuenta bloqueada para la transacción (FOR UPDATE): mientras se decide la
+     * corrección nadie más la modifica. Vacío si no existe, no es cliente o es de otro gimnasio. «Ya activada» se
+     * sabe por su LOGIN auditado (igual que en AuthService); «otras afiliaciones» cuenta cualquier otro gimnasio.
+     */
+    public Optional<IdentityRow> lockClientIdentity(long orgId, long memberId) {
+        return jdbc.sql("""
+            SELECT u.id, CAST(u.document_type AS text) AS document_type, u.document_number, u.first_name,
+                   u.last_name, u.birth_date, u.email,
+                   EXISTS (SELECT 1 FROM audit_events a
+                            WHERE a.actor_user_id = u.id AND a.event_type = 'LOGIN') AS logged_in,
+                   EXISTS (SELECT 1 FROM organization_members o2
+                            WHERE o2.user_id = u.id AND o2.organization_id <> om.organization_id) AS elsewhere
+              FROM organization_members om
+              JOIN users u ON u.id = om.user_id
+             WHERE om.id = :member AND om.organization_id = :org
+               AND EXISTS (SELECT 1 FROM member_roles mr WHERE mr.member_id = om.id
+                            AND mr.role = CAST('client' AS member_role))
+               FOR UPDATE OF u
+            """)
+            .param("member", memberId)
+            .param("org", orgId)
+            .query((rs, n) -> new IdentityRow(rs.getLong("id"), rs.getString("document_type"),
+                rs.getString("document_number"), rs.getString("first_name"), rs.getString("last_name"),
+                rs.getObject("birth_date", LocalDate.class), rs.getString("email"),
+                rs.getBoolean("logged_in"), rs.getBoolean("elsewhere")))
+            .optional();
+    }
+
+    public boolean documentTaken(String documentNumber, long exceptUserId) {
+        return jdbc.sql("SELECT EXISTS(SELECT 1 FROM users WHERE document_number = :n AND id <> :id)")
+            .param("n", documentNumber).param("id", exceptUserId)
+            .query((rs, n) -> rs.getBoolean(1)).single();
+    }
+
+    public boolean emailTaken(String email, long exceptUserId) {
+        return jdbc.sql("SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(:e) AND id <> :id)")
+            .param("e", email).param("id", exceptUserId)
+            .query((rs, n) -> rs.getBoolean(1)).single();
+    }
+
+    public void updateIdentity(long userId, String documentType, String documentNumber, String firstName,
+                               String lastName, LocalDate birthDate, String email) {
+        jdbc.sql("""
+            UPDATE users
+               SET document_type = CAST(:type AS document_type), document_number = :number,
+                   first_name = :first, last_name = :last, birth_date = :birth, email = :email
+             WHERE id = :id
+            """)
+            .param("type", documentType).param("number", documentNumber).param("first", firstName)
+            .param("last", lastName).param("birth", birthDate).param("email", email).param("id", userId)
+            .update();
+    }
+
     public Optional<Member> findMember(long orgId, long userId) {
         return jdbc.sql("""
             SELECT id, user_id, is_active FROM organization_members
