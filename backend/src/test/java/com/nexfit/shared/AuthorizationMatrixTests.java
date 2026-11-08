@@ -585,6 +585,14 @@ class AuthorizationMatrixTests {
                                 c -> "/clients/" + c.memberB() + "/deactivate", null,
                                 byPath("/clients/%d/deactivate", c -> c.memberB(), null, Set.of(404))));
 
+                // --- Corregir identidad del cliente (NEX-48) ---
+                // Solo el Staff (CLIENTES/CREAR; MODIFICAR también lo tiene el Cliente). El cliente de otro gimnasio recibe el mismo 404 que
+                // un id inexistente.
+                list.add(gated("PATCH /clients/{memberId}/identity", roles(Rol.STAFF),
+                                c -> "/clients/" + c.memberB() + "/identity", "{\"firstName\":\"Matriz\"}",
+                                byPath("/clients/%d/identity", c -> c.memberB(), "{\"firstName\":\"Matriz\"}",
+                                                Set.of(404))));
+
                 // --- Contacto del cliente (NEX-42) ---
                 // GET: la matriz EPS_Y_CONTACTOS/CONSULTAR da ADMIN, STAFF, TRAINER y CLIENT,
                 // pero el servicio solo deja consultar a Staff, Admin y al propio Cliente;
