@@ -13,11 +13,16 @@ import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -295,6 +300,126 @@ class BookingTests {
         assertThat(created).isEqualTo(1);
         assertThat(conflicts).isEqualTo(contenders - 1);
         assertThat(confirmed(cls)).isEqualTo(1);
+    }
+
+    // ---- NEX-63 (TT-12 · RNF-09): 100 solicitudes simultáneas ----------------------------
+
+    private static final int CONTENDERS = 100;
+    private static final Pattern CODE = Pattern.compile("\"code\":\"([A-Z_]+)\"");
+
+    /** 201 se cuenta como {@code CREATED}; un rechazo, por su código (p. ej. {@code CLASS_FULL}). */
+    private static String outcome(MvcResult r) throws Exception {
+        if (status(r) == 201) {
+            return "CREATED";
+        }
+        Matcher m = CODE.matcher(body(r));
+        return m.find() ? m.group(1) : "HTTP_" + status(r);
+    }
+
+    /** Clientes con membresía vigente, ya con sesión iniciada (el costo está en el hash de la contraseña). */
+    private List<Cookie> sessions(Org org, int count) throws Exception {
+        long plan = plan(org.id());
+        List<Cookie> sessions = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            sessions.add(fx.login(memberWithMembership(org, plan).account()));
+        }
+        return sessions;
+    }
+
+    /** Todas las sesiones piden la misma clase a la vez, con un solo disparo de salida; cuenta los resultados. */
+    private Map<String, Integer> race(List<Cookie> sessions, long classId) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(sessions.size());
+        CountDownLatch ready = new CountDownLatch(sessions.size());
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<MvcResult>> results = new ArrayList<>();
+            for (Cookie session : sessions) {
+                results.add(pool.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return book(session, classId, null);
+                }));
+            }
+            ready.await();
+            start.countDown();
+            Map<String, Integer> counts = new TreeMap<>();
+            for (Future<MvcResult> f : results) {
+                counts.merge(outcome(f.get(90, TimeUnit.SECONDS)), 1, Integer::sum);
+            }
+            return counts;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private int rows(long classId) {
+        return jdbc.queryForObject("SELECT count(*) FROM class_bookings WHERE class_id = ?", Integer.class, classId);
+    }
+
+    @Test
+    void cienSolicitudesPorElUltimoCupoDejanExactamenteUnaReservaYElResultadoSeRepite() throws Exception {
+        Org org = fx.orgWithAdmin();
+        List<Cookie> sessions = sessions(org, CONTENDERS);
+
+        for (int round = 1; round <= 3; round++) {
+            long cls = futureClass(org, 1);
+
+            Map<String, Integer> result = race(sessions, cls);
+
+            assertThat(result).as("ronda " + round)
+                .containsExactly(Map.entry("CLASS_FULL", CONTENDERS - 1), Map.entry("CREATED", 1));
+            assertThat(confirmed(cls)).as("ronda " + round).isEqualTo(1);
+            assertThat(rows(cls)).as("los rechazados no dejan filas").isEqualTo(1);
+        }
+    }
+
+    @Test
+    void conCapacidadDiezCienSolicitudesConfirmanDiezYNuncaSuperanLaCapacidad() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long cls = futureClass(org, 10);
+
+        Map<String, Integer> result = race(sessions(org, CONTENDERS), cls);
+
+        assertThat(result).containsExactly(Map.entry("CLASS_FULL", CONTENDERS - 10), Map.entry("CREATED", 10));
+        assertThat(confirmed(cls)).isEqualTo(10);
+        assertThat(rows(cls)).isEqualTo(10);
+    }
+
+    @Test
+    void elMismoClienteQueRepiteLaSolicitudEnParaleloSoloObtieneUnaReserva() throws Exception {
+        Org org = fx.orgWithAdmin();
+        long cls = futureClass(org, 5);
+        Cookie session = sessions(org, 1).get(0);
+
+        Map<String, Integer> result = race(java.util.Collections.nCopies(20, session), cls);
+
+        assertThat(result).containsExactly(Map.entry("ALREADY_BOOKED", 19), Map.entry("CREATED", 1));
+        assertThat(confirmed(cls)).isEqualTo(1);
+        assertThat(rows(cls)).isEqualTo(1);
+    }
+
+    @Test
+    void siSeCancelaMientrasSeReservaElCupoNuncaSeDuplica() throws Exception {
+        Org org = fx.orgWithAdmin();
+        List<Cookie> sessions = sessions(org, CONTENDERS + 1);
+        long cls = futureClass(org, 1);
+        Cookie holder = sessions.get(0);
+        long booking = idOf(body(book(holder, cls, null)));
+        List<Cookie> rivals = sessions.subList(1, sessions.size());
+
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            Future<MvcResult> cancel = pool.submit(() -> send(holder, "PATCH", "/bookings/" + booking + "/cancel", null));
+            Map<String, Integer> result = race(rivals, cls);
+
+            assertThat(status(cancel.get(90, TimeUnit.SECONDS))).isEqualTo(200);
+            assertThat(result.keySet()).as("solo se crea o se rechaza por cupo").isSubsetOf("CREATED", "CLASS_FULL");
+            assertThat(confirmed(cls)).as("nunca supera la capacidad").isLessThanOrEqualTo(1);
+            assertThat(confirmed(cls)).as("cada reserva creada queda confirmada")
+                .isEqualTo(result.getOrDefault("CREATED", 0));
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     // ---- US-33 · cancelar reserva --------------------------------------------------------
