@@ -75,6 +75,22 @@ Respuestas:
 Lista: `{content: [{id, name, branches: [{name, addressLine1, addressLine2, city, department}]}], page, size, totalElements, totalPages}`.
 
 Detalle: `{id, name, branches: [{name, addressLine1, addressLine2, city, department}], plans: [{name, price, durationDays}]}`; los planes van de menor a mayor precio.
+## Auto-registro público (NEX-102, BE-11)
+
+Un visitante crea su propia cuenta, sin sesión. Solo crea la cuenta: no da
+roles ni afiliación a ningún gimnasio (la afiliación con EPS y
+consentimientos sigue en manos del Staff, NEX-39).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/auth/register` | Cualquiera | Crea la cuenta. Devuelve `201` con `{userId}`. |
+
+Cuerpo: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…", "password": "…"}`. La contraseña tiene mínimo 10 caracteres.
+
+Errores:
+- `400 VALIDATION_ERROR` con `{code, field, message}`: campo obligatorio, correo con formato inválido, contraseña corta, tipo de documento inválido o fecha con formato inválido.
+- `409 {message}`: ya existe una cuenta con ese correo o ese documento. El mensaje es el mismo en ambos casos y no revela datos de la otra cuenta.
+
 
 ## Clases del gimnasio (NEX-40, US-29)
 

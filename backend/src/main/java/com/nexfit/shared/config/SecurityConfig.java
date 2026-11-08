@@ -32,9 +32,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Configuración de seguridad.
  *
- * - /actuator/health y /auth/login son públicos (health lo usa Cloud Run y no toca la base de datos).
+ * - /actuator/health y /auth/login son públicos (health lo usa Cloud Run y no
+ * toca la base de datos).
  * - GET /public/gyms y GET /public/gyms/{id} también (NEX-97).
- * - Todo lo demás exige sesión; sin sesión responde 401 (no redirige a un formulario).
+ * - Todo lo demás exige sesión; sin sesión responde 401 (no redirige a un
+ * formulario).
  * - CSRF con cookie XSRF-TOKEN legible por Angular (US-01, NEX-20).
  */
 @Configuration
@@ -45,7 +47,10 @@ public class SecurityConfig {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
-    /** Cookie de sesión explícita: HttpOnly, Secure (COOKIE_SECURE) y SameSite=Lax (RNF-07). */
+    /**
+     * Cookie de sesión explícita: HttpOnly, Secure (COOKIE_SECURE) y SameSite=Lax
+     * (RNF-07).
+     */
     @Bean
     DefaultCookieSerializer cookieSerializer(@Value("${COOKIE_SECURE:true}") boolean secure) {
         DefaultCookieSerializer serializer = new DefaultCookieSerializer();
@@ -58,25 +63,32 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JdbcClient jdbc) throws Exception {
-        // Path=/ (no el context-path /api): Angular lee la cookie con document.cookie desde cualquier ruta.
+        // Path=/ (no el context-path /api): Angular lee la cookie con document.cookie
+        // desde cualquier ruta.
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookiePath("/");
         http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/actuator/health/**", "/auth/login").permitAll()
-                // NEX-97: única excepción pública de lectura; cualquier otro método o ruta sigue exigiendo sesión.
-                .requestMatchers(HttpMethod.GET, "/public/gyms", "/public/gyms/*").permitAll()
-                .anyRequest().authenticated())
-            .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(csrfRepository)
-                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
-            .addFilterAfter(new SessionUserFilter(jdbc), SecurityContextHolderFilter.class)
-            .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+
+                        // NEX-97: única excepción pública de lectura; cualquier otro método o ruta
+                        // sigue exigiendo sesión.
+                        .requestMatchers(HttpMethod.GET, "/public/gyms", "/public/gyms/*").permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfRepository)
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
+                .addFilterAfter(new SessionUserFilter(jdbc), SecurityContextHolderFilter.class)
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
         return http.build();
     }
 
-    /** Token en claro por cabecera (Angular) y enmascarado cuando viene como parámetro. */
+    /**
+     * Token en claro por cabecera (Angular) y enmascarado cuando viene como
+     * parámetro.
+     */
     static final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler {
         private final CsrfTokenRequestHandler plain = new CsrfTokenRequestAttributeHandler();
         private final CsrfTokenRequestHandler xor = new XorCsrfTokenRequestAttributeHandler();
@@ -89,15 +101,18 @@ public class SecurityConfig {
         @Override
         public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken token) {
             return (StringUtils.hasText(request.getHeader(token.getHeaderName())) ? plain : xor)
-                .resolveCsrfTokenValue(request, token);
+                    .resolveCsrfTokenValue(request, token);
         }
     }
 
-    /** Fuerza a escribir la cookie XSRF-TOKEN, que por defecto se carga de forma diferida. */
+    /**
+     * Fuerza a escribir la cookie XSRF-TOKEN, que por defecto se carga de forma
+     * diferida.
+     */
     static final class CsrfCookieFilter extends OncePerRequestFilter {
         @Override
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                        FilterChain chain) throws ServletException, IOException {
+                FilterChain chain) throws ServletException, IOException {
             CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
             if (token != null) {
                 token.getToken();
