@@ -159,6 +159,18 @@ Respuesta `200`: `{memberId, active}`. Repetir la misma acción responde `200` s
 
 Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual para uno de otro gimnasio); `409 MEMBER_HAS_OTHER_ROLES` si además tiene otro rol (entrenador, staff, administrador): esa afiliación se gestiona desde Personal (`/api/staff`); `401` sin sesión.
 
+## Corregir la identidad de un cliente antes de su activación (NEX-48, US-51)
+
+`PATCH /api/clients/{memberId}/identity`. Solo el Staff (CLIENTES/MODIFICAR); Entrenador, Cliente y Administrador reciben `403 ACCESS_DENIED`. El gimnasio sale de la sesión.
+
+Cuerpo: uno o más de `documentType` (`CC`, `CE`, `PPT`, `PA`), `documentNumber` (máx. 30), `firstName` y `lastName` (máx. 100), `birthDate` (`AAAA-MM-DD`, mayor de 18 años, RN-35) y `email`. Los datos que no se envían se conservan; cualquier otro campo se rechaza con `400 VALIDATION_ERROR` y el nombre del campo.
+
+Respuesta `200`: `{memberId, documentType, documentNumber, firstName, lastName, birthDate, email}`. Enviar los mismos valores responde `200` sin cambios ni auditoría. Cada cambio se audita como `IDENTITY_CORRECTED` con `metadata.changes.<campo>.before/after` solo de los campos modificados.
+
+Solo procede mientras la cuenta nunca haya iniciado sesión (no tiene un `LOGIN` auditado) y no tenga afiliación, activa o no, en otro gimnasio (RN-34).
+
+Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual para uno de otro gimnasio); `409 IDENTITY_LOCKED` si la cuenta ya fue activada o tiene otras afiliaciones: la identidad solo se corrige con una solicitud de corrección verificable atendida manualmente; `409 DOCUMENT_ALREADY_EXISTS` o `409 EMAIL_ALREADY_EXISTS` si el documento o el correo (sin distinguir mayúsculas) ya pertenecen a otra persona (RN-26); `400 VALIDATION_ERROR` por datos no válidos o menor de 18 años; `401` sin sesión.
+
 ## Catálogo de EPS, solo lectura (NEX-89)
 
 | Ruta | Quién | Qué hace |
