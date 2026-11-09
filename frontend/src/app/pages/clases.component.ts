@@ -329,9 +329,7 @@ export class ClasesComponent implements OnInit {
     this.errores.set({});
     this.errorGeneral.set(null);
     this.formulario.set(datos);
-    this.personalApi
-      .listar()
-      .subscribe((p) => this.entrenadores.set(p.filter((x) => x.active && x.roles.includes('trainer'))));
+    this.personalApi.entrenadoresActivos().subscribe((p) => this.entrenadores.set(p));
   }
 
   protected guardar() {

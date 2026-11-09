@@ -1,7 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { errorDeApi, TipoDocumento } from '../core/establecimientos.service';
+import { Pagina } from '../core/pagina';
+import { PaginacionComponent } from '../layout/paginacion.component';
 import {
   CambiosPersonal,
   DatosPersonal,
@@ -49,7 +51,7 @@ function vacio(): Formulario {
 
 @Component({
   selector: 'app-personal',
-  imports: [FormsModule],
+  imports: [FormsModule, PaginacionComponent],
   template: `
     <section class="nf-pagina">
       <div class="nf-cabecera">
@@ -214,6 +216,15 @@ function vacio(): Formulario {
         </tbody>
       </table>
       </div>
+      @if (pagina(); as p) {
+        <app-paginacion
+          [pagina]="p.page"
+          [paginas]="p.totalPages"
+          [total]="p.totalElements"
+          etiqueta="personas"
+          (cambiar)="irA($event)"
+        />
+      }
     }
     </section>
   `
@@ -221,7 +232,9 @@ function vacio(): Formulario {
 export class PersonalComponent implements OnInit {
   private readonly api = inject(PersonalService);
 
-  protected readonly lista = signal<Personal[]>([]);
+  protected readonly pagina = signal<Pagina<Personal> | null>(null);
+  protected readonly lista = computed(() => this.pagina()?.content ?? []);
+  private paginaActual = 0;
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
 
@@ -332,11 +345,22 @@ export class PersonalComponent implements OnInit {
     this.formulario.set(datos);
   }
 
+  protected irA(pagina: number) {
+    this.paginaActual = Math.max(pagina, 0);
+    this.recargar();
+  }
+
   private recargar() {
     this.cargando.set(true);
-    this.api.listar().subscribe({
+    this.api.listar(this.paginaActual).subscribe({
       next: (datos) => {
-        this.lista.set(datos);
+        // Si la página actual quedó vacía (p. ej. desapareció el último de la página), se retrocede una.
+        if (datos.content.length === 0 && datos.page > 0 && datos.totalPages > 0) {
+          this.paginaActual = datos.totalPages - 1;
+          this.recargar();
+          return;
+        }
+        this.pagina.set(datos);
         this.error.set(null);
         this.cargando.set(false);
       },

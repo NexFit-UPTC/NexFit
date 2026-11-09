@@ -42,42 +42,48 @@ public class AuditEventRepository {
                         String entityType, Long entityId, OffsetDateTime occurredAt,
                         String ipAddress, Map<String, Object> metadata) { }
 
+    /** Una página de eventos y el total que cumple el filtro. */
+    public record EventPage(List<Event> events, long total) { }
+
     /**
-     * Búsqueda para US-47 (NEX-31). organizationId nulo = sin filtro (Master, toda la
-     * plataforma); con valor = solo ese gimnasio (Admin). Todos los filtros son opcionales.
-     * Los filtros caen sobre los índices de V5 (occurred_at, actor_user_id, event_type).
+     * Búsqueda para US-47 (NEX-31), paginada (BE-12). organizationId nulo = sin filtro (Master, toda la
+     * plataforma); con valor = solo ese gimnasio (Admin). Todos los filtros son opcionales. Orden estable:
+     * más reciente primero y, a igual instante, por id descendente. Los filtros caen sobre los índices de V5
+     * (occurred_at, actor_user_id, event_type).
      */
     @SuppressWarnings("unchecked")
-    public List<Event> search(Long organizationId, LocalDate from, LocalDate to,
-                              Long actorUserId, String eventType) {
-        StringBuilder sql = new StringBuilder("""
-            SELECT id, organization_id, actor_user_id, event_type, entity_type, entity_id,
-                   occurred_at, host(ip_address) AS ip, metadata::text AS metadata_json
-            FROM audit_events WHERE 1 = 1
-            """);
+    public EventPage search(Long organizationId, LocalDate from, LocalDate to, Long actorUserId, String eventType,
+                            int limit, long offset) {
+        StringBuilder where = new StringBuilder(" WHERE 1 = 1");
         List<Object> args = new ArrayList<>();
         if (organizationId != null) {
-            sql.append(" AND organization_id = ?");
+            where.append(" AND organization_id = ?");
             args.add(organizationId);
         }
         if (from != null) {
-            sql.append(" AND occurred_at::date >= ?");
+            where.append(" AND occurred_at::date >= ?");
             args.add(from);
         }
         if (to != null) {
-            sql.append(" AND occurred_at::date <= ?");
+            where.append(" AND occurred_at::date <= ?");
             args.add(to);
         }
         if (actorUserId != null) {
-            sql.append(" AND actor_user_id = ?");
+            where.append(" AND actor_user_id = ?");
             args.add(actorUserId);
         }
         if (eventType != null) {
-            sql.append(" AND event_type = ?");
+            where.append(" AND event_type = ?");
             args.add(eventType);
         }
-        sql.append(" ORDER BY occurred_at DESC");
-        return jdbc.query(sql.toString(), (rs, n) -> row(rs), args.toArray());
+        Long total = jdbc.queryForObject("SELECT count(*) FROM audit_events" + where, Long.class, args.toArray());
+        String sql = "SELECT id, organization_id, actor_user_id, event_type, entity_type, entity_id,"
+            + " occurred_at, host(ip_address) AS ip, metadata::text AS metadata_json FROM audit_events" + where
+            + " ORDER BY occurred_at DESC, id DESC LIMIT ? OFFSET ?";
+        List<Object> pageArgs = new ArrayList<>(args);
+        pageArgs.add(limit);
+        pageArgs.add(offset);
+        return new EventPage(jdbc.query(sql, (rs, n) -> row(rs), pageArgs.toArray()), total == null ? 0 : total);
     }
 
     private Event row(ResultSet rs) throws SQLException {

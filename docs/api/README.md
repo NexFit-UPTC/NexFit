@@ -183,6 +183,25 @@ Errores: `404` si el cliente no existe en el gimnasio o no es cliente (igual par
 El Entrenador recibe `403 ACCESS_DENIED` y sin sesión, `401`. Quien no es Master recibe `403` al crear, renombrar o activar (US-18, NEX-30).
 
 
+## Listados paginados (NEX-106, BE-12)
+
+`GET /api/audit/events` y `GET /api/staff` responden una página, igual que `/api/public/gyms` y `/api/clients`:
+
+```json
+{"content": [...], "page": 0, "size": 20, "totalElements": 55, "totalPages": 3}
+```
+
+| Parámetro | Valor |
+|---|---|
+| `page` | Desde 0; un valor negativo se toma como 0. Una página más allá del final responde `content: []` con el total intacto. |
+| `size` | Por defecto 20, máximo 50; menor que 1 se toma como 20 y mayor que 50 como 50. |
+
+**Auditoría** (`GET /api/audit/events`, Master y Administrador). Conserva los filtros `from`, `to`, `userId` y `type`; el total y las páginas respetan el filtro. Orden: más reciente primero y, a igual instante, por `id` descendente, de modo que recorrer las páginas no repite ni omite eventos. El Administrador solo cuenta los de su gimnasio; el Master, los de toda la plataforma.
+
+**Personal** (`GET /api/staff`, Administrador). Lista a quienes tienen algún rol distinto de cliente (administrador, staff, entrenador); los clientes tienen su propio listado (`/api/clients`). Filtro opcional `role` (`admin`, `staff`, `trainer` o `client`, sin distinguir mayúsculas; otro valor responde `400 VALIDATION_ERROR` con `field: "role"`). Orden: apellido, nombre y `memberId`.
+
+**Sin paginar (evaluados)**: `/api/membership-plans`, `/api/branches`, `/api/establishments` y `/api/auth/establishments`. Cada uno está acotado por el gimnasio o por la persona (planes y sedes de un gimnasio; los gimnasios de una cuenta) y el conjunto más grande, `large`, tiene 15 gimnasios y 45 sedes en toda la plataforma; el listado público de gimnasios, que sí crece con la plataforma, ya está paginado. Se revisa si algún gimnasio supera cientos de planes o sedes.
+
 ## Pagos (NEX-45, NEX-51, NEX-50, NEX-54)
 
 Rutas bajo `/api/payments`. El gimnasio sale de la sesión. No hay ruta de borrado (RN-31) ni pasarela de pago (RN-19).

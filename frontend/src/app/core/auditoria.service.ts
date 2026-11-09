@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { Pagina, TAMANO_PAGINA } from './pagina';
 
 export interface EventoAuditoria {
   id: number;
@@ -49,12 +50,13 @@ export const TIPOS_EVENTO: Record<string, string> = {
 export class AuditoriaService {
   private readonly http = inject(HttpClient);
 
-  buscar(filtro: FiltroAuditoria = {}): Observable<EventoAuditoria[]> {
+  buscar(filtro: FiltroAuditoria = {}, page = 0, size = TAMANO_PAGINA): Observable<Pagina<EventoAuditoria>> {
     let params = new HttpParams();
     if (filtro.from) params = params.set('from', filtro.from);
     if (filtro.to) params = params.set('to', filtro.to);
     if (filtro.userId !== undefined) params = params.set('userId', filtro.userId);
     if (filtro.type) params = params.set('type', filtro.type);
-    return this.http.get<EventoAuditoria[]>('/api/audit/events', { params });
+    params = params.set('page', page).set('size', size);
+    return this.http.get<Pagina<EventoAuditoria>>('/api/audit/events', { params });
   }
 }
