@@ -1,7 +1,7 @@
 # Guion de la demo final (TT-20, NEX-93)
 
 Recorrido de unos 12 minutos: **Master → Administrador → Staff → Cliente** (y un vistazo al Entrenador). Se usa el
-conjunto `demo` (gimnasios *Iron Peak Fitness* y *Vital Gym*, ver `docs/seeds/usuarios-demo.md`). La contraseña de las
+conjunto `demo` (gimnasios *Iron Peak Fitness* y *Vital Studio*, ver `docs/seeds/usuarios-demo.md`). La contraseña de las
 cuentas es la de `NEXFIT_SEED_PASSWORD`; el Master usa la que se definió al correr el bootstrap.
 
 ## Antes de empezar (T − 10 min)
