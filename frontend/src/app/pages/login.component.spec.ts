@@ -169,4 +169,24 @@ describe('LoginComponent', () => {
     otro.detectChanges();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
+
+  describe('aviso de cuenta creada', () => {
+    function abrirCon(registrado?: string) {
+      const ruta = TestBed.inject(ActivatedRoute);
+      vi.spyOn(ruta.snapshot.queryParamMap, 'get').mockImplementation((k) => (k === 'registrado' ? (registrado ?? null) : null));
+      const f = TestBed.createComponent(LoginComponent);
+      f.detectChanges();
+      return f.nativeElement as HTMLElement;
+    }
+    afterEach(() => vi.restoreAllMocks());
+
+    it('con ?registrado=1 muestra el aviso', () => {
+      expect(abrirCon('1').querySelector('[role=status]')?.textContent).toContain('Cuenta creada');
+    });
+
+    it('sin el parámetro (o con otro valor) no lo muestra', () => {
+      expect(abrirCon().textContent).not.toContain('Cuenta creada');
+      expect(abrirCon('0').textContent).not.toContain('Cuenta creada');
+    });
+  });
 });

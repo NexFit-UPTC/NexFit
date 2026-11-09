@@ -39,9 +39,12 @@ export class LoginComponent {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly verClave = signal(false);
+  protected readonly cuentaCreada: boolean;
 
   constructor() {
-    guardarGimnasio(inject(ActivatedRoute).snapshot.queryParamMap.get('gimnasio'));
+    const consulta = inject(ActivatedRoute).snapshot.queryParamMap;
+    this.cuentaCreada = consulta.get('registrado') === '1';
+    guardarGimnasio(consulta.get('gimnasio'));
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {
       const destino = DESTINOS[this.sesion.estado()];

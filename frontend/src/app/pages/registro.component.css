@@ -1,0 +1,15 @@
+.titulo {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+form {
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+.mostrar {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+}
