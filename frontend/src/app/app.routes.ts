@@ -3,6 +3,8 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { gestionGuard } from './core/personal-gestion.guard';
 import { asignacionesGuard, clienteGuard, entrenadorGuard, rutinasGuard } from './core/asignaciones.guard';
+import { destinoPorRol } from './core/destino-por-rol';
+import { inicioGuard } from './core/inicio.guard';
 import { equiposGuard } from './core/equipos.guard';
 import { panelGuard } from './core/panel.guard';
 import { SessionService } from './core/session.service';
@@ -12,7 +14,10 @@ import { staffGuard } from './core/staff.guard';
 import { LayoutComponent } from './layout/layout.component';
 
 export const routes: Routes = [
+  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/inicio-publico.component').then((m) => m.InicioPublicoComponent), canActivate: [inicioGuard], data: { public: true } },
+  { path: 'gimnasios/:id', loadComponent: () => import('./pages/gimnasio-detalle.component').then((m) => m.GimnasioDetalleComponent), canActivate: [sessionGuard], data: { public: true } },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent), canActivate: [sessionGuard], data: { public: true } },
+  { path: 'registro', loadComponent: () => import('./pages/registro.component').then((m) => m.RegistroComponent), canActivate: [inicioGuard], data: { public: true } },
   { path: 'establecimiento', loadComponent: () => import('./pages/establecimiento.component').then((m) => m.EstablecimientoComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   { path: 'cambiar-contrasena', loadComponent: () => import('./pages/cambiar-contrasena.component').then((m) => m.CambiarContrasenaComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   {
@@ -47,11 +52,7 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        redirectTo: () => {
-          const sesion = inject(SessionService);
-          if (sesion.esMaster() || sesion.roles().includes('admin')) return 'panel';
-          return sesion.roles().includes('client') && !sesion.roles().includes('trainer') ? 'inicio' : 'mi-perfil';
-        }
+        redirectTo: () => destinoPorRol(inject(SessionService))
       }
     ]
   },

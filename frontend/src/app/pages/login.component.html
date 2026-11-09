@@ -5,6 +5,10 @@
     <p class="nf-ayuda" role="status">Verificando sesión…</p>
   }
 
+  @if (cuentaCreada) {
+    <p class="nf-ayuda" role="status">Cuenta creada. Inicia sesión con tu correo y tu contraseña.</p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>
@@ -59,6 +63,8 @@
       {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
     </button>
   </form>
+
+  <p class="nf-ayuda">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
 
   <p class="nf-ayuda">¿Olvidaste tu contraseña? Pídele a tu gimnasio que te asigne una contraseña temporal.</p>
 </app-auth-shell>

@@ -90,6 +90,45 @@ describe('EstablecimientoComponent', () => {
     expect(el().querySelector('[role=alert]')?.textContent).toContain('ya no está disponible');
   });
 
+  describe('gimnasio preseleccionado', () => {
+    function abrir(guardado: string | null) {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()]
+      });
+      if (guardado) sessionStorage.setItem('nexfit.gimnasio', guardado);
+      else sessionStorage.removeItem('nexfit.gimnasio');
+      fixture = TestBed.createComponent(EstablecimientoComponent);
+      fixture.detectChanges();
+      http = TestBed.inject(HttpTestingController);
+    }
+
+    it('resalta el afiliado, sin elegirlo, y borra la clave al entrar', async () => {
+      abrir('2');
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+      await cargarLista();
+      const opciones = el().querySelectorAll('button.opcion');
+      expect(opciones[0].getAttribute('data-sugerido')).toBeNull();
+      expect(opciones[1].getAttribute('data-sugerido')).toBe('true');
+      http.expectNone('/api/auth/establishment');
+    });
+
+    it('ignora un id al que la persona no está afiliada', async () => {
+      abrir('99');
+      await cargarLista();
+      expect(el().querySelector('[data-sugerido]')).toBeNull();
+    });
+
+    it('elegir borra la clave', async () => {
+      await cargarLista();
+      sessionStorage.setItem('nexfit.gimnasio', '2');
+      el().querySelectorAll<HTMLButtonElement>('button.opcion')[1].click();
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+      http.expectOne('/api/auth/establishment').flush({ message: 'x' }, { status: 400, statusText: '' });
+      await fixture.whenStable();
+    });
+  });
+
   it('lista vacía: lo dice y deja cerrar sesión', async () => {
     await cargarLista([]);
     expect(el().textContent).toContain('No tienes ningún establecimiento activo');

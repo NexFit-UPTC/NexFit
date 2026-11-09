@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { borrarGimnasio } from './gimnasio-preseleccionado';
 import { SessionService } from './session.service';
 
 export interface Establecimiento {
@@ -14,6 +15,16 @@ interface RespuestaLogin {
   userId: number;
   mustChangePassword: boolean;
   establishments: Establecimiento[];
+}
+
+export interface DatosRegistro {
+  documentType: string;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  email: string;
+  password: string;
 }
 
 /**
@@ -47,6 +58,11 @@ export class AuthService {
     }
   }
 
+  /** POST /api/auth/register: crea solo la cuenta (201 {userId}); no abre sesión. La contraseña va tal cual, sin recortar. */
+  async registrar(datos: DatosRegistro): Promise<void> {
+    await firstValueFrom(this.http.post<{ userId: number }>('/api/auth/register', datos));
+  }
+
   /** POST /api/auth/password: contraseña temporal o voluntaria (mínimo 10 caracteres en el servidor). */
   async cambiarContrasena(actual: string, nueva: string): Promise<void> {
     await firstValueFrom(
@@ -64,6 +80,7 @@ export class AuthService {
 
   /** POST /api/auth/establishment. Devuelve false si, aun elegido, el establecimiento no deja operar. */
   async elegirEstablecimiento(organizationId: number): Promise<boolean> {
+    borrarGimnasio();
     await firstValueFrom(this.http.post<void>('/api/auth/establishment', { organizationId }));
     await this.sesion.cargar();
     if (this.sesion.estado() !== 'activa') {
@@ -80,6 +97,7 @@ export class AuthService {
     } catch {
       // 401: la sesión ya había terminado en el servidor.
     }
+    borrarGimnasio();
     this.sesion.limpiar();
     this.sesion.mensaje.set(null);
     this.sesion.estado.set('anonimo');
@@ -89,6 +107,8 @@ export class AuthService {
   /** Recarga /me y deja que los guards lleven a la persona a donde corresponda. */
   private async entrar(): Promise<void> {
     await this.sesion.cargar();
+    // Sesión activa por entrada directa: ya no hay nada que preseleccionar.
+    if (this.sesion.estado() === 'activa') borrarGimnasio();
     await this.router.navigateByUrl('/');
   }
 }

@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { AuthService, Establecimiento } from '../core/auth.service';
+import { borrarGimnasio, leerGimnasio } from '../core/gimnasio-preseleccionado';
 import { AuthShellComponent } from './auth-shell.component';
 
 const ROLES: Record<string, string> = {
@@ -30,7 +31,11 @@ export class EstablecimientoComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly etiqueta = etiquetaDeRol;
 
+  /** Gimnasio traído desde la pantalla pública: solo se resalta si la persona está afiliada. */
+  protected readonly sugerido = leerGimnasio();
+
   async ngOnInit(): Promise<void> {
+    borrarGimnasio();
     await this.cargar();
   }
 

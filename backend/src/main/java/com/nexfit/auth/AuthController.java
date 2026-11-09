@@ -65,9 +65,11 @@ class AuthController {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$");
 
     private final AuthService auth;
+    private final RegisterRateLimiter registerLimiter;
 
-    AuthController(AuthService auth) {
+    AuthController(AuthService auth, RegisterRateLimiter registerLimiter) {
         this.auth = auth;
+        this.registerLimiter = registerLimiter;
     }
 
     // Declarativo: /auth/login es pública por SecurityConfig, no por esta
@@ -111,6 +113,12 @@ class AuthController {
     @AnyAuthenticated
     @PostMapping("/register")
     ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest body, HttpServletRequest request) {
+        if (!registerLimiter.allow(request.getRemoteAddr())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(RegisterRateLimiter.WINDOW.toSeconds()))
+                    .body(Map.of("code", "TOO_MANY_REQUESTS",
+                            "message", "Demasiados registros desde esta conexión. Inténtalo de nuevo más tarde"));
+        }
         if (body.documentType() == null || body.documentType().isBlank()) {
             return invalid("documentType", "El tipo de documento es obligatorio");
         }
@@ -153,6 +161,10 @@ class AuthController {
         if (body.password() == null || body.password().length() < AuthService.MIN_PASSWORD_LENGTH) {
             return invalid("password", "La contraseña debe tener al menos "
                     + AuthService.MIN_PASSWORD_LENGTH + " caracteres");
+        }
+        if (AuthService.tooLong(body.password())) {
+            return invalid("password", "La contraseña no puede superar " + AuthService.MAX_PASSWORD_LENGTH
+                    + " caracteres");
         }
         RegisterResult result = auth.register(body.documentType().trim(), body.documentNumber().trim(),
                 body.firstName().trim(), body.lastName().trim(), birthDate, body.email().trim(),
@@ -218,6 +230,8 @@ class AuthController {
             case CHANGED -> ResponseEntity.noContent().build();
             case TOO_SHORT -> badRequest("La contraseña debe tener al menos "
                     + AuthService.MIN_PASSWORD_LENGTH + " caracteres");
+            case TOO_LONG -> badRequest("La contraseña no puede superar "
+                    + AuthService.MAX_PASSWORD_LENGTH + " caracteres");
             case WRONG_CURRENT -> badRequest("La contraseña actual no es correcta");
             case SAME_AS_CURRENT -> badRequest("La contraseña nueva debe ser distinta de la actual");
         };

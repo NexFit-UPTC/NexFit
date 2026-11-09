@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import com.nexfit.shared.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,8 +103,13 @@ class StaffService {
     }
 
     @Transactional(readOnly = true)
-    public List<StaffDetail> list(long orgId) {
-        return repo.listMembers(orgId).stream().map(this::toDetail).toList();
+    public PageResult<StaffDetail> list(long orgId, String role, int page, int size) {
+        int pageSize = PageResult.sizeOf(size);
+        int pageIndex = PageResult.pageOf(page);
+        long total = repo.countMembers(orgId, role);
+        List<StaffDetail> content = repo.listMembers(orgId, role, pageSize, (long) pageIndex * pageSize).stream()
+            .map(this::toDetail).toList();
+        return PageResult.of(content, pageIndex, pageSize, total);
     }
 
     @Transactional(readOnly = true)
