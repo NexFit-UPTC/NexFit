@@ -28,6 +28,16 @@ const staff = {
   trainerProfile: null
 };
 
+const pagina = (content: object[], extra: object = {}) => ({
+  content,
+  page: 0,
+  size: 20,
+  totalElements: content.length,
+  totalPages: content.length ? 1 : 0,
+  ...extra
+});
+const LISTA = '/api/staff?page=0&size=20';
+
 describe('PersonalComponent', () => {
   let fixture: ComponentFixture<PersonalComponent>;
   let http: HttpTestingController;
@@ -46,7 +56,7 @@ describe('PersonalComponent', () => {
   const el = () => fixture.nativeElement as HTMLElement;
 
   async function cargar(cuerpo: object[] = [entrenador, staff]) {
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush(cuerpo);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina(cuerpo));
     await fixture.whenStable();
     fixture.detectChanges();
   }
@@ -94,7 +104,7 @@ describe('PersonalComponent', () => {
   });
 
   it('si el listado falla, muestra el error', async () => {
-    http.expectOne('/api/staff').flush(null, { status: 500, statusText: 'x' });
+    http.expectOne(LISTA).flush(null, { status: 500, statusText: 'x' });
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el().querySelector('[role="alert"]')?.textContent).toContain('No se pudo cargar');
@@ -118,7 +128,7 @@ describe('PersonalComponent', () => {
     });
     expect(req.request.body.specialty).toBeUndefined();
     req.flush({ userId: 30, memberId: 40, temporaryPassword: 'Temp-123-abc' }, { status: 201, statusText: 'Created' });
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([entrenador]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([entrenador]));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el().querySelector('[role="status"]')?.textContent).toContain('Temp-123-abc');
@@ -145,7 +155,7 @@ describe('PersonalComponent', () => {
     expect(req.request.body).toMatchObject({ roles: ['trainer'], specialty: 'Yoga', hireDate: '2026-02-01' });
     expect(req.request.body.certification).toBeUndefined();
     req.flush({ userId: 30, memberId: 40, temporaryPassword: 'x' }, { status: 201, statusText: 'Created' });
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([]));
   });
 
   it('una persona que ya existía queda afiliada y no hay contraseña', async () => {
@@ -159,7 +169,7 @@ describe('PersonalComponent', () => {
       firstName: 'Ana',
       lastName: 'Mora'
     });
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([]));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el().querySelector('[role="status"]')?.textContent).toContain('ya existía');
@@ -209,7 +219,7 @@ describe('PersonalComponent', () => {
     const req = http.expectOne({ method: 'PATCH', url: '/api/staff/11' });
     expect(req.request.body).toMatchObject({ roles: ['staff', 'trainer'], specialty: 'Crossfit', hireDate: '2025-01-10' });
     req.flush(entrenador);
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([entrenador]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([entrenador]));
   });
 
   it('desactivar usa POST /deactivate y activar usa POST /activate', async () => {
@@ -220,13 +230,13 @@ describe('PersonalComponent', () => {
 
     botones[0].click();
     http.expectOne({ method: 'POST', url: '/api/staff/11/deactivate' }).flush({ ...entrenador, active: false });
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([{ ...entrenador, active: false }, staff]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([{ ...entrenador, active: false }, staff]));
     await fixture.whenStable();
     fixture.detectChanges();
 
     el().querySelectorAll<HTMLButtonElement>('button.alternar')[1].click();
     http.expectOne({ method: 'POST', url: '/api/staff/12/activate' }).flush({ ...staff, active: true });
-    http.expectOne({ method: 'GET', url: '/api/staff' }).flush([]);
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([]));
   });
 
   it('si activar/desactivar falla, muestra el mensaje de la API', async () => {
@@ -239,5 +249,37 @@ describe('PersonalComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el().querySelector('[role="alert"]')?.textContent).toContain('Miembro no encontrado');
+  });
+
+  it('pagina el personal: muestra el total y pide la página siguiente', async () => {
+    http
+      .expectOne({ method: 'GET', url: LISTA })
+      .flush(pagina([entrenador, staff], { totalElements: 45, totalPages: 3 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().textContent).toContain('45 personas · página 1 de 3');
+    el().querySelector<HTMLButtonElement>('button.siguiente')!.click();
+    http
+      .expectOne({ method: 'GET', url: '/api/staff?page=1&size=20' })
+      .flush(pagina([staff], { page: 1, totalElements: 45, totalPages: 3 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().textContent).toContain('página 2 de 3');
+  });
+
+  it('si la página actual queda vacía retrocede a la última que existe', async () => {
+    http
+      .expectOne({ method: 'GET', url: LISTA })
+      .flush(pagina([entrenador], { totalElements: 21, totalPages: 2 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    el().querySelector<HTMLButtonElement>('button.siguiente')!.click();
+    http
+      .expectOne({ method: 'GET', url: '/api/staff?page=1&size=20' })
+      .flush(pagina([], { page: 1, totalElements: 20, totalPages: 1 }));
+    http.expectOne({ method: 'GET', url: LISTA }).flush(pagina([entrenador], { totalElements: 20, totalPages: 1 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el().textContent).toContain('página 1 de 1');
   });
 });

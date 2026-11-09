@@ -122,15 +122,39 @@ public class StaffRepository {
             .optional();
     }
 
-    public List<MemberInfo> listMembers(long orgId) {
-        return jdbc.sql("""
+    /**
+     * Personal del gimnasio: quienes tienen algún rol distinto de cliente (o, con {@code role}, ese rol). Los
+     * clientes tienen su propio listado (/clients) y son la gran mayoría de los miembros.
+     */
+    private static String staffFilter(String role) {
+        return role == null
+            ? " AND EXISTS (SELECT 1 FROM member_roles r WHERE r.member_id = om.id"
+                + " AND r.role <> CAST('client' AS member_role))"
+            : " AND EXISTS (SELECT 1 FROM member_roles r WHERE r.member_id = om.id"
+                + " AND r.role = CAST(:role AS member_role))";
+    }
+
+    public long countMembers(long orgId, String role) {
+        JdbcClient.StatementSpec spec = jdbc.sql("SELECT count(*) FROM organization_members om"
+            + " WHERE om.organization_id = :org" + staffFilter(role)).param("org", orgId);
+        if (role != null) {
+            spec = spec.param("role", role);
+        }
+        return spec.query(Long.class).single();
+    }
+
+    public List<MemberInfo> listMembers(long orgId, String role, int limit, long offset) {
+        JdbcClient.StatementSpec spec = jdbc.sql("""
             SELECT om.id AS member_id, om.user_id, u.document_type::text AS document_type,
                    u.document_number, u.first_name, u.last_name, u.birth_date, u.email, om.is_active
             FROM organization_members om JOIN users u ON u.id = om.user_id
-            WHERE om.organization_id = :org
-            ORDER BY u.last_name, u.first_name
-            """)
-            .param("org", orgId)
+            WHERE om.organization_id = :org""" + staffFilter(role)
+            + " ORDER BY u.last_name, u.first_name, om.id LIMIT :limit OFFSET :offset")
+            .param("org", orgId).param("limit", limit).param("offset", offset);
+        if (role != null) {
+            spec = spec.param("role", role);
+        }
+        return spec
             .query((rs, n) -> new MemberInfo(rs.getLong("member_id"), rs.getLong("user_id"),
                 rs.getString("document_type"), rs.getString("document_number"),
                 rs.getString("first_name"), rs.getString("last_name"),

@@ -1,6 +1,7 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { expand, map, Observable, reduce, EMPTY } from 'rxjs';
+import { Pagina, TAMANO_MAXIMO, TAMANO_PAGINA } from './pagina';
 import { TipoDocumento } from './establecimientos.service';
 
 export type RolPersonal = 'staff' | 'trainer';
@@ -58,8 +59,21 @@ export interface ResultadoPersonal {
 export class PersonalService {
   private readonly http = inject(HttpClient);
 
-  listar(): Observable<Personal[]> {
-    return this.http.get<Personal[]>('/api/staff');
+  /** Una página del personal (administrador, staff y entrenadores); `rol` filtra por un solo rol. */
+  listar(page = 0, size = TAMANO_PAGINA, rol?: string): Observable<Pagina<Personal>> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (rol) params = params.set('role', rol);
+    return this.http.get<Pagina<Personal>>('/api/staff', { params });
+  }
+
+  /** Todos los entrenadores activos, para elegirlos en un formulario: recorre las páginas del servidor. */
+  entrenadoresActivos(): Observable<Personal[]> {
+    return this.listar(0, TAMANO_MAXIMO, 'trainer').pipe(
+      expand((p) => (p.page + 1 < p.totalPages ? this.listar(p.page + 1, TAMANO_MAXIMO, 'trainer') : EMPTY)),
+      map((p) => p.content),
+      reduce((todos, pagina) => [...todos, ...pagina], [] as Personal[]),
+      map((todos) => todos.filter((t) => t.active))
+    );
   }
 
   crear(datos: DatosPersonal): Observable<ResultadoPersonal> {

@@ -2,9 +2,9 @@ package com.nexfit.audit;
 
 import com.nexfit.shared.Accion;
 import com.nexfit.shared.Funcion;
+import com.nexfit.shared.PageResult;
 import com.nexfit.shared.RequiresAccess;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -36,7 +36,9 @@ class AuditController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String type) {
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + PageResult.DEFAULT_SIZE) int size) {
         AuditEventType eventType = null;
         if (type != null) {
             try {
@@ -46,8 +48,7 @@ class AuditController {
             }
         }
         try {
-            List<AuditQueryService.AuditEvent> events = audit.search(from, to, userId, eventType);
-            return ResponseEntity.ok(events);
+            return ResponseEntity.ok(audit.search(from, to, userId, eventType, page, size));
         } catch (AccessDeniedException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("code", "ACCESS_DENIED", "message", "Sin establecimiento activo"));

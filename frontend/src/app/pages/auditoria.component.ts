@@ -1,12 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuditoriaService, EventoAuditoria, TIPOS_EVENTO } from '../core/auditoria.service';
+import { Pagina } from '../core/pagina';
+import { PaginacionComponent } from '../layout/paginacion.component';
 
 /** Consulta de la auditoría (solo lectura, RN-40): filtra por fechas y tipo de evento. */
 @Component({
   selector: 'app-auditoria',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, PaginacionComponent],
   template: `
     <section class="nf-pagina">
       <div class="nf-cabecera">
@@ -61,6 +63,15 @@ import { AuditoriaService, EventoAuditoria, TIPOS_EVENTO } from '../core/auditor
             }
           </tbody>
         </table>
+        @if (pagina(); as p) {
+          <app-paginacion
+            [pagina]="p.page"
+            [paginas]="p.totalPages"
+            [total]="p.totalElements"
+            etiqueta="eventos"
+            (cambiar)="irA($event)"
+          />
+        }
       }
     </section>
   `
@@ -72,7 +83,9 @@ export class AuditoriaComponent implements OnInit {
   protected readonly tipo = signal('');
   protected readonly desde = signal('');
   protected readonly hasta = signal('');
-  protected readonly eventos = signal<EventoAuditoria[]>([]);
+  protected readonly pagina = signal<Pagina<EventoAuditoria> | null>(null);
+  protected readonly eventos = computed(() => this.pagina()?.content ?? []);
+  private paginaActual = 0;
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
 
@@ -93,20 +106,30 @@ export class AuditoriaComponent implements OnInit {
     if (cambio.tipo !== undefined) this.tipo.set(cambio.tipo);
     if (cambio.desde !== undefined) this.desde.set(cambio.desde);
     if (cambio.hasta !== undefined) this.hasta.set(cambio.hasta);
+    // Un filtro nuevo vuelve a la primera página; si no, se podría quedar en una que ya no existe.
+    this.paginaActual = 0;
+    this.recargar();
+  }
+
+  protected irA(pagina: number) {
+    this.paginaActual = Math.max(pagina, 0);
     this.recargar();
   }
 
   private recargar() {
     this.cargando.set(true);
     this.api
-      .buscar({
-        ...(this.tipo() ? { type: this.tipo() } : {}),
-        ...(this.desde() ? { from: this.desde() } : {}),
-        ...(this.hasta() ? { to: this.hasta() } : {})
-      })
+      .buscar(
+        {
+          ...(this.tipo() ? { type: this.tipo() } : {}),
+          ...(this.desde() ? { from: this.desde() } : {}),
+          ...(this.hasta() ? { to: this.hasta() } : {})
+        },
+        this.paginaActual
+      )
       .subscribe({
         next: (datos) => {
-          this.eventos.set(datos);
+          this.pagina.set(datos);
           this.error.set(null);
           this.cargando.set(false);
         },

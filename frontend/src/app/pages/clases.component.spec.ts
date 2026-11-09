@@ -125,8 +125,17 @@ describe('ClasesComponent', () => {
     expect(boton('Reservar')).toBeUndefined();
     boton('Programar clase')!.click();
     http
-      .expectOne({ method: 'GET', url: '/api/staff' })
-      .flush([{ memberId: 9, firstName: 'Carlos', lastName: 'Rojas', active: true, roles: ['trainer'] }, { memberId: 10, firstName: 'Sol', lastName: 'Mora', active: true, roles: ['staff'] }]);
+      .expectOne({ method: 'GET', url: '/api/staff?page=0&size=50&role=trainer' })
+      .flush({
+        content: [
+          { memberId: 9, firstName: 'Carlos', lastName: 'Rojas', active: true, roles: ['trainer'] },
+          { memberId: 10, firstName: 'Inés', lastName: 'Mora', active: false, roles: ['trainer'] }
+        ],
+        page: 0,
+        size: 50,
+        totalElements: 2,
+        totalPages: 1
+      });
     await estabilizar();
     expect(el().querySelectorAll('select[name="trainerMemberId"] option')).toHaveLength(2);
     const poner = (nombre: string, valor: string) => {

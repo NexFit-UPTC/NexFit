@@ -4,6 +4,7 @@ import com.nexfit.administration.StaffService.StaffDetail;
 import com.nexfit.shared.Accion;
 import com.nexfit.shared.ActiveOrganization;
 import com.nexfit.shared.Funcion;
+import com.nexfit.shared.PageResult;
 import com.nexfit.shared.RequiresAccess;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -39,6 +41,7 @@ class StaffController {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s.]+(\\.[^@\\s.]+)+$");
     private static final Set<String> DOCUMENT_TYPES = Set.of("CC", "CE", "PPT", "PA");
     private static final Set<String> STAFF_ROLES = Set.of("staff", "trainer");
+    private static final Set<String> LIST_ROLES = Set.of("admin", "staff", "trainer", "client");
 
     private final StaffService staff;
 
@@ -136,9 +139,17 @@ class StaffController {
 
     @RequiresAccess(funcion = Funcion.PERSONAL_Y_ROLES, accion = Accion.CONSULTAR)
     @GetMapping
-    ResponseEntity<?> list() {
-        long orgId = ActiveOrganization.id();
-        return ResponseEntity.ok(staff.list(orgId).stream().map(this::toMap).toList());
+    ResponseEntity<?> list(@RequestParam(required = false) String role,
+                           @RequestParam(defaultValue = "0") int page,
+                           @RequestParam(defaultValue = "" + PageResult.DEFAULT_SIZE) int size) {
+        String wanted = role == null || role.isBlank() ? null : role.trim().toLowerCase(java.util.Locale.ROOT);
+        if (wanted != null && !LIST_ROLES.contains(wanted)) {
+            return ResponseEntity.badRequest().body(Map.of("code", "VALIDATION_ERROR", "field", "role",
+                "message", "El rol debe ser admin, staff, trainer o client"));
+        }
+        var result = staff.list(ActiveOrganization.id(), wanted, page, size);
+        return ResponseEntity.ok(new PageResult<>(result.content().stream().map(this::toMap).toList(),
+            result.page(), result.size(), result.totalElements(), result.totalPages()));
     }
 
     @RequiresAccess(funcion = Funcion.PERSONAL_Y_ROLES, accion = Accion.CONSULTAR)
