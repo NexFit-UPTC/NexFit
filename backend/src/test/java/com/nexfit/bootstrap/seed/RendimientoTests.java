@@ -61,16 +61,19 @@ class RendimientoTests {
     @Autowired
     MockMvc mvc;
 
-    private record Gym(Cookie session, long branchId, List<Long> clients) { }
+    private record Gym(int number, long branchId, List<Long> clients) { }
 
     private record Sample(String kind, long millis, int status) { }
 
-    private Gym openGym(int g) throws Exception {
+    private Cookie login(int g) throws Exception {
         MvcResult login = mvc.perform(post("/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content("{\"email\":\"carga%d.admin@nexfit.test\",\"password\":\"%s\"}".formatted(g, PASSWORD)))
             .andReturn();
         assertThat(login.getResponse().getStatus()).as("login del Administrador del gimnasio " + g).isEqualTo(200);
-        Cookie session = login.getResponse().getCookie("NEXFIT_SESSION");
+        return login.getResponse().getCookie("NEXFIT_SESSION");
+    }
+
+    private Gym openGym(int g) {
         long org = jdbc.queryForObject("SELECT id FROM organizations WHERE name = ?", Long.class,
             "Gimnasio Carga " + g);
         long branch = jdbc.queryForObject("SELECT id FROM branches WHERE organization_id = ? LIMIT 1", Long.class, org);
@@ -78,7 +81,7 @@ class RendimientoTests {
                 SELECT member_id FROM member_roles WHERE organization_id = ? AND role = CAST('client' AS member_role)
                  ORDER BY member_id LIMIT ?
                 """, Long.class, org, USERS_PER_GYM * ROUNDS);
-        return new Gym(session, branch, clients);
+        return new Gym(g, branch, clients);
     }
 
     private Sample timed(String kind, Callable<MvcResult> call) throws Exception {
@@ -88,22 +91,24 @@ class RendimientoTests {
     }
 
     private List<Sample> virtualUser(Gym gym, int user) throws Exception {
+        // cada usuario virtual abre su propia sesión, como lo haría una persona real (el inicio no se mide)
+        Cookie session = login(gym.number());
         List<Sample> samples = new ArrayList<>();
         String today = LocalDate.now().toString();
         String lastWeek = LocalDate.now().minusDays(7).toString();
         for (int round = 0; round < ROUNDS; round++) {
             long client = gym.clients().get(user * ROUNDS + round);
             samples.add(timed("consulta: panel del Administrador", () -> mvc.perform(
-                get("/dashboard/gym").cookie(gym.session())).andReturn()));
+                get("/dashboard/gym").cookie(session)).andReturn()));
             samples.add(timed("consulta: ingresos de la última semana", () -> mvc.perform(
-                get("/check-ins").param("from", lastWeek).param("to", today).cookie(gym.session())).andReturn()));
+                get("/check-ins").param("from", lastWeek).param("to", today).cookie(session)).andReturn()));
             samples.add(timed("consulta: pagos (página de 20)", () -> mvc.perform(
-                get("/payments").param("size", "20").cookie(gym.session())).andReturn()));
+                get("/payments").param("size", "20").cookie(session)).andReturn()));
             samples.add(timed("registro: ingreso", () -> mvc.perform(post("/check-ins").with(csrf())
-                .cookie(gym.session()).contentType(MediaType.APPLICATION_JSON)
+                .cookie(session).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"branchId\":%d,\"memberId\":%d}".formatted(gym.branchId(), client))).andReturn()));
             samples.add(timed("registro: pago", () -> mvc.perform(post("/payments").with(csrf())
-                .cookie(gym.session()).contentType(MediaType.APPLICATION_JSON)
+                .cookie(session).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"memberId\":%d,\"concept\":\"Mensualidad\",\"amount\":50000,\"method\":\"cash\"}"
                     .formatted(client))).andReturn()));
         }
