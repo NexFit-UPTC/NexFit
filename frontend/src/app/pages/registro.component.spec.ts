@@ -70,6 +70,17 @@ describe('RegistroComponent', () => {
     expect(el().textContent).toContain('¿Ya tienes cuenta?');
   });
 
+  it('página propia: título, sección «Datos personales», Cancelar a /login y sin campos que el backend no guarda', () => {
+    expect(el().querySelector('h1')?.textContent).toContain('Crea tu cuenta');
+    expect(el().querySelector('legend')?.textContent).toContain('Datos personales');
+    expect(el().querySelector('app-auth-shell')).toBeNull();
+    const cancelar = Array.from(el().querySelectorAll<HTMLAnchorElement>('a.nf-boton-sec')).find((a) => a.textContent?.includes('Cancelar'))!;
+    expect(cancelar.getAttribute('href')).toBe('/login');
+    expect(el().querySelector('button[type=submit]')?.textContent).toContain('Crear cuenta');
+    for (const id of ['phone', 'eps', 'weight', 'height']) expect(campo(id)).toBeNull();
+    expect(el().querySelectorAll('input:not([type=checkbox]), select').length).toBe(8);
+  });
+
   it('registro válido: POST con los siete campos (contraseña sin recortar) y navega a /login?registrado=1', async () => {
     llenar();
     const hecho = enviar();

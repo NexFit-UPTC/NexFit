@@ -1,6 +1,63 @@
-.titulo {
-  margin: 0;
+/* Lima solo en esta pantalla (mockup de registro); el tema global no se toca. */
+:host {
+  --acento: #c8f03c;
+  --sobre-acento: #11151a;
+  display: block;
+  min-height: 100dvh;
+  background: var(--fondo);
+}
+
+.pagina {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--espacio-4) var(--espacio-3) var(--espacio-5, 3rem);
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-3);
+  flex-wrap: wrap;
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  font-family: var(--fuente-titulo);
   font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--texto);
+  text-decoration: none;
+}
+
+.logo {
+  color: var(--acento);
+}
+
+.ya-tienes {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--texto-suave);
+}
+
+.ya-tienes a {
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.titulo {
+  margin: var(--espacio-3) 0 0;
+  font-size: 2.25rem;
+  line-height: 1.1;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--texto-suave);
 }
 
 form {
@@ -8,8 +65,65 @@ form {
   gap: var(--espacio-3);
 }
 
+.seccion {
+  position: relative;
+  margin: var(--espacio-2) 0 0;
+  padding: var(--espacio-4) var(--espacio-3) var(--espacio-3);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 20px;
+}
+
+/* El título cruza el borde superior de la tarjeta. */
+.seccion legend {
+  padding: 0 var(--espacio-2);
+  margin-left: var(--espacio-2);
+  font-family: var(--fuente-titulo);
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: var(--fondo);
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--espacio-3);
+  align-items: start;
+}
+
+.rejilla .nf-entrada {
+  background: var(--superficie);
+}
+
 .mostrar {
   display: flex;
   align-items: center;
   gap: var(--espacio-2);
+  align-self: center;
+  font-size: 0.875rem;
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--espacio-2);
+}
+
+.acciones .nf-boton-sec {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 var(--espacio-3);
+  text-decoration: none;
+}
+
+@media (max-width: 760px) {
+  .rejilla {
+    grid-template-columns: 1fr;
+  }
+
+  .titulo {
+    font-size: 1.75rem;
+  }
 }
