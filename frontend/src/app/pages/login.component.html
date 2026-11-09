@@ -5,6 +5,10 @@
     <p class="nf-ayuda" role="status">Verificando sesión…</p>
   }
 
+  @if (cuentaCreada) {
+    <p class="nf-ayuda" role="status">Cuenta creada. Inicia sesión con tu correo y tu contraseña.</p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>

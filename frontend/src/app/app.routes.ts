@@ -17,6 +17,7 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', loadComponent: () => import('./pages/inicio-publico.component').then((m) => m.InicioPublicoComponent), canActivate: [inicioGuard], data: { public: true } },
   { path: 'gimnasios/:id', loadComponent: () => import('./pages/gimnasio-detalle.component').then((m) => m.GimnasioDetalleComponent), canActivate: [sessionGuard], data: { public: true } },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent), canActivate: [sessionGuard], data: { public: true } },
+  { path: 'registro', loadComponent: () => import('./pages/registro.component').then((m) => m.RegistroComponent), canActivate: [inicioGuard], data: { public: true } },
   { path: 'establecimiento', loadComponent: () => import('./pages/establecimiento.component').then((m) => m.EstablecimientoComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   { path: 'cambiar-contrasena', loadComponent: () => import('./pages/cambiar-contrasena.component').then((m) => m.CambiarContrasenaComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   {
