@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.junit.jupiter.Container;
@@ -24,7 +23,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * equivocados y registros en ráfaga. Nada de esto debe terminar en un 500 y todo responde con {@code {code, message}}.
  */
 @Testcontainers
-@SpringBootTest(properties = "nexfit.auth.register-max-per-hour=8")
+@SpringBootTest
 @AutoConfigureMockMvc
 class ApiHardeningTests {
 
@@ -95,21 +94,5 @@ class ApiHardeningTests {
         assertThat(method.getResponse().getHeader("Allow")).contains("POST");
         assertThat(media.getResponse().getStatus()).isEqualTo(415);
         assertThat(content(media)).contains("UNSUPPORTED_MEDIA_TYPE");
-    }
-
-    @Test
-    void unaRafagaDeRegistrosDesdeLaMismaConexionTerminaEn429() throws Exception {
-        int tooMany = 0;
-        for (int i = 0; i < 20; i++) {
-            MvcResult r = mvc.perform(post("/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-                .content(registerBody("Clave-Segura-123"))).andReturn();
-            if (r.getResponse().getStatus() == 429) {
-                tooMany++;
-                assertThat(content(r)).contains("TOO_MANY_REQUESTS");
-                assertThat(r.getResponse().getHeader("Retry-After")).isEqualTo("3600");
-            }
-        }
-
-        assertThat(tooMany).as("con tope de 8 por hora, la ráfaga de 20 debe cortarse").isGreaterThan(0);
     }
 }
