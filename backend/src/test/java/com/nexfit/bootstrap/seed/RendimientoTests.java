@@ -65,11 +65,11 @@ class RendimientoTests {
 
     private record Sample(String kind, long millis, int status) { }
 
-    private Cookie login(int g) throws Exception {
+    private Cookie login(int g, String role) throws Exception {
         MvcResult login = mvc.perform(post("/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("{\"email\":\"carga%d.admin@nexfit.test\",\"password\":\"%s\"}".formatted(g, PASSWORD)))
+            .content("{\"email\":\"carga%d.%s@nexfit.test\",\"password\":\"%s\"}".formatted(g, role, PASSWORD)))
             .andReturn();
-        assertThat(login.getResponse().getStatus()).as("login del Administrador del gimnasio " + g).isEqualTo(200);
+        assertThat(login.getResponse().getStatus()).as("login de " + role + " del gimnasio " + g).isEqualTo(200);
         return login.getResponse().getCookie("NEXFIT_SESSION");
     }
 
@@ -91,8 +91,9 @@ class RendimientoTests {
     }
 
     private List<Sample> virtualUser(Gym gym, int user) throws Exception {
-        // cada usuario virtual abre su propia sesión, como lo haría una persona real (el inicio no se mide)
-        Cookie session = login(gym.number());
+        // cada usuario virtual abre su propia sesión, como lo haría una persona real (el inicio no se mide): el Administrador consulta y el Staff registra, como en la matriz de permisos
+        Cookie session = login(gym.number(), "admin");
+        Cookie staff = login(gym.number(), "staff");
         List<Sample> samples = new ArrayList<>();
         String today = LocalDate.now().toString();
         String lastWeek = LocalDate.now().minusDays(7).toString();
@@ -105,10 +106,10 @@ class RendimientoTests {
             samples.add(timed("consulta: pagos (página de 20)", () -> mvc.perform(
                 get("/payments").param("size", "20").cookie(session)).andReturn()));
             samples.add(timed("registro: ingreso", () -> mvc.perform(post("/check-ins").with(csrf())
-                .cookie(session).contentType(MediaType.APPLICATION_JSON)
+                .cookie(staff).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"branchId\":%d,\"memberId\":%d}".formatted(gym.branchId(), client))).andReturn()));
             samples.add(timed("registro: pago", () -> mvc.perform(post("/payments").with(csrf())
-                .cookie(session).contentType(MediaType.APPLICATION_JSON)
+                .cookie(staff).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"memberId\":%d,\"concept\":\"Mensualidad\",\"amount\":50000,\"method\":\"cash\"}"
                     .formatted(client))).andReturn()));
         }
