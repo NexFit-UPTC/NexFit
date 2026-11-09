@@ -32,6 +32,9 @@ public class AuthService {
     static final int LOCK_MINUTES = 15;
     /** Largo mínimo de una contraseña nueva (RNF-06). */
     static final int MIN_PASSWORD_LENGTH = 10;
+    /** Tope de la contraseña: bcrypt solo usa los primeros 72 bytes y una contraseña enorme es un vector de abuso. */
+    static final int MAX_PASSWORD_LENGTH = 64;
+    private static final int BCRYPT_MAX_BYTES = 72;
     /**
      * Vigencia de la contraseña temporal generada en un restablecimiento asistido.
      */
@@ -77,7 +80,13 @@ public class AuthService {
 
     /** Resultado de {@link #changePassword}. */
     public enum PasswordChangeResult {
-        CHANGED, TOO_SHORT, WRONG_CURRENT, SAME_AS_CURRENT
+        CHANGED, TOO_SHORT, TOO_LONG, WRONG_CURRENT, SAME_AS_CURRENT
+    }
+
+    /** Más larga de lo permitido (en caracteres o en bytes UTF-8, que es lo que mide bcrypt). */
+    static boolean tooLong(String password) {
+        return password != null && (password.length() > MAX_PASSWORD_LENGTH
+                || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES);
     }
 
     /** Estado de {@link #resetPassword}. */
@@ -127,7 +136,7 @@ public class AuthService {
                         .optional();
         // Se compara siempre contra un hash para que el tiempo no delate si el correo
         // existe.
-        boolean matches = encoder.matches(password == null ? "" : password,
+        boolean matches = encoder.matches(password == null || tooLong(password) ? "" : password,
                 found.map(Candidate::passwordHash).orElse(dummyHash));
         if (found.isPresent() && matches && found.get().usable()) {
             long id = found.get().id();
@@ -265,9 +274,12 @@ public class AuthService {
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
             return PasswordChangeResult.TOO_SHORT;
         }
+        if (tooLong(newPassword)) {
+            return PasswordChangeResult.TOO_LONG;
+        }
         String storedHash = jdbc.sql("SELECT password_hash FROM users WHERE id = :id")
                 .param("id", userId).query(String.class).single();
-        if (current == null || !encoder.matches(current, storedHash)) {
+        if (current == null || tooLong(current) || !encoder.matches(current, storedHash)) {
             return PasswordChangeResult.WRONG_CURRENT;
         }
         if (encoder.matches(newPassword, storedHash)) {

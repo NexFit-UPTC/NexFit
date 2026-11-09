@@ -85,11 +85,16 @@ consentimientos sigue en manos del Staff, NEX-39).
 |---|---|---|
 | `POST /api/auth/register` | Cualquiera | Crea la cuenta. Devuelve `201` con `{userId}`. |
 
-Cuerpo: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…", "password": "…"}`. La contraseña tiene mínimo 10 caracteres.
+Cuerpo: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…", "password": "…"}`. La contraseña tiene entre 10 y 64 caracteres (y hasta 72 bytes, el límite de bcrypt).
 
 Errores:
-- `400 VALIDATION_ERROR` con `{code, field, message}`: campo obligatorio, correo con formato inválido, contraseña corta, tipo de documento inválido o fecha con formato inválido.
+- `400 VALIDATION_ERROR` con `{code, field, message}`: campo obligatorio, correo con formato inválido, contraseña corta o de más de 64 caracteres, tipo de documento inválido o fecha con formato inválido.
 - `409 {message}`: ya existe una cuenta con ese correo o ese documento. El mensaje es el mismo en ambos casos y no revela datos de la otra cuenta.
+- `429 {code: TOO_MANY_REQUESTS, message}` con cabecera `Retry-After`: más de 30 intentos de registro por hora desde la misma conexión (configurable con `nexfit.auth.register-max-per-hour`).
+
+### Errores de petición mal formada (todas las rutas)
+
+Siempre responden `{code, message}`, nunca el cuerpo por defecto de Spring ni un `500`: `400 BAD_REQUEST` (JSON roto o de tipo equivocado, parámetro faltante o con valor inválido), `405 METHOD_NOT_ALLOWED` (con cabecera `Allow`) y `415 UNSUPPORTED_MEDIA_TYPE`. Una contraseña de más de 64 caracteres en el login se trata como incorrecta (`401`).
 
 
 ## Clases del gimnasio (NEX-40, US-29)
