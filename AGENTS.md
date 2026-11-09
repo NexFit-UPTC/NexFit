@@ -43,6 +43,8 @@ SaaS multiestablecimiento para gimnasios. Roles: Administrador Master (plataform
 
 - Fuente visual: `docs/frontend/brief-front-nexfit.md` y las capturas de `docs/frontend/`. Estructura web: mockups de Santiago; login: Jeff; home del cliente con QR y membresía: Andrés.
 - Layout web: sidebar izquierda fija. Nada de barra inferior de móvil.
+- Diseño pensado para web de escritorio, pero debe seguir usable hasta **360 px** de ancho sin desplazamiento horizontal (RNF-12): las tablas anchas se desplazan dentro de su propio contenedor, no la página.
+- Estilo: profundidad con sombras suaves (`--sombra`) y esquinas redondeadas (`--radio`), siempre con los tokens de `styles.css`; no uses colores ni sombras sueltos.
 - Tokens en `styles.css`: base blanca/negra fija (sidebar oscura, fondo claro) y un solo acento por variable `--acento` (por defecto lima, como los mockups de Santiago), con `--sobre-acento` calculado por contraste. Modo claro/oscuro/sistema. El usuario cambia el acento (presets + hex) y, en una fase posterior, el fondo (hex o imagen con capa para legibilidad y paleta derivada de la imagen). Persistencia en el navegador hasta que exista endpoint.
 - No copiar de los mockups: textos de UPTC o "semestre", "Ingresos del mes" ni botones "Cobrar". "Registrar entrada" es del Staff, no del Administrador.
 - Contraseña: entre 10 y 64 caracteres. Registro público solo para Cliente (cuenta sin gimnasio); los demás roles los crea un administrador.
