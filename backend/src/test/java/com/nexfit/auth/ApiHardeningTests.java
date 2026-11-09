@@ -41,7 +41,7 @@ class ApiHardeningTests {
         return new String(r.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
     }
 
-    private MvcResult post(String path, String contentType, String body) throws Exception {
+    private MvcResult send(String path, String contentType, String body) throws Exception {
         return mvc.perform(post(path).with(csrf()).contentType(contentType).content(body)).andReturn();
     }
 
@@ -55,9 +55,9 @@ class ApiHardeningTests {
 
     @Test
     void unaContrasenaEnormeSeRechazaConUn400EnVezDeUn500() throws Exception {
-        MvcResult tooLong = post("/auth/register", "application/json", registerBody("a".repeat(65)));
-        MvcResult hugeBytes = post("/auth/register", "application/json", registerBody("ñ".repeat(40)));
-        MvcResult atLimit = post("/auth/register", "application/json", registerBody("a".repeat(64)));
+        MvcResult tooLong = send("/auth/register", "application/json", registerBody("a".repeat(65)));
+        MvcResult hugeBytes = send("/auth/register", "application/json", registerBody("ñ".repeat(40)));
+        MvcResult atLimit = send("/auth/register", "application/json", registerBody("a".repeat(64)));
 
         assertThat(tooLong.getResponse().getStatus()).isEqualTo(400);
         assertThat(content(tooLong)).contains("\"field\":\"password\"");
@@ -67,7 +67,7 @@ class ApiHardeningTests {
 
     @Test
     void loginConUnaContrasenaGiganteDa401YNoSeCae() throws Exception {
-        MvcResult r = post("/auth/login", "application/json",
+        MvcResult r = send("/auth/login", "application/json",
             "{\"email\":\"nadie@nexfit.test\",\"password\":\"" + "x".repeat(100_000) + "\"}");
 
         assertThat(r.getResponse().getStatus()).isEqualTo(401);
@@ -75,9 +75,9 @@ class ApiHardeningTests {
 
     @Test
     void unJsonRotoDa400ConElFormatoDeLaApi() throws Exception {
-        MvcResult broken = post("/auth/login", "application/json", "{\"email\": ");
-        MvcResult notAnObject = post("/auth/login", "application/json", "[1,2,3]");
-        MvcResult wrongType = post("/auth/login", "application/json", "{\"email\": 5, \"password\": {}}");
+        MvcResult broken = send("/auth/login", "application/json", "{\"email\": ");
+        MvcResult notAnObject = send("/auth/login", "application/json", "[1,2,3]");
+        MvcResult wrongType = send("/auth/login", "application/json", "{\"email\": 5, \"password\": {}}");
 
         for (MvcResult r : new MvcResult[] {broken, notAnObject, wrongType}) {
             assertThat(r.getResponse().getStatus()).isEqualTo(400);
@@ -88,7 +88,7 @@ class ApiHardeningTests {
     @Test
     void metodoOTipoDeContenidoEquivocadosDan405Y415() throws Exception {
         MvcResult method = mvc.perform(get("/auth/register")).andReturn();
-        MvcResult media = post("/auth/login", "text/plain", "hola");
+        MvcResult media = send("/auth/login", "text/plain", "hola");
 
         assertThat(method.getResponse().getStatus()).isEqualTo(405);
         assertThat(content(method)).contains("METHOD_NOT_ALLOWED");
