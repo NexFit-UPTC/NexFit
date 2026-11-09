@@ -2,6 +2,27 @@
 
 Documentación de los endpoints REST de `backend/` (rutas, roles permitidos, entradas y salidas). Se actualiza en el mismo PR que cambia la API.
 
+## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26)
+
+Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/auth/login` | Cualquiera | Cuerpo `{email, password}`. Devuelve `200` con `{userId, mustChangePassword, establishments: [{organizationId, name, roles}]}`. Con una sola afiliación activa el gimnasio queda elegido; con varias hay que elegir uno (ver abajo). El correo no distingue mayúsculas. |
+| `POST /api/auth/logout` | Con sesión | Cierra la sesión. Devuelve `204`. |
+| `GET /api/auth/establishments` | Con sesión | Gimnasios donde la persona puede operar: `[{organizationId, name, roles}]`. Lista vacía si no tiene ninguno activo. |
+| `POST /api/auth/establishment` | Con sesión | Cuerpo `{organizationId}`. Elige o cambia el gimnasio activo de la sesión y devuelve `204`; `400 {message}` si no puede operar en él. |
+| `POST /api/auth/password` | Con sesión | Cuerpo `{currentPassword, newPassword}`. Cambia la contraseña propia y devuelve `204`. Cierra las demás sesiones de la persona y quita la marca de contraseña temporal. |
+| `POST /api/auth/users/{userId}/password-reset` | Staff, Administrador, Master | Asigna una contraseña temporal a otra cuenta y la devuelve una sola vez: `200 {temporaryPassword}`. |
+
+Reglas:
+- `401 {message: "Credenciales inválidas"}` es idéntico para un correo inexistente, una contraseña incorrecta, una cuenta inactiva o una cuenta bloqueada: no revela cuál fue. A los 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (el bloqueo también responde `401`); un acceso correcto reinicia el contador. Los fallos y el bloqueo quedan auditados.
+- Una contraseña de más de 64 caracteres (o de más de 72 bytes) se trata como incorrecta: responde `401`, no un error del servidor.
+- Contraseña nueva: entre 10 y 64 caracteres, distinta de la actual. `400 {message}` si no lo cumple, si la actual no es correcta o si falta.
+- Con `mustChangePassword: true` (contraseña temporal) la única operación permitida, además de cerrar sesión, es cambiar la contraseña; el resto responde `403 PASSWORD_CHANGE_REQUIRED`. La temporal tiene 12 caracteres y vale 72 horas; vencida, el acceso responde `401`.
+- `password-reset`: el Staff o el Administrador solo restablecen cuentas de su gimnasio (`404` si la cuenta no es de este gimnasio) y, si la persona tiene más de una afiliación activa y ya ha iniciado sesión, solo el Master (`403`). Cierra las sesiones de la cuenta, levanta el bloqueo y queda auditado. Entrenador y Cliente reciben `403 ACCESS_DENIED`.
+- Sin gimnasio elegido, las rutas que lo necesitan responden `403 ESTABLISHMENT_REQUIRED`.
+
 ## Información personal propia (NEX-27, US-17)
 
 Rutas bajo `/api/me`. Basta una sesión válida (todos los roles); el usuario sale de la sesión y el establecimiento del activo, nunca de la ruta ni del cuerpo.
@@ -40,6 +61,7 @@ Errores:
 | `GET /api/establishments` | Master | Lista los establecimientos: `[{id, name, contactEmail, timezone, active, branchCount, clientCount}]`. |
 | `GET /api/establishments/{id}` | Master | Un establecimiento con el mismo formato; `404` si no existe. |
 | `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. |
+| `PATCH /api/establishments/{id}/active` | Master | Cuerpo `{"active": true\|false}`. Activa o desactiva el establecimiento (US-08, NEX-33): al desactivarlo, sus usuarios dejan de poder operar y recuperan el acceso al reactivarlo; no se borra nada. Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe; `400 VALIDATION_ERROR` si `active` no es booleano. Queda auditado. |
 
 Nota: la issue NEX-87 habla de `PATCH`, pero el backend expone `PUT /api/establishments/{id}`; el frontend usa `PUT`.
 
@@ -97,6 +119,48 @@ Errores:
 Siempre responden `{code, message}`, nunca el cuerpo por defecto de Spring ni un `500`: `400 BAD_REQUEST` (JSON roto o de tipo equivocado, parámetro faltante o con valor inválido), `405 METHOD_NOT_ALLOWED` (con cabecera `Allow`) y `415 UNSUPPORTED_MEDIA_TYPE`. Una contraseña de más de 64 caracteres en el login se trata como incorrecta (`401`).
 
 
+## Sedes del gimnasio (NEX-35, US-10)
+
+Rutas bajo `/api/branches`. El gimnasio sale de la sesión; una sede de otro gimnasio responde `404`.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/branches` | Administrador | Crea una sede activa. Devuelve `201` con la sede. |
+| `GET /api/branches` | Administrador, Staff, Entrenador, Cliente | Lista sin paginar. El Administrador ve todas y filtra con `?active=true\|false`; los demás solo ven las activas. |
+| `GET /api/branches/{id}` | Los mismos | Una sede; una inactiva solo la ve el Administrador (`404` para los demás). |
+| `PUT /api/branches/{id}` | Administrador | Reemplaza los datos de la sede. |
+| `PATCH /api/branches/{id}/active` | Administrador | Cuerpo `{"active": true\|false}`. Activa o desactiva la sede. |
+
+Sede: `{id, name, phone, schedule, addressLine1, addressLine2, city, department, postalCode, country, active}`. Obligatorios al crear y editar: `name` (máx. 150), `addressLine1` (máx. 150), `city` (máx. 100) y `department` (máx. 100); `country` vale `Colombia` si no se envía. Errores: `400 VALIDATION_ERROR` con `{code, field, message}` y `409 BRANCH_NAME_TAKEN` si ya hay una sede con ese nombre en el gimnasio.
+
+## Planes de membresía (NEX-37, US-19)
+
+Rutas bajo `/api/membership-plans`. El gimnasio sale de la sesión.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/membership-plans` | Administrador | Crea un plan activo. Devuelve `201` con el plan. |
+| `GET /api/membership-plans` | Administrador, Staff, Cliente | Lista sin paginar. El Administrador ve todos y filtra con `?active=true\|false`; Staff y Cliente solo ven los activos, que son los que se pueden contratar. |
+| `GET /api/membership-plans/{id}` | Los mismos | Un plan; uno inactivo solo lo ve el Administrador. |
+| `PUT /api/membership-plans/{id}` | Administrador | Reemplaza los datos del plan. |
+| `PATCH /api/membership-plans/{id}/active` | Administrador | Cuerpo `{"active": true\|false}`. |
+
+Plan: `{id, name, description, price, durationDays, benefits, active}`. Obligatorios: `name` (máx. 100), `price` (número ≥ 0 con hasta 2 decimales, máx. 9 999 999 999,99) y `durationDays` (entero entre 1 y 3650). `description` y `benefits` son opcionales (máx. 2000). Errores: `400 VALIDATION_ERROR` con `{code, field, message}` y `409 PLAN_NAME_TAKEN` si ya hay un plan con ese nombre (sin distinguir mayúsculas).
+
+## Personal del gimnasio (NEX-36, US-11)
+
+Rutas bajo `/api/staff`, solo para el Administrador (los demás roles reciben `403 ACCESS_DENIED`). El gimnasio sale de la sesión.
+
+| Ruta | Qué hace |
+|---|---|
+| `POST /api/staff` | Crea una cuenta de personal o afilia a una persona que ya existe. Cuerpo: `{documentType, documentNumber, firstName, lastName, birthDate, email, roles: ["staff"\|"trainer", …], specialty?, certification?, hireDate?}`; los datos de entrenador solo se aceptan con el rol `trainer`. `201 {userId, memberId, temporaryPassword}` si es persona nueva (la temporal se muestra una sola vez); `200 {userId, memberId, firstName, lastName}` si ya existía. |
+| `GET /api/staff` | Página de miembros (paginación del apartado «Listados paginados»); filtro opcional `role=admin\|staff\|trainer\|client`. |
+| `GET /api/staff/{memberId}` | Un miembro: `{memberId, userId, documentType, documentNumber, firstName, lastName, birthDate, email, active, roles, trainerProfile: {specialty, certification, hireDate} \| null}`. |
+| `PATCH /api/staff/{memberId}` | Cambia los roles (`roles`, al menos uno: `staff` o `trainer`) y los datos de entrenador. Devuelve el miembro. |
+| `POST /api/staff/{memberId}/activate` y `/deactivate` | Activa o desactiva al miembro. Devuelve el miembro. |
+
+Errores: `400 VALIDATION_ERROR` con `{code, field, message}` (o `400 {message}` si los roles no son válidos), `404 {message}` si el miembro no existe en el gimnasio, `409 {message}` si el establecimiento está inactivo, el correo pertenece a otra persona, el documento ya está registrado con otro correo o la persona ya es miembro del gimnasio.
+
 ## Clases del gimnasio (NEX-40, US-29)
 
 Rutas bajo `/api/classes`. El gimnasio sale siempre de la sesión; una clase, sede o entrenador de otro gimnasio responde igual que uno inexistente (`404`, o `400` si va dentro del cuerpo).
@@ -127,6 +191,24 @@ Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `name`, `description`, `branchId`, `trainerMemberId`, `startsAt`, `durationMinutes`, `capacity` o `status`.
 - `409` con `{code, field, message}`: `TRAINER_OVERLAP`, `CAPACITY_BELOW_BOOKINGS`, `CLASS_HAS_BOOKINGS` o `CLASS_CANCELLED`.
 - `403 ACCESS_DENIED` si el rol no puede la acción; `404` si la clase no existe en el gimnasio; `401` sin sesión.
+
+## Registrar un cliente, contacto y búsqueda por documento (NEX-39, NEX-42, US-13, US-14)
+
+Rutas bajo `/api/clients`. El gimnasio sale de la sesión.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/clients/search?documentType=&documentNumber=&documentVerified=true&personPresent=true` | Staff | Busca si una persona ya existe en la plataforma para afiliarla sin duplicar su identidad. Exige confirmar `documentVerified` y `personPresent` (`400` si faltan). Devuelve `200 {firstName, lastName}` o `404 {message}`; solo muestra el nombre. Queda auditado (`PERSON_LOOKUP_BY_DOCUMENT`). Otros roles reciben `403 ACCESS_DENIED`. |
+| `POST /api/clients` | Staff | Registra un cliente nuevo o afilia a una persona que ya existe. |
+| `GET /api/clients/{memberId}/contact` | Staff, Administrador y el propio Cliente | Teléfono, EPS y contactos de emergencia: `{memberId, phone, epsId, epsName, emergencyContacts: [{id, fullName, relationship, phone, primary}]}`. La consulta queda auditada. `404` si no es cliente de este gimnasio; `403 ACCESS_DENIED` para el Entrenador y para un Cliente que consulta a otro. |
+| `PATCH /api/clients/{memberId}/contact` | Staff y el propio Cliente | Cambia solo lo que venga: `phone`, `epsId`, `emergencyContacts` (reemplaza la lista) y `healthConsent`. Devuelve el mismo cuerpo que el `GET`. |
+
+`POST /api/clients`, cuerpo: `{documentType: "CC|CE|PPT|PA", documentNumber, firstName, lastName, birthDate: "AAAA-MM-DD", email, phone, epsId, emergencyContact: {fullName, relationship, phone}, healthConsent: true, privacyAccepted: true}`. Todos son obligatorios; la persona debe ser mayor de 18 años y la EPS debe estar activa.
+- `201 {userId, memberId, temporaryPassword}`: se creó la identidad, la afiliación con rol Cliente y una contraseña temporal que se muestra una sola vez (12 caracteres, vale 72 horas).
+- `200 {userId, memberId, firstName, lastName}`: la persona ya existía y solo se la afilió a este gimnasio (no cambia su contraseña ni sus datos).
+- `400 VALIDATION_ERROR` `{code, field, message}`; en particular `healthConsent` y `privacyAccepted` deben ser `true` (autorización expresa de datos de salud y aceptación de la política de tratamiento de datos). `404` si la EPS no existe o está inactiva. `409 {message}`: el establecimiento está inactivo, el correo pertenece a otra persona, el documento ya está registrado con otro correo o la persona ya es miembro del gimnasio.
+
+`PATCH …/contact`: los datos de identidad (`documentType`, `documentNumber`, `firstName`, `lastName`, `birthDate`, `email`) no se pueden modificar por aquí (`400` con ese campo, RN-34). `phone` admite 7 a 30 caracteres entre dígitos, `+`, espacios, paréntesis y guiones. `emergencyContacts` debe tener al menos un contacto y un solo principal. Cambiar la EPS exige `healthConsent: true` (`400 healthConsent`). `404` si la EPS no existe o no está activa o si el cliente no es de este gimnasio.
 
 ## Buscar y consultar clientes (NEX-43, US-15)
 
