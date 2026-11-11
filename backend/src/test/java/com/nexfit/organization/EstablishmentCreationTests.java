@@ -111,6 +111,18 @@ class EstablishmentCreationTests {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class)).isEqualTo(before);
     }
 
+    // CA43: una zona horaria que no existe se rechaza al crear y no se guarda nada.
+    @Test
+    void unaZonaHorariaInexistenteAlCrearSeRechazaIndicandoElCampo() throws Exception {
+        Cookie master = fx.login(fx.user(true, true));
+        int before = jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class);
+
+        assertRejected(create(master,
+            "{\"name\":\"Gym Zona\",\"contactEmail\":\"zona@nexfit.test\",\"timezone\":\"Marte/Olimpo\"}"), "timezone");
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class)).isEqualTo(before);
+    }
+
     private void assertRejected(MvcResult r, String field) throws Exception {
         assertThat(r.getResponse().getStatus()).isEqualTo(400);
         assertThat(body(r)).contains("\"code\":\"VALIDATION_ERROR\"", "\"field\":\"" + field + "\"");
