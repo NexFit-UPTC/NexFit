@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -118,8 +119,33 @@ class AdminAssignmentController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("message", "El correo ya pertenece a otra persona"));
         }
+        if (result.status() == AdminAssignmentService.Status.DOCUMENT_BIRTHDATE_MISMATCH) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", "La fecha de nacimiento no coincide con la persona registrada"));
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(Map.of("message", "El documento ya está registrado con otro correo"));
+    }
+
+    /**
+     * Revoca al Administrador vigente, sin reemplazarlo (GIN-08): el establecimiento queda sin
+     * Administrador hasta que el Master asigne a otra persona (igual que uno recién creado).
+     */
+    @RequiresAccess(funcion = Funcion.CUENTA_ADMINISTRADOR, accion = Accion.MODIFICAR)
+    @DeleteMapping
+    ResponseEntity<?> revoke(@PathVariable long orgId, HttpServletRequest request) {
+        Long actorId = actorId();
+        if (actorId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Sin sesión"));
+        }
+        var status = assignments.revoke(orgId, actorId, request.getRemoteAddr());
+        return switch (status) {
+            case REVOKED -> ResponseEntity.noContent().build();
+            case ORG_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "Establecimiento no encontrado"));
+            case NO_ADMIN -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", "El establecimiento no tiene Administrador asignado"));
+        };
     }
 
     @RequiresAccess(funcion = Funcion.CUENTA_ADMINISTRADOR, accion = Accion.CONSULTAR)
@@ -141,7 +167,8 @@ class AdminAssignmentController {
         if (!result.exists()) {
             return ResponseEntity.ok(Map.of("exists", false));
         }
-        return ResponseEntity.ok(Map.of("exists", true, "firstName", result.firstName(), "lastName", result.lastName()));
+        return ResponseEntity.ok(Map.of("exists", true, "firstName", result.firstName(),
+            "lastName", result.lastName(), "email", result.email(), "birthDate", result.birthDate().toString()));
     }
 
     /** Id del usuario autenticado (el filtro lo guarda como principal); null si no hay sesión. */
