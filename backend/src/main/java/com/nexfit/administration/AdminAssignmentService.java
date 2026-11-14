@@ -29,13 +29,17 @@ class AdminAssignmentService {
     }
 
     public enum Status {
-        CREATED, AFFILIATED, ORG_NOT_FOUND, ORG_INACTIVE, EMAIL_CONFLICT, DOCUMENT_EMAIL_MISMATCH
+        CREATED, AFFILIATED, ORG_NOT_FOUND, ORG_INACTIVE, EMAIL_CONFLICT,
+        DOCUMENT_EMAIL_MISMATCH, DOCUMENT_BIRTHDATE_MISMATCH
     }
+
+    public enum RevokeStatus { REVOKED, ORG_NOT_FOUND, NO_ADMIN }
 
     public record AssignmentResult(Status status, Long userId, String temporaryPassword,
                                    String firstName, String lastName) { }
 
-    public record LookupResult(boolean exists, String firstName, String lastName) { }
+    public record LookupResult(boolean exists, String firstName, String lastName,
+                               String email, LocalDate birthDate) { }
 
     @Transactional
     public AssignmentResult assign(long orgId, long actorId, String ip, String documentType,
@@ -55,6 +59,9 @@ class AdminAssignmentService {
         if (person.isPresent()) {
             if (!person.get().email().equalsIgnoreCase(email)) {
                 return new AssignmentResult(Status.DOCUMENT_EMAIL_MISMATCH, null, null, null, null);
+            }
+            if (!person.get().birthDate().equals(birthDate)) {
+                return new AssignmentResult(Status.DOCUMENT_BIRTHDATE_MISMATCH, null, null, null, null);
             }
             userId = person.get().id();
             created = false;
@@ -89,6 +96,27 @@ class AdminAssignmentService {
             person.get().firstName(), person.get().lastName());
     }
 
+    /**
+     * Revoca al Administrador vigente de un establecimiento sin reemplazarlo (US-09, GIN-08): el
+     * establecimiento queda sin Administrador (mismo estado que uno recién creado) hasta que el
+     * Master asigne a otra persona. Revoca también las sesiones activas del usuario para que el
+     * cambio aplique en su siguiente solicitud, no solo tras volver a iniciar sesión.
+     */
+    @Transactional
+    public RevokeStatus revoke(long orgId, long actorId, String ip) {
+        if (repo.findOrganization(orgId).isEmpty()) {
+            return RevokeStatus.ORG_NOT_FOUND;
+        }
+        var userId = repo.findCurrentAdminUserId(orgId);
+        if (userId.isEmpty()) {
+            return RevokeStatus.NO_ADMIN;
+        }
+        repo.removeAdminRole(orgId, userId.get());
+        auth.revokeUserSessions(userId.get());
+        audit.record(AuditEventType.ROLE_CHANGED, actorId, orgId, "user", userId.get(), ip, null);
+        return RevokeStatus.REVOKED;
+    }
+
     @Transactional
     public LookupResult lookup(long orgId, long actorId, String ip,
                                String documentType, String documentNumber) {
@@ -96,8 +124,9 @@ class AdminAssignmentService {
         audit.record(AuditEventType.PERSON_LOOKUP_BY_DOCUMENT, actorId, orgId, "user",
             person.map(p -> p.id()).orElse(null), ip, null);
         if (person.isEmpty()) {
-            return new LookupResult(false, null, null);
+            return new LookupResult(false, null, null, null, null);
         }
-        return new LookupResult(true, person.get().firstName(), person.get().lastName());
+        return new LookupResult(true, person.get().firstName(), person.get().lastName(),
+            person.get().email(), person.get().birthDate());
     }
 }

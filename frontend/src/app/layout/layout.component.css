@@ -62,6 +62,18 @@
   color: var(--lateral-texto);
 }
 
+.gimnasio-selector {
+  display: grid;
+  gap: var(--espacio-1);
+  padding: 0 var(--espacio-2);
+  font-size: 0.875rem;
+  color: var(--lateral-texto);
+}
+
+.gimnasio-selector select {
+  width: 100%;
+}
+
 nav {
   display: flex;
   flex-direction: column;

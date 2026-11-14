@@ -57,6 +57,9 @@ const ZONA_POR_DEFECTO = 'America/Bogota';
     @if (error()) {
       <p class="nf-alerta" role="alert">{{ error() }}</p>
     }
+    @if (errorActivo()) {
+      <p class="nf-alerta" role="alert">{{ errorActivo() }}</p>
+    }
     @if (cargando()) {
       <p class="nf-ayuda">Cargando…</p>
     } @else if (lista().length === 0) {
@@ -86,7 +89,11 @@ const ZONA_POR_DEFECTO = 'America/Bogota';
               </td>
               <td>{{ e.branchCount }}</td>
               <td>{{ e.clientCount }}</td>
-              <td class="nf-acciones-celda"><button type="button" class="nf-boton-sec" (click)="editar(e)">Editar</button></td>
+              <td class="nf-acciones-celda">
+                <button type="button" class="nf-boton-sec" (click)="editar(e)">Editar</button>
+                <button type="button" class="nf-boton-sec" [disabled]="cambiandoActivo() === e.id"
+                        (click)="cambiarActivo(e)">{{ e.active ? 'Desactivar' : 'Reactivar' }}</button>
+              </td>
             </tr>
           }
         </tbody>
@@ -102,6 +109,8 @@ export class EstablecimientosComponent implements OnInit {
   protected readonly lista = signal<ResumenEstablecimiento[]>([]);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
+  protected readonly cambiandoActivo = signal<number | null>(null);
+  protected readonly errorActivo = signal<string | null>(null);
 
   protected readonly formulario = signal<DatosEstablecimiento | null>(null);
   protected readonly editandoId = signal<number | null>(null);
@@ -144,6 +153,22 @@ export class EstablecimientosComponent implements OnInit {
         const { campo, mensaje } = errorDeApi(e);
         if (campo) this.errores.set({ [campo]: mensaje });
         else this.errorGeneral.set(mensaje);
+      }
+    });
+  }
+
+  protected cambiarActivo(e: ResumenEstablecimiento) {
+    this.errorActivo.set(null);
+    this.cambiandoActivo.set(e.id);
+    this.api.cambiarActivo(e.id, !e.active).subscribe({
+      next: () => {
+        this.cambiandoActivo.set(null);
+        this.recargar();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.cambiandoActivo.set(null);
+        const { mensaje } = errorDeApi(err);
+        this.errorActivo.set(mensaje);
       }
     });
   }
