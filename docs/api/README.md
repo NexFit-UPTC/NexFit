@@ -4,7 +4,7 @@ Documentación de los endpoints REST de `backend/` (rutas, roles permitidos, ent
 
 ## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26)
 
-Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza.
+Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza con \403 {code: CSRF_TOKEN_INVALID, message}`.`.
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
