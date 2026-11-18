@@ -166,6 +166,9 @@ class AuthController {
             return invalid("password", "La contraseña no puede superar " + AuthService.MAX_PASSWORD_LENGTH
                     + " caracteres");
         }
+        if (AuthService.isWeak(body.password())) {
+            return invalid("password", AuthService.WEAK_PASSWORD_MESSAGE);
+        }
         RegisterResult result = auth.register(body.documentType().trim(), body.documentNumber().trim(),
                 body.firstName().trim(), body.lastName().trim(), birthDate, body.email().trim(),
                 body.password(), request.getRemoteAddr());
@@ -232,6 +235,7 @@ class AuthController {
                     + AuthService.MIN_PASSWORD_LENGTH + " caracteres");
             case TOO_LONG -> badRequest("La contraseña no puede superar "
                     + AuthService.MAX_PASSWORD_LENGTH + " caracteres");
+            case TOO_WEAK -> badRequest(AuthService.WEAK_PASSWORD_MESSAGE);
             case WRONG_CURRENT -> badRequest("La contraseña actual no es correcta");
             case SAME_AS_CURRENT -> badRequest("La contraseña nueva debe ser distinta de la actual");
         };
