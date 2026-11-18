@@ -56,7 +56,9 @@ class ApiHardeningTests {
     void unaContrasenaEnormeSeRechazaConUn400EnVezDeUn500() throws Exception {
         MvcResult tooLong = send("/auth/register", "application/json", registerBody("a".repeat(65)));
         MvcResult hugeBytes = send("/auth/register", "application/json", registerBody("ñ".repeat(40)));
-        MvcResult atLimit = send("/auth/register", "application/json", registerBody("a".repeat(64)));
+        // 64 caracteres justos y fuerte: la intención es el borde de longitud (H-01, NEX-112:
+        // "a" repetida ya no vale porque es un solo carácter repetido).
+        MvcResult atLimit = send("/auth/register", "application/json", registerBody("Clave-123-Segura".repeat(4)));
 
         assertThat(tooLong.getResponse().getStatus()).isEqualTo(400);
         assertThat(content(tooLong)).contains("\"field\":\"password\"");
