@@ -72,11 +72,15 @@ class PublicGymTests {
     }
 
     private void plan(long orgId, String name, boolean active) {
+        plan(orgId, name, 90000, active);
+    }
+
+    private void plan(long orgId, String name, int price, boolean active) {
         jdbc.update("""
             INSERT INTO membership_plans (organization_id, name, description, price, duration_days, benefits,
                                           is_active)
-            VALUES (?, ?, 'descripción interna', 90000, 30, 'beneficios internos', ?)
-            """, orgId, name, active);
+            VALUES (?, ?, 'descripción interna', ?, 30, 'beneficios internos', ?)
+            """, orgId, name, price, active);
     }
 
     private MvcResult list(String query) throws Exception {
@@ -148,6 +152,23 @@ class PublicGymTests {
         assertThat(secondIds).doesNotContainAnyElementsOf(firstIds);
     }
 
+    // CA54: ordenado por nombre y 20 por defecto (los gimnasios se insertan en orden alfabético inverso).
+    @Test
+    void elListadoVaOrdenadoPorNombreYElTamanoPorDefectoEs20() throws Exception {
+        for (int i = 20; i >= 0; i--) {
+            gym("AAA-Orden-%02d".formatted(i), true);
+        }
+
+        String json = body(list(""));
+
+        assertThat((Integer) JsonPath.read(json, "$.size")).isEqualTo(20);
+        assertThat((List<?>) JsonPath.read(json, "$.content")).hasSize(20);
+        assertThat(((Number) JsonPath.read(json, "$.totalElements")).longValue()).isGreaterThanOrEqualTo(21);
+        List<String> names = JsonPath.read(json, "$.content[*].name");
+        List<String> mine = names.stream().filter(n -> n.startsWith("AAA-Orden-")).toList();
+        assertThat(mine).hasSizeGreaterThanOrEqualTo(2).isSorted();
+    }
+
     // ---- criterio 2: detalle con sedes y planes activos; 404 si no existe o está inactivo -------
 
     @Test
@@ -169,6 +190,23 @@ class PublicGymTests {
         assertThat(keys(json, "$.plans[0]")).containsExactlyInAnyOrder("name", "price", "durationDays");
         assertThat(((Number) JsonPath.read(json, "$.plans[0].price")).doubleValue()).isEqualTo(90000.0);
         assertThat((Integer) JsonPath.read(json, "$.plans[0].durationDays")).isEqualTo(30);
+    }
+
+    // CA55: planes activos de menor a mayor precio (insertados en otro orden).
+    @Test
+    void losPlanesActivosVanDeMenorAMayorPrecio() throws Exception {
+        long id = gym("Orden Planes", true);
+        plan(id, "Plan caro", 150000, true);
+        plan(id, "Plan barato", 50000, true);
+        plan(id, "Plan medio", 90000, true);
+        plan(id, "Plan inactivo", 10000, false);
+
+        String json = body(one(id));
+
+        assertThat((List<String>) JsonPath.read(json, "$.plans[*].name"))
+            .containsExactly("Plan barato", "Plan medio", "Plan caro");
+        List<Number> prices = JsonPath.read(json, "$.plans[*].price");
+        assertThat(prices.stream().map(Number::doubleValue).toList()).containsExactly(50000.0, 90000.0, 150000.0);
     }
 
     @Test
