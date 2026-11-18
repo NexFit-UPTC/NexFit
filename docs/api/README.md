@@ -2,9 +2,9 @@
 
 Documentación de los endpoints REST de `backend/` (rutas, roles permitidos, entradas y salidas). Se actualiza en el mismo PR que cambia la API.
 
-## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26)
+## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26, NEX-112)
 
-Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza.
+Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza con \403 {code: CSRF_TOKEN_INVALID, message}`.`.
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
@@ -18,7 +18,7 @@ Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly
 Reglas:
 - `401 {message: "Credenciales inválidas"}` es idéntico para un correo inexistente, una contraseña incorrecta, una cuenta inactiva o una cuenta bloqueada: no revela cuál fue. A los 5 intentos fallidos seguidos la cuenta se bloquea 15 minutos (el bloqueo también responde `401`); un acceso correcto reinicia el contador. Los fallos y el bloqueo quedan auditados.
 - Una contraseña de más de 64 caracteres (o de más de 72 bytes) se trata como incorrecta: responde `401`, no un error del servidor.
-- Contraseña nueva: entre 10 y 64 caracteres, distinta de la actual. `400 {message}` si no lo cumple, si la actual no es correcta o si falta.
+- Contraseña nueva: entre 10 y 64 caracteres, distinta de la actual, y no débil (H-01, NEX-112): no solo dígitos, no un solo carácter repetido, no secuencias evidentes de 4 o más caracteres consecutivos ni contraseñas comunes. `400 {message}` si no lo cumple, si la actual no es correcta o si falta.
 - Con `mustChangePassword: true` (contraseña temporal) la única operación permitida, además de cerrar sesión, es cambiar la contraseña; el resto responde `403 PASSWORD_CHANGE_REQUIRED`. La temporal tiene 12 caracteres y vale 72 horas; vencida, el acceso responde `401`.
 - `password-reset`: el Staff o el Administrador solo restablecen cuentas de su gimnasio (`404` si la cuenta no es de este gimnasio) y, si la persona tiene más de una afiliación activa y ya ha iniciado sesión, solo el Master (`403`). Cierra las sesiones de la cuenta, levanta el bloqueo y queda auditado. Entrenador y Cliente reciben `403 ACCESS_DENIED`.
 - Sin gimnasio elegido, las rutas que lo necesitan responden `403 ESTABLISHMENT_REQUIRED`.
@@ -97,7 +97,7 @@ Respuestas:
 Lista: `{content: [{id, name, branches: [{name, addressLine1, addressLine2, city, department}]}], page, size, totalElements, totalPages}`.
 
 Detalle: `{id, name, branches: [{name, addressLine1, addressLine2, city, department}], plans: [{name, price, durationDays}]}`; los planes van de menor a mayor precio.
-## Auto-registro público (NEX-102, BE-11)
+## Auto-registro público (NEX-102, BE-11, NEX-112)
 
 Un visitante crea su propia cuenta, sin sesión. Solo crea la cuenta: no da
 roles ni afiliación a ningún gimnasio (la afiliación con EPS y
@@ -107,10 +107,10 @@ consentimientos sigue en manos del Staff, NEX-39).
 |---|---|---|
 | `POST /api/auth/register` | Cualquiera | Crea la cuenta. Devuelve `201` con `{userId}`. |
 
-Cuerpo: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…", "password": "…"}`. La contraseña tiene entre 10 y 64 caracteres (y hasta 72 bytes, el límite de bcrypt).
+Cuerpo: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "email": "…", "password": "…"}`. La contraseña tiene entre 10 y 64 caracteres (y hasta 72 bytes, el límite de bcrypt) y no puede ser débil (H-01, NEX-112): no solo dígitos, no un solo carácter repetido, no secuencias evidentes de 4 o más caracteres consecutivos ni contraseñas comunes.
 
 Errores:
-- `400 VALIDATION_ERROR` con `{code, field, message}`: campo obligatorio, correo con formato inválido, contraseña corta o de más de 64 caracteres, tipo de documento inválido o fecha con formato inválido.
+- `400 VALIDATION_ERROR` con `{code, field, message}`: campo obligatorio, correo con formato inválido, contraseña corta, débil o de más de 64 caracteres, tipo de documento inválido o fecha con formato inválido.
 - `409 {message}`: ya existe una cuenta con ese correo o ese documento. El mensaje es el mismo en ambos casos y no revela datos de la otra cuenta.
 - `429 {code: TOO_MANY_REQUESTS, message}` con cabecera `Retry-After`: más de 30 intentos de registro por hora desde la misma conexión (configurable con `nexfit.auth.register-max-per-hour`).
 

@@ -1,33 +1,42 @@
 package com.nexfit.shared.config;
 
-import com.nexfit.shared.SessionUserFilter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.function.Supplier;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.session.web.http.DefaultCookieSerializer;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
+import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.nexfit.shared.SessionUserFilter;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+
 
 /**
  * Configuración de seguridad.
@@ -76,7 +85,9 @@ public class SecurityConfig {
                         // sigue exigiendo sesión.
                         .requestMatchers(HttpMethod.GET, "/public/gyms", "/public/gyms/*").permitAll()
                         .anyRequest().authenticated())
-                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+        .accessDeniedHandler(new JsonAccessDeniedHandler()))
+
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
@@ -120,4 +131,27 @@ public class SecurityConfig {
             chain.doFilter(request, response);
         }
     }
+    /**
+ * Los rechazos CSRF responden 403 con el formato {code, message} de la API (NEX-111, CA30),
+ * en vez del cuerpo vacío por defecto de Spring. Cualquier otra denegación sigue el
+ * comportamiento por defecto.
+ */
+static final class JsonAccessDeniedHandler implements AccessDeniedHandler {
+
+    private final AccessDeniedHandler defaultHandler = new AccessDeniedHandlerImpl();
+
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+            AccessDeniedException ex) throws IOException, ServletException {
+        if (ex instanceof CsrfException) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":\"CSRF_TOKEN_INVALID\","
+                    + "\"message\":\"El token CSRF es inválido o falta\"}");
+            return;
+        }
+        defaultHandler.handle(request, response, ex);
+    }
+}
+
 }
