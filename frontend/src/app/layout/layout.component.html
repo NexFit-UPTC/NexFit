@@ -5,7 +5,19 @@
   </div>
   <p class="rol">{{ etiquetaRol() }}</p>
   @if (sesion.establecimiento(); as est) {
-    <p class="gimnasio">{{ est.name }}</p>
+    @if (establecimientos().length > 1) {
+      <label class="gimnasio-selector">
+        <span class="nf-ayuda">Establecimiento</span>
+        <select class="nf-entrada" [ngModel]="est.organizationId" [disabled]="cambiando()"
+                (ngModelChange)="cambiarEstablecimiento($event)" name="establecimientoActivo">
+          @for (e of establecimientos(); track e.organizationId) {
+            <option [ngValue]="e.organizationId">{{ e.name }}</option>
+          }
+        </select>
+      </label>
+    } @else {
+      <p class="gimnasio">{{ est.name }}</p>
+    }
   }
   <nav aria-label="Secciones">
     @for (s of secciones(); track s.ruta) {

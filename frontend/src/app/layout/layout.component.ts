@@ -1,6 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService } from '../core/auth.service';
+import { AuthService, Establecimiento } from '../core/auth.service';
 import { SessionService } from '../core/session.service';
 
 interface Seccion {
@@ -47,7 +48,7 @@ const ETIQUETAS_ROL: Record<string, string> = {
 
 @Component({
   selector: 'app-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, FormsModule],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.css'
 })
@@ -67,6 +68,40 @@ export class LayoutComponent {
     const u = this.sesion.usuario();
     return u ? `${u.firstName.charAt(0)}${u.lastName.charAt(0)}`.toUpperCase() : '';
   });
+
+  // Lista de establecimientos propios (GIN-13): solo tiene sentido mostrar el selector con más de uno.
+  protected readonly establecimientos = signal<Establecimiento[]>([]);
+  protected readonly cambiando = signal(false);
+
+  constructor() {
+    effect(() => {
+      const activo = this.sesion.establecimiento();
+      if (activo && this.sesion.estado() === 'activa') {
+        this.auth.listarEstablecimientos().then(
+          (lista) => this.establecimientos.set(lista.length > 1 ? lista : []),
+          () => this.establecimientos.set([])
+        );
+      } else {
+        this.establecimientos.set([]);
+      }
+    });
+  }
+
+  protected async cambiarEstablecimiento(organizationId: number): Promise<void> {
+    const actual = this.sesion.establecimiento()?.organizationId;
+    if (organizationId === actual || this.cambiando()) return;
+    this.cambiando.set(true);
+    try {
+      const entro = await this.auth.elegirEstablecimiento(organizationId);
+      if (!entro) {
+        this.sesion.mensaje.set('No se pudo cambiar de establecimiento. Inténtalo de nuevo.');
+      }
+    } catch {
+      this.sesion.mensaje.set('No se pudo cambiar de establecimiento. Inténtalo de nuevo.');
+    } finally {
+      this.cambiando.set(false);
+    }
+  }
 
   protected cerrarSesion(): void {
     this.auth.cerrarSesion();

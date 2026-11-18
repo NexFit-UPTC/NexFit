@@ -44,6 +44,8 @@ export interface ResultadoLookup {
   exists: boolean;
   firstName?: string;
   lastName?: string;
+  email?: string;
+  birthDate?: string;
 }
 
 /** Error de validación 400 del backend. */
@@ -78,6 +80,10 @@ export class EstablecimientosService {
     return this.http.put<Establecimiento>(`/api/establishments/${id}`, datos);
   }
 
+  cambiarActivo(id: number, active: boolean): Observable<Establecimiento> {
+    return this.http.patch<Establecimiento>(`/api/establishments/${id}/active`, { active });
+  }
+
   buscarAdministrador(orgId: number, tipo: TipoDocumento, numero: string): Observable<ResultadoLookup> {
     return this.http.get<ResultadoLookup>(`/api/establishments/${orgId}/admin/lookup`, {
       params: { documentType: tipo, documentNumber: numero }
@@ -86,5 +92,10 @@ export class EstablecimientosService {
 
   asignarAdministrador(orgId: number, datos: DatosAdministrador): Observable<ResultadoAsignacion> {
     return this.http.post<ResultadoAsignacion>(`/api/establishments/${orgId}/admin`, datos);
+  }
+
+  /** Revoca al Administrador vigente sin reemplazarlo (GIN-08): el establecimiento queda sin Administrador. */
+  revocarAdministrador(orgId: number): Observable<void> {
+    return this.http.delete<void>(`/api/establishments/${orgId}/admin`);
   }
 }
