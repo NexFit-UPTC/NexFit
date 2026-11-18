@@ -144,6 +144,20 @@ class PasswordChangeTests {
         assertThat(changePassword(cookie, TEMP, "Diez-Chars").getResponse().getStatus()).isEqualTo(204);
     }
 
+    @Test
+    @ReglaDeNegocio("RN-38")
+    void unaContrasenaNuevaDebilSeRechazaYLaActualSigueVigente() throws Exception {
+        long id = newOwnUser("debil@nexfit.test");
+        Cookie cookie = loginOk("debil@nexfit.test", OWN);
+        String antes = hash(id);
+
+        MvcResult r = changePassword(cookie, OWN, "1234567890");
+        assertThat(r.getResponse().getStatus()).isEqualTo(400);
+        assertThat(r.getResponse().getContentAsString(StandardCharsets.UTF_8)).contains("demasiado débil");
+        assertThat(hash(id)).isEqualTo(antes);
+        assertThat(login("debil@nexfit.test", OWN).getResponse().getStatus()).isEqualTo(200);
+    }
+
     // Criterio 3
     @Test
     @ReglaDeNegocio("RN-38")
