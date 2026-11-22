@@ -9,6 +9,9 @@ import {
 } from '../core/establecimientos.service';
 
 const ZONA_POR_DEFECTO = 'America/Bogota';
+/** Mismos límites y formato que el backend (EstablishmentController). */
+const LONGITUD_MAXIMA = 150;
+const FORMATO_CORREO = /^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/;
 
 @Component({
   selector: 'app-establecimientos',
@@ -138,9 +141,14 @@ export class EstablecimientosComponent implements OnInit {
     const datos = this.formulario();
     if (!datos) return;
     const id = this.editandoId();
+    this.errorGeneral.set(null);
+    const invalidos = this.validar(datos);
+    if (Object.keys(invalidos).length > 0) {
+      this.errores.set(invalidos);
+      return;
+    }
     this.guardando.set(true);
     this.errores.set({});
-    this.errorGeneral.set(null);
     const peticion = id === null ? this.api.crear(datos) : this.api.editar(id, datos);
     peticion.subscribe({
       next: () => {
@@ -171,6 +179,29 @@ export class EstablecimientosComponent implements OnInit {
         this.errorActivo.set(mensaje);
       }
     });
+  }
+
+  /**
+   * Valida nombre y correo antes de enviar, con los mismos mensajes del backend. El servidor sigue
+   * validando: esto solo evita un viaje cuando ya se sabe que el dato se rechazaría.
+   */
+  private validar(datos: DatosEstablecimiento): Record<string, string> {
+    const errores: Record<string, string> = {};
+    const nombre = datos.name.trim();
+    const correo = datos.contactEmail.trim();
+    if (!nombre) {
+      errores['name'] = 'El nombre es obligatorio';
+    } else if (nombre.length > LONGITUD_MAXIMA) {
+      errores['name'] = `El nombre no puede superar ${LONGITUD_MAXIMA} caracteres`;
+    }
+    if (!correo) {
+      errores['contactEmail'] = 'El correo de contacto es obligatorio';
+    } else if (correo.length > LONGITUD_MAXIMA) {
+      errores['contactEmail'] = `El correo de contacto no puede superar ${LONGITUD_MAXIMA} caracteres`;
+    } else if (!FORMATO_CORREO.test(correo)) {
+      errores['contactEmail'] = 'El correo de contacto no es válido';
+    }
+    return errores;
   }
 
   private abrir(id: number | null, datos: DatosEstablecimiento) {
