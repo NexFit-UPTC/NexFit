@@ -293,12 +293,22 @@ class ClientTests {
         int n = SEQ.incrementAndGet();
         String email = "titular" + n + "@nexfit.test";
         long personId = newUser(email);
+        String otroCorreo = "otro" + n + "@nexfit.test";
+        int auditoriaAntes = auditCount(org.id());
 
         MvcResult r = create(staff, createJson("CC", documentOf(personId), "Ana", "Pérez",
-            "1990-01-01", "otro" + n + "@nexfit.test", "3001234567", epsId(),
+            "1990-01-01", otroCorreo, "3001234567", epsId(),
             "Luis Pérez", "Padre", "3000000000"));
 
         assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(body(r)).contains("El documento ya está registrado con otro correo");
+        // El rechazo no deja nada a medias: ni cuenta con el correo nuevo, ni afiliación, ni evento.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE lower(email) = lower(?)",
+            Integer.class, otroCorreo)).isZero();
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM organization_members WHERE organization_id = ? AND user_id = ?",
+            Integer.class, org.id(), personId)).isZero();
+        assertThat(auditCount(org.id())).isEqualTo(auditoriaAntes);
     }
 
     @Test

@@ -1,15 +1,10 @@
 package com.nexfit.auth;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.nexfit.shared.AnyAuthenticated;
-import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,11 +18,19 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import com.nexfit.shared.AnyAuthenticated;
+
+import jakarta.servlet.http.Cookie;
 
 /** Flujo CSRF completo como lo hace Angular, sin el post-procesador csrf() de MockMvc (NEX-80). */
 @Testcontainers
@@ -73,6 +76,11 @@ class CsrfCookieTests {
             ON CONFLICT DO NOTHING
             """, encoder.encode(PASSWORD));
     }
+    private static String content(MvcResult r) {
+    return new String(r.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+}
+
+
 
     @Test
     void unaRutaPublicaEmiteLaCookieXsrfTokenLegibleDesdeJs() throws Exception {
@@ -138,11 +146,22 @@ class CsrfCookieTests {
     }
 
     @Test
-    void sinLaCabeceraXXsrfTokenElLoginResponde403() throws Exception {
-        newUser();
-        Cookie xsrf = mvc.perform(get("/actuator/health")).andReturn().getResponse().getCookie("XSRF-TOKEN");
-        assertThat(xsrf).isNotNull();
-        mvc.perform(post("/auth/login").cookie(xsrf).contentType(MediaType.APPLICATION_JSON).content(BODY))
-            .andExpect(status().isForbidden());
-    }
+void sinLaCabeceraXXsrfTokenElLoginResponde403() throws Exception {
+    newUser();
+    Cookie xsrf = mvc.perform(get("/actuator/health")).andReturn().getResponse().getCookie("XSRF-TOKEN");
+    assertThat(xsrf).isNotNull();
+    MvcResult r = mvc.perform(post("/auth/login").cookie(xsrf).contentType(MediaType.APPLICATION_JSON).content(BODY))
+        .andReturn();
+    assertThat(r.getResponse().getStatus()).isEqualTo(403);
+    assertThat(content(r)).contains("\"code\":\"CSRF_TOKEN_INVALID\"");
+}
+
+@Test
+void sinCookieXsrfElLoginResponde403() throws Exception {
+    newUser();
+    MvcResult r = mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(BODY)).andReturn();
+    assertThat(r.getResponse().getStatus()).isEqualTo(403);
+    assertThat(content(r)).contains("\"code\":\"CSRF_TOKEN_INVALID\"");
+}
+
 }
