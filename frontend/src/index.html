@@ -1,12 +1,44 @@
 <!doctype html>
-<html lang="es" data-theme="neutro">
+<html lang="es" data-theme="claro">
 <head>
   <meta charset="utf-8" />
+  <base href="/" />
   <title>NexFit</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="preload" href="/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <script>
+    // Aplica modo y acento guardados antes del primer render (evita el parpadeo). Misma lógica que TemaService.
+    (function () {
+      try {
+        var d = document.documentElement;
+        var g = JSON.parse(localStorage.getItem('nexfit.tema') || '{}');
+        var oscuro = g.modo === 'oscuro' || ((g.modo === undefined || g.modo === 'sistema') && matchMedia('(prefers-color-scheme: dark)').matches);
+        d.setAttribute('data-theme', oscuro ? 'oscuro' : 'claro');
+        var m = /^#[0-9a-f]{6}$/i.exec(g.acento || '');
+        if (m) {
+          var l = function (i) {
+            var c = parseInt(g.acento.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+          };
+          var lum = 0.2126 * l(0) + 0.7152 * l(1) + 0.0722 * l(2);
+          // Contraste contra #11151a (luminancia ≈ 0.0073) vs. blanco.
+          d.style.setProperty('--acento', g.acento);
+          d.style.setProperty('--sobre-acento', (lum + 0.05) / 0.0573 >= 1.05 / (lum + 0.05) ? '#11151a' : '#ffffff');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    /* Splash hasta que Angular reemplaza el contenido de <app-root>. Usa solo los tokens de styles.css. */
+    .splash { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; background: var(--fondo); }
+    .splash-barra { width: 56px; height: 6px; border-radius: 6px; background: var(--acento); animation: splash-pulso 1.2s ease-in-out infinite; }
+    @keyframes splash-pulso { 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) { .splash-barra { animation: none; } }
+  </style>
 </head>
 <body>
-  <app-root></app-root>
+  <app-root><div class="splash" role="status" aria-label="Cargando NexFit"><span class="splash-barra"></span></div></app-root>
 </body>
 </html>

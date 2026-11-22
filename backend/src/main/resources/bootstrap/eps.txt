@@ -2,31 +2,29 @@
 # Una por línea. Las líneas vacías y las que empiezan con # se ignoran.
 # Es solo el punto de partida: después el Master lo administra desde la aplicación (US-18).
 # El procedimiento no modifica ni reactiva una EPS que ya exista (se compara sin distinguir mayúsculas).
-# TODO(equipo): contrastar este listado con el vigente de la Superintendencia Nacional de Salud antes de usar datos reales.
+# TODO(equipo): falta contrastar este listado con el vigente de la Superintendencia Nacional de Salud (Supersalud).
+# Sin confirmar y por eso fuera de la lista: Compensar, Comfenalco Valle, Anas Wayuu, Pijaos Salud y Mallamas.
 Nueva EPS
-Sanitas EPS
-EPS Sura
-Salud Total EPS
-Compensar EPS
-Famisanar EPS
-Coosalud EPS
-Mutual SER EPS
-Savia Salud EPS
-Capital Salud EPS
-Asmet Salud EPS
-Emssanar EPS
-SOS EPS (Servicio Occidental de Salud)
-Aliansalud EPS
-Cajacopi Atlántico EPS
-Comfenalco Valle EPS
-Comfachocó EPS
-Comfaoriente EPS
-Capresoca EPS
-Anas Wayuu EPSI
-Dusakawi EPSI
-Pijaos Salud EPSI
-AIC EPSI (Asociación Indígena del Cauca)
-Mallamas EPSI
+Sanitas
+Sura
+Salud Total
+Famisanar
+SOS
+Coosalud
+Mutual SER
+Aliansalud
+Salud Mía
+Cajacopi Atlántico
+Capresoca
+Comfachocó
+Comfaoriente
+EPS Familiar de Colombia
+Asmet Salud
+Emssanar
+Capital Salud
+Savia Salud
+Dusakawi
+AIC
 # Regímenes especiales (no son EPS, pero sus afiliados también deben poder elegir una opción)
 Fuerzas Militares (Sanidad Militar)
 Policía Nacional (Sanidad Policial)

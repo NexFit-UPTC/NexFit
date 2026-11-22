@@ -22,7 +22,7 @@ public class AdminAssignmentRepository {
 
     public record Organization(long id, boolean active) { }
 
-    public record Person(long id, String firstName, String lastName, String email) { }
+    public record Person(long id, String firstName, String lastName, String email, LocalDate birthDate) { }
 
     public Optional<Organization> findOrganization(long orgId) {
         return jdbc.sql("SELECT id, is_active FROM organizations WHERE id = :id")
@@ -33,13 +33,13 @@ public class AdminAssignmentRepository {
 
     public Optional<Person> findPersonByDocument(String documentType, String documentNumber) {
         return jdbc.sql("""
-            SELECT id, first_name, last_name, email FROM users
+            SELECT id, first_name, last_name, email, birth_date FROM users
             WHERE document_type = CAST(:type AS document_type) AND document_number = :number
             """)
             .param("type", documentType)
             .param("number", documentNumber)
             .query((rs, n) -> new Person(rs.getLong("id"), rs.getString("first_name"),
-                rs.getString("last_name"), rs.getString("email")))
+                rs.getString("last_name"), rs.getString("email"), rs.getObject("birth_date", LocalDate.class)))
             .optional();
     }
 
@@ -126,6 +126,33 @@ public class AdminAssignmentRepository {
             """)
             .param("member", memberId)
             .param("org", orgId)
+            .update();
+    }
+
+    /** El usuario con el rol admin vigente en el establecimiento, si lo hay (RNF-09: a lo sumo uno). */
+    public Optional<Long> findCurrentAdminUserId(long orgId) {
+        return jdbc.sql("""
+            SELECT om.user_id FROM member_roles mr
+            JOIN organization_members om ON om.id = mr.member_id
+            WHERE mr.organization_id = :org AND mr.role = CAST('admin' AS member_role)
+            """)
+            .param("org", orgId)
+            .query((rs, n) -> rs.getLong("user_id"))
+            .optional();
+    }
+
+    /** Quita el rol admin del usuario en el establecimiento; no toca la afiliación ni ningún otro dato. */
+    public void removeAdminRole(long orgId, long userId) {
+        jdbc.sql("""
+            DELETE FROM member_roles mr
+            USING organization_members om
+            WHERE mr.member_id = om.id
+              AND mr.organization_id = :org
+              AND mr.role = CAST('admin' AS member_role)
+              AND om.user_id = :user
+            """)
+            .param("org", orgId)
+            .param("user", userId)
             .update();
     }
 }

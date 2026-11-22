@@ -1,0 +1,24 @@
+.titulo {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+form {
+  display: grid;
+  gap: var(--espacio-3);
+}
+
+.con-boton {
+  position: relative;
+}
+
+.con-boton .nf-entrada {
+  padding-right: 88px;
+}
+
+.ojo {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}

@@ -85,7 +85,8 @@ class AuditEventsTests {
         audit(null, actor.id(), "LOGIN_FAILED", "2026-10-20 12:00:00+00", "m-global");
 
         Cookie session = login(user(true));
-        MvcResult r = mvc.perform(get("/audit/events").cookie(session)).andReturn();
+        // La lista es paginada y la base acumula eventos de las demás pruebas: se acota al actor de esta.
+        MvcResult r = mvc.perform(get("/audit/events?userId=" + actor.id()).cookie(session)).andReturn();
         String body = body(r);
         assertThat(r.getResponse().getStatus()).isEqualTo(200);
         assertThat(body).contains("m-a", "m-b", "m-global");

@@ -29,6 +29,16 @@ describe('csrfInterceptor', () => {
     ctrl.expectOne({ method: 'POST', url: '/api/auth/login' }).flush({});
   });
 
+  it('POST sin cookie: tras sembrarla, el POST lleva X-XSRF-TOKEN con su valor', () => {
+    http.post('/api/auth/login', {}).subscribe();
+    const health = ctrl.expectOne({ method: 'GET', url: '/api/actuator/health' });
+    document.cookie = 'XSRF-TOKEN=sembrado; path=/'; // lo que haría el Set-Cookie de la respuesta
+    health.flush(null);
+    const post = ctrl.expectOne({ method: 'POST', url: '/api/auth/login' });
+    expect(post.request.headers.get('X-XSRF-TOKEN')).toBe('sembrado');
+    post.flush({});
+  });
+
   it('errores de la llamada previa no pasan por el interceptor de errores', () => {
     const sesion = TestBed.inject(SessionService);
     sesion.estado.set('activa');

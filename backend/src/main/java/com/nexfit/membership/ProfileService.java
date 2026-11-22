@@ -68,6 +68,8 @@ public class ProfileService {
     /**
      * Cambia solo lo que viene en el cuerpo (teléfono, EPS, contactos de emergencia). Todo se valida
      * antes de escribir y se guarda en una sola transacción.
+     * Cambiar la EPS exige la autorización expresa de datos de salud (RN-37, NEX-42) y sella
+     * health_consent_at en ese momento.
      *
      * @throws IllegalArgumentException (400) si un dato no es válido, incluido dejar la EPS o los contactos vacíos (RN-25)
      * @throws AccessDeniedException (403) si no hay un establecimiento activo con afiliación vigente
@@ -95,8 +97,24 @@ public class ProfileService {
                 .param("v", phone).param("id", memberId).param("org", orgId).param("user", userId).update();
         }
         if (epsId != null) {
-            jdbc.sql("UPDATE organization_members SET eps_id = :v WHERE id = :id AND organization_id = :org AND user_id = :user")
-                .param("v", epsId).param("id", memberId).param("org", orgId).param("user", userId).update();
+            Long currentEps = jdbc.sql("SELECT eps_id FROM organization_members WHERE id = :id")
+                .param("id", memberId)
+                .query((rs, n) -> rs.getObject("eps_id", Long.class))
+                .optional().orElse(null);
+            boolean changed = currentEps == null || !epsId.equals(currentEps);
+            if (changed && !Boolean.TRUE.equals(body.get("healthConsent"))) {
+                throw new IllegalArgumentException("Cambiar la EPS exige la autorización expresa de datos de salud");
+            }
+            if (changed) {
+                jdbc.sql("""
+                        UPDATE organization_members SET eps_id = :v, health_consent_at = now()
+                        WHERE id = :id AND organization_id = :org AND user_id = :user
+                        """)
+                    .param("v", epsId).param("id", memberId).param("org", orgId).param("user", userId).update();
+            } else {
+                jdbc.sql("UPDATE organization_members SET eps_id = :v WHERE id = :id AND organization_id = :org AND user_id = :user")
+                    .param("v", epsId).param("id", memberId).param("org", orgId).param("user", userId).update();
+            }
         }
         if (contacts != null) {
             jdbc.sql("DELETE FROM emergency_contacts WHERE member_id = :m AND organization_id = :org")

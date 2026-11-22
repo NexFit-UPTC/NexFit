@@ -1,26 +1,52 @@
-<header>
-  <strong>NexFit</strong>
-  <span>
-    @if (sesion.establecimiento(); as est) { {{ est.name }} · }
-    @if (sesion.usuario(); as u) { {{ u.firstName }} {{ u.lastName }} }
-  </span>
-</header>
-<nav aria-label="Secciones">
-  @for (s of secciones(); track s.ruta) {
-    <a [routerLink]="s.ruta" routerLinkActive="activa">{{ s.titulo }}</a>
+<aside class="lateral">
+  <div class="marca">
+    <span class="logo" aria-hidden="true">N</span>
+    <strong class="nombre-marca">NexFit</strong>
+  </div>
+  <p class="rol">{{ etiquetaRol() }}</p>
+  @if (sesion.establecimiento(); as est) {
+    @if (establecimientos().length > 1) {
+      <label class="gimnasio-selector">
+        <span class="nf-ayuda">Establecimiento</span>
+        <select class="nf-entrada" [ngModel]="est.organizationId" [disabled]="cambiando()"
+                (ngModelChange)="cambiarEstablecimiento($event)" name="establecimientoActivo">
+          @for (e of establecimientos(); track e.organizationId) {
+            <option [ngValue]="e.organizationId">{{ e.name }}</option>
+          }
+        </select>
+      </label>
+    } @else {
+      <p class="gimnasio">{{ est.name }}</p>
+    }
   }
-</nav>
+  <nav aria-label="Secciones">
+    @for (s of secciones(); track s.ruta) {
+      <a [routerLink]="s.ruta" routerLinkActive="activa">{{ s.titulo }}</a>
+    }
+  </nav>
+  <div class="usuario">
+    @if (sesion.usuario(); as u) {
+      <span class="avatar" aria-hidden="true">{{ iniciales() }}</span>
+      <span class="datos">
+        <span class="nombre">{{ u.firstName }} {{ u.lastName }}</span>
+        <button type="button" class="salir" (click)="cerrarSesion()">Cerrar sesión</button>
+      </span>
+    } @else {
+      <button type="button" class="salir" (click)="cerrarSesion()">Cerrar sesión</button>
+    }
+  </div>
+</aside>
 <main>
   @if (sesion.estado() === 'error') {
-    <p role="alert">
+    <p class="nf-alerta" role="alert">
       No se pudo conectar con el servidor.
-      <button type="button" (click)="sesion.cargar()">Reintentar</button>
+      <button type="button" class="nf-boton-texto" (click)="sesion.cargar()">Reintentar</button>
     </p>
   }
   @if (sesion.mensaje(); as m) {
-    <p role="alert">
+    <p class="nf-alerta" role="alert">
       {{ m }}
-      <button type="button" (click)="sesion.mensaje.set(null)">Cerrar</button>
+      <button type="button" class="nf-boton-texto" (click)="sesion.mensaje.set(null)">Cerrar</button>
     </p>
   }
   <router-outlet />

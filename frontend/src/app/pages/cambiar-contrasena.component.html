@@ -1,0 +1,83 @@
+<app-auth-shell>
+  <h1 class="titulo">{{ obligatorio() ? 'Cambia tu contraseña temporal' : 'Cambiar contraseña' }}</h1>
+  @if (obligatorio()) {
+    <p class="nf-ayuda">
+      Ingresaste con una contraseña temporal. Para continuar, escribe la temporal como contraseña actual y
+      elige una nueva.
+    </p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+    @if (error(); as mensaje) {
+      <p class="nf-alerta" role="alert">{{ mensaje }}</p>
+    }
+
+    <div class="nf-campo">
+      <label for="actual">{{ obligatorio() ? 'Contraseña temporal' : 'Contraseña actual' }}</label>
+      <input
+        id="actual"
+        class="nf-entrada"
+        formControlName="actual"
+        autocomplete="current-password"
+        [type]="verClave() ? 'text' : 'password'"
+        [attr.aria-invalid]="form.controls.actual.touched && form.controls.actual.invalid"
+        [attr.aria-describedby]="form.controls.actual.touched && form.controls.actual.invalid ? 'actual-error' : null"
+      />
+      @if (form.controls.actual.touched && form.controls.actual.invalid) {
+        <p id="actual-error" class="nf-error-campo">Escribe tu contraseña actual.</p>
+      }
+    </div>
+
+    <div class="nf-campo">
+      <label for="nueva">Contraseña nueva</label>
+      <input
+        id="nueva"
+        class="nf-entrada"
+        formControlName="nueva"
+        autocomplete="new-password"
+        [type]="verClave() ? 'text' : 'password'"
+        aria-describedby="nueva-ayuda"
+        [attr.aria-invalid]="form.controls.nueva.touched && form.controls.nueva.invalid"
+      />
+      @if (form.controls.nueva.touched && form.controls.nueva.invalid) {
+        <p id="nueva-ayuda" class="nf-error-campo">La contraseña nueva debe tener al menos {{ minimo }} caracteres.</p>
+      } @else {
+        <p id="nueva-ayuda" class="nf-ayuda">Mínimo {{ minimo }} caracteres.</p>
+      }
+    </div>
+
+    <div class="nf-campo">
+      <label for="confirmar">Repite la contraseña nueva</label>
+      <input
+        id="confirmar"
+        class="nf-entrada"
+        formControlName="confirmar"
+        autocomplete="new-password"
+        [type]="verClave() ? 'text' : 'password'"
+        [attr.aria-invalid]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden'))"
+        [attr.aria-describedby]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden')) ? 'confirmar-error' : null"
+      />
+      @if (form.controls.confirmar.touched && form.hasError('noCoinciden')) {
+        <p id="confirmar-error" class="nf-error-campo">Las contraseñas no coinciden.</p>
+      } @else if (form.controls.confirmar.touched && form.controls.confirmar.invalid) {
+        <p id="confirmar-error" class="nf-error-campo">Repite la contraseña nueva.</p>
+      }
+    </div>
+
+    <label class="mostrar">
+      <input type="checkbox" [checked]="verClave()" (change)="verClave.set(!verClave())" />
+      Mostrar contraseñas
+    </label>
+
+    <button type="submit" class="nf-boton nf-boton-ancho" [disabled]="enviando()">
+      {{ enviando() ? 'Guardando…' : 'Guardar contraseña' }}
+    </button>
+  </form>
+
+  <div class="salidas">
+    @if (!obligatorio()) {
+      <a routerLink="/">Volver</a>
+    }
+    <button type="button" class="nf-boton-texto" (click)="cerrarSesion()">Cerrar sesión</button>
+  </div>
+</app-auth-shell>

@@ -1,32 +1,59 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/admin.guard';
+import { gestionGuard } from './core/personal-gestion.guard';
+import { asignacionesGuard, clienteGuard, entrenadorGuard, rutinasGuard } from './core/asignaciones.guard';
+import { destinoPorRol } from './core/destino-por-rol';
+import { inicioGuard } from './core/inicio.guard';
+import { equiposGuard } from './core/equipos.guard';
+import { panelGuard } from './core/panel.guard';
+import { SessionService } from './core/session.service';
+import { masterGuard } from './core/master.guard';
 import { sessionGuard } from './core/session.guard';
+import { staffGuard } from './core/staff.guard';
 import { LayoutComponent } from './layout/layout.component';
-import { AdministradorComponent } from './pages/administrador.component';
-import { AuditoriaComponent } from './pages/auditoria.component';
-import { CambiarContrasenaComponent } from './pages/cambiar-contrasena.component';
-import { EstablecimientoComponent } from './pages/establecimiento.component';
-import { EstablecimientosComponent } from './pages/establecimientos.component';
-import { LoginComponent } from './pages/login.component';
-import { MiPerfilComponent } from './pages/mi-perfil.component';
-import { PlanesComponent } from './pages/planes.component';
-import { SedesComponent } from './pages/sedes.component';
 
 export const routes: Routes = [
-  { path: 'login', component: LoginComponent, canActivate: [sessionGuard], data: { public: true } },
-  { path: 'establecimiento', component: EstablecimientoComponent, canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
-  { path: 'cambiar-contrasena', component: CambiarContrasenaComponent, canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
+  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/inicio-publico.component').then((m) => m.InicioPublicoComponent), canActivate: [inicioGuard], data: { public: true } },
+  { path: 'gimnasios/:id', loadComponent: () => import('./pages/gimnasio-detalle.component').then((m) => m.GimnasioDetalleComponent), canActivate: [sessionGuard], data: { public: true } },
+  { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent), canActivate: [sessionGuard], data: { public: true } },
+  { path: 'registro', loadComponent: () => import('./pages/registro.component').then((m) => m.RegistroComponent), canActivate: [inicioGuard], data: { public: true } },
+  { path: 'establecimiento', loadComponent: () => import('./pages/establecimiento.component').then((m) => m.EstablecimientoComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
+  { path: 'cambiar-contrasena', loadComponent: () => import('./pages/cambiar-contrasena.component').then((m) => m.CambiarContrasenaComponent), canActivate: [sessionGuard], data: { sinEstablecimiento: true } },
   {
     path: '',
     component: LayoutComponent,
     canActivate: [sessionGuard],
     children: [
-      { path: 'mi-perfil', component: MiPerfilComponent },
-      { path: 'establecimientos', component: EstablecimientosComponent },
-      { path: 'administrador', component: AdministradorComponent },
-      { path: 'auditoria', component: AuditoriaComponent },
-      { path: 'sedes', component: SedesComponent },
-      { path: 'planes', component: PlanesComponent },
-      { path: '', pathMatch: 'full', redirectTo: 'mi-perfil' }
+      { path: 'panel', loadComponent: () => import('./pages/panel.component').then((m) => m.PanelComponent), canActivate: [panelGuard] },
+      { path: 'mi-perfil', loadComponent: () => import('./pages/mi-perfil.component').then((m) => m.MiPerfilComponent) },
+      { path: 'apariencia', loadComponent: () => import('./pages/apariencia.component').then((m) => m.AparienciaComponent) },
+      { path: 'establecimientos', loadComponent: () => import('./pages/establecimientos.component').then((m) => m.EstablecimientosComponent), canActivate: [masterGuard] },
+      { path: 'eps', loadComponent: () => import('./pages/eps.component').then((m) => m.EpsComponent), canActivate: [masterGuard] },
+      { path: 'administrador', loadComponent: () => import('./pages/administrador.component').then((m) => m.AdministradorComponent), canActivate: [masterGuard] },
+      { path: 'auditoria', loadComponent: () => import('./pages/auditoria.component').then((m) => m.AuditoriaComponent) },
+      { path: 'sedes', loadComponent: () => import('./pages/sedes.component').then((m) => m.SedesComponent), canActivate: [adminGuard] },
+      { path: 'personal', loadComponent: () => import('./pages/personal.component').then((m) => m.PersonalComponent), canActivate: [adminGuard] },
+      { path: 'planes', loadComponent: () => import('./pages/planes.component').then((m) => m.PlanesComponent), canActivate: [adminGuard] },
+      { path: 'clientes', loadComponent: () => import('./pages/clientes.component').then((m) => m.ClientesComponent), canActivate: [staffGuard] },
+      { path: 'membresias', loadComponent: () => import('./pages/membresias.component').then((m) => m.MembresiasComponent), canActivate: [gestionGuard] },
+      { path: 'pagos', loadComponent: () => import('./pages/pagos.component').then((m) => m.PagosComponent) },
+      { path: 'clases', loadComponent: () => import('./pages/clases.component').then((m) => m.ClasesComponent) },
+      { path: 'equipos', loadComponent: () => import('./pages/equipos.component').then((m) => m.EquiposComponent), canActivate: [equiposGuard] },
+      { path: 'alumnos', loadComponent: () => import('./pages/asignaciones.component').then((m) => m.AsignacionesComponent), canActivate: [asignacionesGuard] },
+      { path: 'mis-alumnos', loadComponent: () => import('./pages/mis-alumnos.component').then((m) => m.MisAlumnosComponent), canActivate: [entrenadorGuard] },
+      { path: 'rutinas', loadComponent: () => import('./pages/rutinas.component').then((m) => m.RutinasComponent), canActivate: [rutinasGuard] },
+      { path: 'inicio', loadComponent: () => import('./pages/inicio.component').then((m) => m.InicioComponent), canActivate: [clienteGuard] },
+      { path: 'progreso', loadComponent: () => import('./pages/progreso.component').then((m) => m.ProgresoComponent), canActivate: [clienteGuard] },
+      { path: 'peso', loadComponent: () => import('./pages/peso.component').then((m) => m.PesoComponent), canActivate: [clienteGuard] },
+      { path: 'ejercicios', loadComponent: () => import('./pages/ejercicios.component').then((m) => m.EjerciciosComponent) },
+      { path: 'reservas', loadComponent: () => import('./pages/reservas.component').then((m) => m.ReservasComponent) },
+      { path: 'asistencia', loadComponent: () => import('./pages/asistencia.component').then((m) => m.AsistenciaComponent) },
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: () => destinoPorRol(inject(SessionService))
+      }
     ]
   },
   { path: '**', redirectTo: '' }

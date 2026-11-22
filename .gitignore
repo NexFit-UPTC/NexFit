@@ -9,7 +9,7 @@ backend/target/
 *.log
 
 # Node / Angular
-frontend/node_modules/
+frontend/node_modules
 frontend/dist/
 frontend/.angular/
 frontend/.vercel/
@@ -27,3 +27,6 @@ build/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Cuentas reales del grupo para el seed massive (nunca se versionan)
+*.local.csv

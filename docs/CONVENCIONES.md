@@ -26,10 +26,13 @@ Un paquete por módulo, directamente bajo `com.nexfit` (nombres en inglés, como
 | -- | -- | -- | -- | -- |
 | `auth` | R0 · R5 | | `attendance` | R2 |
 | `organization` | R1 | | `training` | R3 · R4 |
-| `membership` | R1 · R2 · R5 | | `resource` | R1 · R6 |
-| `payment` | R2 · R5 | | `audit` | R5 |
-| `booking` | R3 | | `shared` | todos |
-| `bootstrap` | R0 | | | |
+| `membership` | R1 · R2 · R5 | | `administration` | — |
+| `payment` | R2 · R5 | | `equipment` | — |
+| `booking` | R3 | | `dashboard` | — |
+| `bootstrap` | R0 | | `audit` | R5 |
+| `shared` | todos | | | |
+
+Hoy el código tiene estos paquetes; `administration` agrupa clientes, personal y asignación del Administrador, `equipment` los equipos de las sedes y `dashboard` los indicadores.
 
 Lo que esté en el paquete raíz del módulo es su API pública; los subpaquetes (`internal`, etc.) son privados. `ModularityTests` falla si un módulo usa clases internas de otro. `shared` es el único que todos pueden usar.
 
@@ -53,7 +56,7 @@ Lo que esté en el paquete raíz del módulo es su API pública; los subpaquetes
 ## Commits: convención del profesor + trazabilidad
 
 ```
-<tipo>(<módulo>): <descripción en imperativo> — NEX-xx.
+<tipo>(<módulo>): <descripción con verbo en infinitivo> — NEX-xx.
 ```
 
 | Tipo | Uso | Ejemplo |
@@ -84,7 +87,7 @@ Todo cambio entra por PR contra `develop`, con la plantilla: issue que cierra, �
 3. Abre el PR hacia `develop` con `Closes NEX-xx` en la descripción: Linear la pasa a **In Review**.
 4. Con CI en verde, **Squash and merge**: Linear la pasa a **Done**.
 
-**Definition of Done:** criterios de aceptación verificados, pruebas automáticas de las reglas nuevas, CI en verde y sin secretos en el código.
+**Definition of Done:** criterios de aceptación verificados, pruebas automáticas de las reglas nuevas, **todo endpoint nuevo agregado a `cases()` de `AuthorizationMatrixTests`**, documentado en `docs/api/README.md` en el mismo PR, CI en verde y sin secretos en el código.
 
 ## Autorización de endpoints (NEX-25)
 
@@ -102,7 +105,7 @@ Todo endpoint de `com.nexfit` declara su regla; sin regla responde `403 ACCESS_R
 
 - Solo en `backend/src/main/resources/db/migration`: `V1__spring_session_jdbc.sql` → `V2__...` (MER v4: 23 tablas, 10 enums, NEX-12) → `V3__...` por cada cambio posterior.
 - Nunca se edita una migración ya fusionada. Nunca SQL manual contra Neon ni contra local.
-- Toda consulta de datos de un gimnasio filtra por `organization_id` (aislamiento, RNF-01). Cada endpoint nuevo lleva su prueba de autorización (TT-11).
+- Toda consulta de datos de un gimnasio filtra por `organization_id` (aislamiento, RNF-01). Cada endpoint nuevo lleva su prueba de autorización: se agrega a `cases()` en `AuthorizationMatrixTests` (TT-11). El patrón de una ruta pública está en [AGENTS.md](../AGENTS.md).
 
 ## Frontend
 
@@ -120,6 +123,6 @@ Todo endpoint de `com.nexfit` declara su regla; sin regla responde `403 ACCESS_R
 ## CI/CD
 
 - `ci.yml` corre en cada PR: `backend` (compila y ejecuta las pruebas con Testcontainers sobre PostgreSQL 18, lo que incluye correr las migraciones Flyway desde cero) y `frontend` (lint con `npm run lint` y build de Angular). Ambos jobs deben pasar para poder mezclar; el resultado se ve en la sección de checks del PR.
-- Despliegue: `main` → Azure Container Apps (API, `backend/Dockerfile`) + Vercel (frontend), con la BD en Neon. Se configura con TT-09; la idea es desplegar desde la primera semana para que R6 no sea un «big bang».
+- Despliegue: `main` → Azure Container Apps (API, `backend/Dockerfile`) + Vercel (frontend), con la BD en Neon (detalle en [despliegue.md](arquitectura/despliegue.md)). URL pública: https://nexfit-vert.vercel.app.
 - **Protección de `develop` (activa):** un ruleset exige los checks `backend` y `frontend` en verde, PR obligatorio sin aprobaciones y prohíbe borrar la rama o reescribir su historial. Un PR con lint o pruebas fallidas no se puede mezclar.
-- Pendientes: pruebas del frontend en el CI (aún no hay `*.spec.ts`), respaldo diario (TT-10) y cierre de ingresos (US-38) se agregan con sus issues.
+- Respaldo diario: `backup.yml` (TT-10). Las pruebas del frontend (`*.spec.ts`) existen, pero `ci.yml` todavía solo corre lint y build del frontend: ejecuta `npm test -- --watch=false` antes de abrir el PR. Agregar `npm test` al CI queda como mejora pendiente.

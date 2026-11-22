@@ -93,7 +93,7 @@ class ProfileTests {
         long nuevaEps = eps(true);
         Cookie session = login(ana);
         String json = """
-            {"epsId": %d, "emergencyContacts": [
+            {"epsId": %d, "healthConsent": true, "emergencyContacts": [
               {"fullName": "Marta Gómez", "relationship": "Madre", "phone": "3112223344", "primary": true},
               {"fullName": "Pedro Ruiz", "relationship": "Hermano", "phone": "3123334455"}]}
             """.formatted(nuevaEps);

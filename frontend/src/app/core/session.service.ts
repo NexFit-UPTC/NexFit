@@ -1,5 +1,8 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { TimeoutError, timeout } from 'rxjs';
+
+const TIMEOUT_ME_MS = 10_000;
 
 export type EstadoSesion =
   | 'cargando'
@@ -27,10 +30,12 @@ export class SessionService {
   readonly mensaje = signal<string | null>(null);
 
   /** Consulta /api/me y deriva el estado. Se vuelve a llamar tras login, selección de establecimiento o reintento. */
-  cargar(): Promise<void> {
+  cargar(conTimeout = false): Promise<void> {
     this.estado.set('cargando');
     return new Promise((resolve) => {
-      this.http.get<Perfil>('/api/me').subscribe({
+      const peticion = this.http.get<Perfil>('/api/me');
+      // El timeout solo vale al arrancar la app; en login/reintento un timeout expulsaría a quien ya se autenticó.
+      (conTimeout ? peticion.pipe(timeout(TIMEOUT_ME_MS)) : peticion).subscribe({
         next: (perfil) => {
           this.usuario.set(perfil.identity);
           // affiliation nula solo ocurre para el Master (sin establecimiento, D-13).
@@ -42,7 +47,7 @@ export class SessionService {
           this.estado.set('activa');
           resolve();
         },
-        error: (e: HttpErrorResponse) => {
+        error: (e: HttpErrorResponse | TimeoutError) => {
           this.limpiar();
           this.estado.set(estadoDeError(e));
           resolve();
@@ -59,7 +64,9 @@ export class SessionService {
   }
 }
 
-function estadoDeError(e: HttpErrorResponse): EstadoSesion {
+function estadoDeError(e: HttpErrorResponse | TimeoutError): EstadoSesion {
+  // Sin respuesta a tiempo (API dormida): se trata como anónimo; una ruta protegida lleva a /login y no se cuelga.
+  if (e instanceof TimeoutError) return 'anonimo';
   if (e.status === 401) return 'anonimo';
   if (e.status === 403) {
     switch (e.error?.code) {
