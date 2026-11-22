@@ -49,18 +49,10 @@ class EstablishmentController {
     @PostMapping
     ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         String name = text(body.get("name"));
-        if (name == null || name.isEmpty()) {
-            return invalid("name", "El nombre es obligatorio");
-        }
-        if (name.length() > MAX_LENGTH) {
-            return invalid("name", "El nombre no puede superar " + MAX_LENGTH + " caracteres");
-        }
         String email = text(body.get("contactEmail"));
-        if (email == null || email.isEmpty()) {
-            return invalid("contactEmail", "El correo de contacto es obligatorio");
-        }
-        if (email.length() > MAX_LENGTH || !EMAIL.matcher(email).matches()) {
-            return invalid("contactEmail", "El correo de contacto no es válido");
+        ResponseEntity<Map<String, String>> rechazo = checkNameAndEmail(name, email);
+        if (rechazo != null) {
+            return rechazo;
         }
         String timezone = text(body.get("timezone"));
         if (timezone == null || timezone.isEmpty()) {
@@ -102,18 +94,10 @@ class EstablishmentController {
     @PutMapping("/{id}")
     ResponseEntity<?> update(@PathVariable long id, @RequestBody Map<String, Object> body) {
         String name = text(body.get("name"));
-        if (name == null || name.isEmpty()) {
-            return invalid("name", "El nombre es obligatorio");
-        }
-        if (name.length() > MAX_LENGTH) {
-            return invalid("name", "El nombre no puede superar " + MAX_LENGTH + " caracteres");
-        }
         String email = text(body.get("contactEmail"));
-        if (email == null || email.isEmpty()) {
-            return invalid("contactEmail", "El correo de contacto es obligatorio");
-        }
-        if (email.length() > MAX_LENGTH || !EMAIL.matcher(email).matches()) {
-            return invalid("contactEmail", "El correo de contacto no es válido");
+        ResponseEntity<Map<String, String>> rechazo = checkNameAndEmail(name, email);
+        if (rechazo != null) {
+            return rechazo;
         }
         String timezone = text(body.get("timezone"));
         if (timezone == null || timezone.isEmpty()) {
@@ -164,6 +148,29 @@ class EstablishmentController {
     /** Valor de texto recortado; null si falta o no es una cadena. */
     private static String text(Object value) {
         return value instanceof String s ? s.trim() : null;
+    }
+
+    /**
+     * Valida nombre y correo de contacto, con un mensaje distinto para cada causa (obligatorio, demasiado largo
+     * o con formato inválido). Devuelve la respuesta 400 si algo falla, o null si ambos son válidos.
+     */
+    private static ResponseEntity<Map<String, String>> checkNameAndEmail(String name, String email) {
+        if (name == null || name.isEmpty()) {
+            return invalid("name", "El nombre es obligatorio");
+        }
+        if (name.length() > MAX_LENGTH) {
+            return invalid("name", "El nombre no puede superar " + MAX_LENGTH + " caracteres");
+        }
+        if (email == null || email.isEmpty()) {
+            return invalid("contactEmail", "El correo de contacto es obligatorio");
+        }
+        if (email.length() > MAX_LENGTH) {
+            return invalid("contactEmail", "El correo de contacto no puede superar " + MAX_LENGTH + " caracteres");
+        }
+        if (!EMAIL.matcher(email).matches()) {
+            return invalid("contactEmail", "El correo de contacto no es válido");
+        }
+        return null;
     }
 
     private static boolean validZone(String id) {
