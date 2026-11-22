@@ -21,6 +21,16 @@ class PublicGymService {
     static final int DEFAULT_SIZE = 20;
     static final int MAX_SIZE = 50;
 
+    /**
+     * Orden por nombre sin tildes (CA54, NEX-114): con la collation por defecto de la base, «Páramo» queda
+     * después de «Pulso» y «Ágora» al final. Se quitan las tildes (la ñ cuenta como n) antes de ordenar, sin
+     * depender de una collation ICU ni de una extensión, y se pasa a minúsculas después porque con la
+     * collation C {@code lower} no convierte las vocales con tilde en mayúscula.
+     */
+    private static final String NAME_ORDER = "lower(translate(name,"
+        + " 'áàäâéèëêíìïîóòöôúùüûñÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑ',"
+        + " 'aaaaeeeeiiiioooouuuunAAAAEEEEIIIIOOOOUUUUN'))";
+
     private final JdbcClient jdbc;
 
     PublicGymService(JdbcClient jdbc) {
@@ -45,7 +55,7 @@ class PublicGymService {
         int pageIndex = Math.max(page, 0);
         long total = jdbc.sql("SELECT count(*) FROM organizations WHERE is_active").query(Long.class).single();
         List<GymSummary> rows = jdbc.sql("SELECT id, name FROM organizations WHERE is_active"
-                + " ORDER BY lower(name), id LIMIT :limit OFFSET :offset")
+                + " ORDER BY " + NAME_ORDER + ", lower(name), id LIMIT :limit OFFSET :offset")
             .param("limit", pageSize).param("offset", (long) pageIndex * pageSize)
             .query((rs, n) -> new GymSummary(rs.getLong("id"), rs.getString("name"), List.of()))
             .list();
