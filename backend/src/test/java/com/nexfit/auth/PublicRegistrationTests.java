@@ -153,4 +153,44 @@ class PublicRegistrationTests {
         assertThat(noName.getResponse().getStatus()).isEqualTo(400);
         assertThat(content(noName)).contains("\"field\":\"firstName\"");
     }
+
+    @Test
+    void unaContrasenaDebilDe10CaracteresSeRechazaConMensajeClaro() throws Exception {
+        int n = SEQ.incrementAndGet();
+        // Solo dígitos (H-01: el caso que motivó la issue).
+        MvcResult soloDigitos = register(body("W" + n, "debil1" + n + "@nexfit.test", "1234567890"));
+        assertThat(soloDigitos.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(soloDigitos)).contains("\"code\":\"VALIDATION_ERROR\"")
+                .contains("\"field\":\"password\"").contains("demasiado débil");
+        // Secuencia evidente de letras.
+        MvcResult secuencia = register(body("W" + n, "debil2" + n + "@nexfit.test", "abcdefghij"));
+        assertThat(secuencia.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(secuencia)).contains("\"field\":\"password\"");
+        // Un solo carácter repetido.
+        MvcResult repetida = register(body("W" + n, "debil3" + n + "@nexfit.test", "aaaaaaaaaa"));
+        assertThat(repetida.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(repetida)).contains("\"field\":\"password\"");
+        // Contraseña común de la lista.
+        MvcResult comun = register(body("W" + n, "debil4" + n + "@nexfit.test", "password123"));
+        assertThat(comun.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(comun)).contains("\"field\":\"password\"");
+        // Recorrido de teclado que no es secuencia alfanumérica: lo caza la lista.
+        MvcResult teclado = register(body("W" + n, "debil5" + n + "@nexfit.test", "qwertyuiop"));
+        assertThat(teclado.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(teclado)).contains("\"field\":\"password\"");
+    }
+
+    @Test
+    void losBordesDeLongitudSiguenVigentesConLaReglaNueva() throws Exception {
+        int n = SEQ.incrementAndGet();
+        // Fuerte de 9 caracteres: sigue siendo corta.
+        MvcResult nueve = register(body("B" + n, "nueve" + n + "@nexfit.test", "Clave-123"));
+        assertThat(nueve.getResponse().getStatus()).isEqualTo(400);
+        assertThat(content(nueve)).contains("\"field\":\"password\"");
+        // Fuerte de 11 caracteres: se crea (sin regresión en el registro válido;
+        // "Clave-Segura-123" ya lo cubre registroValidoCreaSoloLaCuentaSinRolesYSeAudita).
+        MvcResult once = register(body("B" + n, "once" + n + "@nexfit.test", "Segura-1a2b"));
+        assertThat(once.getResponse().getStatus()).isEqualTo(201);
+        assertThat(content(once)).contains("\"userId\"");
+    }
 }

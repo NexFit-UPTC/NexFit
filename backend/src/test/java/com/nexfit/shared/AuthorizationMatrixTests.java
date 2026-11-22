@@ -273,6 +273,9 @@ class AuthorizationMatrixTests {
                                 "{\"documentType\":\"CC\",\"documentNumber\":\"TEST-MATRIZ-1\",\"firstName\":\"Nuevo\","
                                                 + "\"lastName\":\"Admin\",\"birthDate\":\"1990-01-01\",\"email\":\"matriz.admin@nexfit.test\"}",
                                 byPath("/establishments/%d/admin", c -> c.b().id(), "{}", FORBIDDEN_OR_NOT_FOUND)));
+                list.add(gated("DELETE /establishments/{orgId}/admin", roles(Rol.MASTER),
+                                c -> "/establishments/" + c.b().id() + "/admin", null,
+                                byPath("/establishments/%d/admin", c -> c.b().id(), null, FORBIDDEN_OR_NOT_FOUND)));
                 list.add(gated("GET /establishments/{orgId}/admin/lookup", roles(Rol.MASTER),
                                 c -> "/establishments/" + c.b().id()
                                                 + "/admin/lookup?documentType=CC&documentNumber=TEST-MATRIZ-2",

@@ -2,6 +2,7 @@ package com.nexfit.administration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -250,6 +251,88 @@ class AdminAssignmentTests {
     }
 
     @Test
+    @ReglaDeNegocio("RN-34")
+    void mismoDocumentoConOtraFechaDeNacimientoDaConflictoYNoAfilia() throws Exception {
+        AccessFixtures.Account master = fixtures.user(true, true);
+        Cookie masterCookie = fixtures.login(master);
+        long orgId = fixtures.org(true);
+
+        int n = SEQ.incrementAndGet();
+        String email = "fecha" + n + "@nexfit.test";
+        long personId = newUser(email);
+
+        MvcResult r = assign(masterCookie, orgId, "CC", documentOf(personId), "Ana", "Pérez",
+            "1985-12-24", email);
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(body(r)).contains("fecha de nacimiento");
+        assertThat(isAdmin(personId, orgId)).isFalse();
+    }
+
+    @Test
+    @ReglaDeNegocio("RN-05")
+    void revocarQuitaElRolYCierraLaSesionDelAdministrador() throws Exception {
+        AccessFixtures.Account master = fixtures.user(true, true);
+        Cookie masterCookie = fixtures.login(master);
+        AccessFixtures.Org org = fixtures.orgWithAdmin();
+        Cookie adminCookie = fixtures.login(org.admin());
+
+        // Antes de revocar, el Administrador todavía puede operar.
+        MvcResult antes = mvc.perform(get("/me").cookie(adminCookie)).andReturn();
+        assertThat(antes.getResponse().getStatus()).isEqualTo(200);
+
+        MvcResult r = mvc.perform(org(org.id(), masterCookie)).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(204);
+
+        assertThat(isAdmin(org.admin().id(), org.id())).isFalse();
+        assertThat(adminCount(org.id())).isEqualTo(0);
+
+        // Con la sesión revocada, la siguiente solicitud del Administrador da 401.
+        MvcResult despues = mvc.perform(get("/me").cookie(adminCookie)).andReturn();
+        assertThat(despues.getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void revocarSinAdministradorAsignadoDa404() throws Exception {
+        AccessFixtures.Account master = fixtures.user(true, true);
+        Cookie masterCookie = fixtures.login(master);
+        long orgId = fixtures.org(true);
+
+        MvcResult r = mvc.perform(org(orgId, masterCookie)).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    void revocarEstablecimientoInexistenteDa404() throws Exception {
+        AccessFixtures.Account master = fixtures.user(true, true);
+        Cookie masterCookie = fixtures.login(master);
+
+        MvcResult r = mvc.perform(org(999999999L, masterCookie)).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    void revocarSinSesionDa401() throws Exception {
+        long orgId = fixtures.org(true);
+        MvcResult r = mvc.perform(delete("/establishments/{orgId}/admin", orgId).with(csrf())).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void revocarSinSerMasterDa403() throws Exception {
+        long orgId = fixtures.org(true);
+        AccessFixtures.Account client = fixtures.actor(orgId, "client");
+        Cookie clientCookie = fixtures.login(client);
+
+        MvcResult r = mvc.perform(org(orgId, clientCookie)).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(403);
+    }
+
+    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder org(long orgId, Cookie actor) {
+        return delete("/establishments/{orgId}/admin", orgId).with(csrf()).cookie(actor);
+    }
+
+    @Test
     void noMasterRecibe403() throws Exception {
         long orgId = fixtures.org(true);
         AccessFixtures.Account client = fixtures.actor(orgId, "client");
@@ -348,6 +431,8 @@ class AdminAssignmentTests {
         assertThat(r.getResponse().getStatus()).isEqualTo(200);
         assertThat(body(r)).contains("\"exists\":true");
         assertThat(body(r)).contains("Ana");
+        assertThat(body(r)).contains(email);
+        assertThat(body(r)).contains("1990-01-01");
     }
 
     @Test

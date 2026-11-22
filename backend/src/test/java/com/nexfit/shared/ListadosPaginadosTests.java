@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -102,6 +103,33 @@ class ListadosPaginadosTests {
         assertThat(num(body, "$.totalElements")).isEqualTo(55);
         assertThat(num(body, "$.totalPages")).isEqualTo(3);
         assertThat(ints(body, "$.content[*].entityId")).hasSize(20).startsWith(55, 54).endsWith(37, 36);
+    }
+
+    /**
+     * H1 (NEX-138): la pantalla de auditoría espera una página. Si el endpoint vuelve a responder un array,
+     * el frontend no encuentra {@code content} y muestra la lista vacía aunque haya eventos.
+     */
+    @Test
+    void laAuditoriaRespondeSiempreUnObjetoPaginaYNuncaUnArray() throws Exception {
+        Org org = fx.orgWithAdmin();
+        Account actor = fx.user(false, true);
+        events(org.id(), actor.id(), "PAYMENT_VOIDED", 3);
+        Cookie admin = fx.login(org.admin());
+
+        String conEventos = audit(admin, actor.id(), "");
+        assertThat(conEventos.trim()).startsWith("{");
+        Map<String, Object> pagina = JsonPath.read(conEventos, "$");
+        assertThat(pagina).containsKeys("content", "page", "size", "totalElements", "totalPages");
+        assertThat(pagina.get("content")).isInstanceOf(List.class);
+        assertThat(ints(conEventos, "$.content[*].entityId")).containsExactly(3, 2, 1);
+
+        // Sin resultados sigue siendo una página (content vacío), no un array vacío.
+        String sinEventos = audit(admin, actor.id(), "&type=LOGIN");
+        assertThat(sinEventos.trim()).startsWith("{");
+        Map<String, Object> vacia = JsonPath.read(sinEventos, "$");
+        assertThat(vacia).containsKeys("content", "totalElements");
+        assertThat(num(sinEventos, "$.totalElements")).isZero();
+        assertThat(ints(sinEventos, "$.content[*].entityId")).isEmpty();
     }
 
     @Test

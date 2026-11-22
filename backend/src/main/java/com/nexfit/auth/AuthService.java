@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -32,6 +33,9 @@ public class AuthService {
     static final int LOCK_MINUTES = 15;
     /** Largo mínimo de una contraseña nueva (RNF-06). */
     static final int MIN_PASSWORD_LENGTH = 10;
+    /** Tope de la contraseña: bcrypt solo usa los primeros 72 bytes y una contraseña enorme es un vector de abuso. */
+    static final int MAX_PASSWORD_LENGTH = 64;
+    private static final int BCRYPT_MAX_BYTES = 72;
     /**
      * Vigencia de la contraseña temporal generada en un restablecimiento asistido.
      */
@@ -77,7 +81,74 @@ public class AuthService {
 
     /** Resultado de {@link #changePassword}. */
     public enum PasswordChangeResult {
-        CHANGED, TOO_SHORT, WRONG_CURRENT, SAME_AS_CURRENT
+        CHANGED, TOO_SHORT, TOO_LONG, TOO_WEAK, WRONG_CURRENT, SAME_AS_CURRENT
+    }
+
+    /** Más larga de lo permitido (en caracteres o en bytes UTF-8, que es lo que mide bcrypt). */
+    static boolean tooLong(String password) {
+        return password != null && (password.length() > MAX_PASSWORD_LENGTH
+                || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > BCRYPT_MAX_BYTES);
+    }
+
+    /** Mensaje único cuando la contraseña nueva es demasiado débil (H-01, NEX-112). */
+    static final String WEAK_PASSWORD_MESSAGE =
+            "La contraseña es demasiado débil: no uses solo dígitos, secuencias evidentes ni contraseñas comunes";
+
+    /**
+     * Contraseñas comunes de 10 o más caracteres que nunca se aceptan (H-01,
+     * NEX-112). La comparación no distingue mayúsculas.
+     */
+    private static final Set<String> COMMON_PASSWORDS = Set.of(
+            "1234567890", "0987654321", "password123", "password1234", "qwerty12345",
+            "qwertyuiop", "admin12345", "123456789a", "contraseña123", "welcome123");
+
+    /**
+     * Contraseña demasiado débil (H-01, NEX-112): solo dígitos, un solo
+     * carácter repetido, una secuencia evidente de 4 o más caracteres
+     * consecutivos (dígitos o letras, sin distinguir mayúsculas) o una
+     * contraseña común. La longitud se comprueba aparte (mínimo 10, RNF-06).
+     */
+    static boolean isWeak(String password) {
+        if (password == null) {
+            return true;
+        }
+        if (COMMON_PASSWORDS.contains(password.toLowerCase(java.util.Locale.ROOT))) {
+            return true;
+        }
+        boolean onlyDigits = true;
+        boolean allSame = true;
+        for (int i = 0; i < password.length(); i++) {
+            char c = password.charAt(i);
+            if (!Character.isDigit(c)) {
+                onlyDigits = false;
+            }
+            if (i > 0 && c != password.charAt(0)) {
+                allSame = false;
+            }
+        }
+        if (onlyDigits || allSame) {
+            return true;
+        }
+        return hasObviousSequence(password);
+    }
+
+    /** 4 o más caracteres consecutivos ascendentes o descendentes (dígitos o letras). */
+    private static boolean hasObviousSequence(String password) {
+        String lower = password.toLowerCase(java.util.Locale.ROOT);
+        int run = 1;
+        for (int i = 1; i < lower.length(); i++) {
+            char prev = lower.charAt(i - 1);
+            char curr = lower.charAt(i);
+            if (Character.isLetterOrDigit(prev) && Character.isLetterOrDigit(curr)
+                    && (curr == prev + 1 || curr == prev - 1)) {
+                if (++run >= 4) {
+                    return true;
+                }
+            } else {
+                run = 1;
+            }
+        }
+        return false;
     }
 
     /** Estado de {@link #resetPassword}. */
@@ -127,7 +198,7 @@ public class AuthService {
                         .optional();
         // Se compara siempre contra un hash para que el tiempo no delate si el correo
         // existe.
-        boolean matches = encoder.matches(password == null ? "" : password,
+        boolean matches = encoder.matches(password == null || tooLong(password) ? "" : password,
                 found.map(Candidate::passwordHash).orElse(dummyHash));
         if (found.isPresent() && matches && found.get().usable()) {
             long id = found.get().id();
@@ -265,9 +336,15 @@ public class AuthService {
         if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
             return PasswordChangeResult.TOO_SHORT;
         }
+        if (tooLong(newPassword)) {
+            return PasswordChangeResult.TOO_LONG;
+        }
+        if (isWeak(newPassword)) {
+            return PasswordChangeResult.TOO_WEAK;
+        }
         String storedHash = jdbc.sql("SELECT password_hash FROM users WHERE id = :id")
                 .param("id", userId).query(String.class).single();
-        if (current == null || !encoder.matches(current, storedHash)) {
+        if (current == null || tooLong(current) || !encoder.matches(current, storedHash)) {
             return PasswordChangeResult.WRONG_CURRENT;
         }
         if (encoder.matches(newPassword, storedHash)) {
@@ -410,7 +487,7 @@ public class AuthService {
     /**
      * Auto-registro público (BE-11, NEX-102): un visitante crea solo su cuenta,
      * sin roles ni afiliación. La contraseña es la elegida por el visitante
-     * (mínimo 10 caracteres, RNF-06); no hay contraseña temporal. El conflicto
+     * (entre 10 y 64 caracteres y no débil, H-01/NEX-112; RNF-06); no hay contraseña temporal. El conflicto
      * no distingue si chocó el correo o el documento, para no permitir
      * enumerar cuentas. Queda auditado con la IP.
      */
