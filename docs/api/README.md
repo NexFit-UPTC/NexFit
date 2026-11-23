@@ -12,7 +12,7 @@ Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly
 | `POST /api/auth/logout` | Con sesión | Cierra la sesión. Devuelve `204`. |
 | `GET /api/auth/establishments` | Con sesión | Gimnasios donde la persona puede operar: `[{organizationId, name, roles}]`. Lista vacía si no tiene ninguno activo. |
 | `POST /api/auth/establishment` | Con sesión | Cuerpo `{organizationId}`. Elige o cambia el gimnasio activo de la sesión y devuelve `204`; `400 {message}` si no puede operar en él. |
-| `POST /api/auth/password` | Con sesión | Cuerpo `{currentPassword, newPassword}`. Cambia la contraseña propia y devuelve `204`. Cierra las demás sesiones de la persona y quita la marca de contraseña temporal. |
+| `POST /api/auth/password` | Con sesión | Cuerpo `{currentPassword, newPassword}`. Cambia la contraseña propia y devuelve `204`. Cierra las demás sesiones de la persona y quita la marca de contraseña temporal. No exige gimnasio activo: una cuenta sin afiliación (p. ej. recién registrada) también puede cambiarla. |
 | `POST /api/auth/users/{userId}/password-reset` | Staff, Administrador, Master | Asigna una contraseña temporal a otra cuenta y la devuelve una sola vez: `200 {temporaryPassword}`. |
 
 Reglas:

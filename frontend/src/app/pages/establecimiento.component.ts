@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService, Establecimiento } from '../core/auth.service';
 import { borrarGimnasio, leerGimnasio } from '../core/gimnasio-preseleccionado';
 import { AuthShellComponent } from './auth-shell.component';
@@ -15,10 +16,14 @@ export function etiquetaDeRol(rol: string): string {
   return ROLES[rol] ?? rol;
 }
 
-/** Elección del establecimiento activo (US-05): se llega con 403 ESTABLISHMENT_REQUIRED o tras un login con varios. */
+/**
+ * Elección del establecimiento activo (US-05): se llega con 403 ESTABLISHMENT_REQUIRED o tras un login con varios.
+ * Quien no tiene ninguno (p. ej. una cuenta recién registrada) solo ve esta pantalla, así que desde aquí también
+ * puede cambiar su contraseña (NEX-123).
+ */
 @Component({
   selector: 'app-establecimiento',
-  imports: [AuthShellComponent],
+  imports: [AuthShellComponent, RouterLink],
   templateUrl: './establecimiento.component.html',
   styleUrl: './establecimiento.component.css'
 })
