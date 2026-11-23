@@ -43,7 +43,7 @@ Errores:
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
-| `POST /api/establishments` | Master | Crea un establecimiento activo y sin Administrador. Devuelve `201` con `{id, name, contactEmail, timezone, active}`. |
+| `POST /api/establishments` | Master | Crea un establecimiento activo y sin Administrador. Devuelve `201` con `{id, name, contactEmail, timezone, active}`. Valida con `400 VALIDATION_ERROR {field, message}`: `name` obligatorio y de hasta 150 caracteres; `contactEmail` obligatorio, de hasta 150 caracteres y con formato válido (un mensaje distinto para cada causa: obligatorio, «no puede superar 150 caracteres» y «no es válido»); `timezone` válida (por defecto `America/Bogota`). |
 
 Cuerpo: `{"name": "Gym Norte", "contactEmail": "norte@nexfit.test", "timezone": "America/Bogota"}`. `name` y `contactEmail` son obligatorios (máx. 150 caracteres); `timezone` es opcional y por defecto `America/Bogota`.
 
@@ -60,7 +60,7 @@ Errores:
 |---|---|---|
 | `GET /api/establishments` | Master | Lista los establecimientos: `[{id, name, contactEmail, timezone, active, branchCount, clientCount}]`. |
 | `GET /api/establishments/{id}` | Master | Un establecimiento con el mismo formato; `404` si no existe. |
-| `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. |
+| `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. Las mismas validaciones de `name` y `contactEmail` que al crear (`400 VALIDATION_ERROR`). |
 | `PATCH /api/establishments/{id}/active` | Master | Cuerpo `{"active": true\|false}`. Activa o desactiva el establecimiento (US-08, NEX-33): al desactivarlo, sus usuarios dejan de poder operar y recuperan el acceso al reactivarlo; no se borra nada. Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe; `400 VALIDATION_ERROR` si `active` no es booleano. Queda auditado. |
 
 Nota: la issue NEX-87 habla de `PATCH`, pero el backend expone `PUT /api/establishments/{id}`; el frontend usa `PUT`.
