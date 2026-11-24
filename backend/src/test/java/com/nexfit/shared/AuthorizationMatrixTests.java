@@ -576,6 +576,9 @@ class AuthorizationMatrixTests {
                 list.add(gated("GET /clients/{memberId}", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
                                 c -> "/clients/" + c.memberB(), null,
                                 byPath("/clients/%d", c -> c.memberB(), null, FORBIDDEN_OR_NOT_FOUND)));
+                // NEX-115: el texto vigente de la política; misma regla que la consulta de clientes.
+                list.add(gated("GET /legal/policy", roles(Rol.ADMIN, Rol.STAFF, Rol.TRAINER, Rol.CLIENT),
+                        "/legal/policy", null));
 
                 // --- Activar y desactivar la afiliación de un cliente (NEX-44) ---
                 // La matriz CLIENTES/ACTIVAR da ADMIN y STAFF. Con un cliente de B, ambos
