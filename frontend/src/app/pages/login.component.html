@@ -9,6 +9,10 @@
     <p class="nf-ayuda" role="status">Cuenta creada. Inicia sesión con tu correo y tu contraseña.</p>
   }
 
+  @if (errorGoogle) {
+    <p class="nf-alerta" role="alert">No se pudo iniciar sesión con Google. Inténtalo de nuevo con tu correo y tu contraseña.</p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>
@@ -63,6 +67,8 @@
       {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
     </button>
   </form>
+
+  <a class="nf-boton nf-boton-ancho" href="/api/oauth2/authorization/google">Continuar con Google</a>
 
   <p class="nf-ayuda">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
 

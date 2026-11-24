@@ -170,6 +170,35 @@ describe('LoginComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
+  describe('error de Google', () => {
+    function abrirCon(error?: string) {
+      const ruta = TestBed.inject(ActivatedRoute);
+      vi.spyOn(ruta.snapshot.queryParamMap, 'get').mockImplementation((k) => (k === 'error' ? (error ?? null) : null));
+      const f = TestBed.createComponent(LoginComponent);
+      f.detectChanges();
+      return f.nativeElement as HTMLElement;
+    }
+    afterEach(() => vi.restoreAllMocks());
+
+    it('con ?error=google muestra el mensaje genérico', () => {
+      const alerta = abrirCon('google').querySelector('[role=alert]')!;
+      expect(alerta.textContent).toContain('No se pudo iniciar sesión con Google');
+      expect(alerta.textContent).not.toMatch(/no existe|no registrado|bloquead/);
+    });
+
+    it('sin el parámetro (o con otro valor) no lo muestra', () => {
+      expect(abrirCon().textContent).not.toContain('No se pudo iniciar sesión con Google');
+      expect(abrirCon('otro').textContent).not.toContain('No se pudo iniciar sesión con Google');
+    });
+  });
+
+  it('muestra «Continuar con Google» como enlace a /api/oauth2/authorization/google, después del formulario', () => {
+    const enlace = el().querySelector<HTMLAnchorElement>('a[href="/api/oauth2/authorization/google"]')!;
+    expect(enlace.textContent).toContain('Continuar con Google');
+    const form = el().querySelector('form')!;
+    expect(form.compareDocumentPosition(enlace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   describe('aviso de cuenta creada', () => {
     function abrirCon(registrado?: string) {
       const ruta = TestBed.inject(ActivatedRoute);
