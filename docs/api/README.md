@@ -2,7 +2,7 @@
 
 Documentación de los endpoints REST de `backend/` (rutas, roles permitidos, entradas y salidas). Se actualiza en el mismo PR que cambia la API.
 
-## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26, NEX-112)
+## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26, NEX-112, NEX-147)
 
 Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza con \403 {code: CSRF_TOKEN_INVALID, message}`.`.
 
@@ -22,6 +22,7 @@ Reglas:
 - Con `mustChangePassword: true` (contraseña temporal) la única operación permitida, además de cerrar sesión, es cambiar la contraseña; el resto responde `403 PASSWORD_CHANGE_REQUIRED`. La temporal tiene 12 caracteres y vale 72 horas; vencida, el acceso responde `401`.
 - `password-reset`: el Staff o el Administrador solo restablecen cuentas de su gimnasio (`404` si la cuenta no es de este gimnasio) y, si la persona tiene más de una afiliación activa y ya ha iniciado sesión, solo el Master (`403`). Cierra las sesiones de la cuenta, levanta el bloqueo y queda auditado. Entrenador y Cliente reciben `403 ACCESS_DENIED`.
 - Sin gimnasio elegido, las rutas que lo necesitan responden `403 ESTABLISHMENT_REQUIRED`.
+- Inicio de sesión con Google (NEX-147): el botón de /login va a `GET /api/oauth2/authorization/google` y Google vuelve a `/api/login/oauth2/code/google` (endpoints de Spring Security, no controladores). Solo entra si el correo verificado de Google pertenece a una cuenta existente: abre la misma sesión (cookie `NEXFIT_SESSION`) con los mismos roles y permisos que el login con contraseña, incluida la auto-selección de gimnasio con una sola afiliación. Sin cuenta, cuenta inactiva o cuenta bloqueada, vuelve a `/login?error=google` con un mensaje genérico, sin revelar si el correo existe. Sin auto-registro y sin migración en la v1. Las credenciales (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) llegan por variables de entorno; sin ellas la función queda desactivada y la aplicación arranca igual.
 
 ## Información personal propia (NEX-27, US-17)
 
@@ -509,3 +510,4 @@ Todo es del Cliente y solo de lo suyo. La matriz da `ENTRENAMIENTOS` únicamente
 - **Racha**: días distintos consecutivos que terminan hoy o ayer; si el último entrenamiento fue antes de ayer, es `0`. Varios entrenamientos el mismo día cuentan un día. No se guarda: se calcula al consultar.
 - **Avance semanal**: días distintos con entrenamiento entre el lunes y el domingo de la semana actual.
 - **Peso**: entre 20 y 500 kg con hasta dos decimales (`400` con el campo `weightKg`); un solo registro por día.
+
