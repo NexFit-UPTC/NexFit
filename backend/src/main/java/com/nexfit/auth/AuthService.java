@@ -182,20 +182,7 @@ public class AuthService {
     public Optional<LoginResult> login(String email, String password, String ip) {
         // "usable" = activa, sin bloqueo vigente y, si la contraseña es temporal, con
         // vigencia sin vencer (US-02).
-        Optional<Candidate> found = email == null ? Optional.empty()
-                : jdbc.sql("""
-                        SELECT id, password_hash, must_change_password,
-                               is_active
-                               AND (locked_until IS NULL OR locked_until <= now())
-                               AND NOT (must_change_password
-                                        AND temp_password_expires_at IS NOT NULL
-                                        AND temp_password_expires_at <= now()) AS usable
-                        FROM users WHERE lower(email) = lower(:email)
-                        """)
-                        .param("email", email.trim())
-                        .query((rs, n) -> new Candidate(rs.getLong("id"), rs.getString("password_hash"),
-                                rs.getBoolean("usable"), rs.getBoolean("must_change_password")))
-                        .optional();
+        Optional<Candidate> found = findCandidate(email);
         // Se compara siempre contra un hash para que el tiempo no delate si el correo
         // existe.
         boolean matches = encoder.matches(password == null || tooLong(password) ? "" : password,
@@ -216,6 +203,52 @@ public class AuthService {
             audit.record(AuditEventType.ACCOUNT_LOCKED, id, null, "user", id, ip,
                     Map.of("lockMinutes", LOCK_MINUTES));
         }
+        return Optional.empty();
+    }
+
+    /**
+     * Candidata por correo, con la misma condición "usable" del login con
+     * contraseña: activa, sin bloqueo vigente y, si la contraseña es
+     * temporal, con vigencia sin vencer (US-02).
+     */
+    private Optional<Candidate> findCandidate(String email) {
+        if (email == null) {
+            return Optional.empty();
+        }
+        return jdbc.sql("""
+                SELECT id, password_hash, must_change_password,
+                       is_active
+                       AND (locked_until IS NULL OR locked_until <= now())
+                       AND NOT (must_change_password
+                                AND temp_password_expires_at IS NOT NULL
+                                AND temp_password_expires_at <= now()) AS usable
+                FROM users WHERE lower(email) = lower(:email)
+                """)
+                .param("email", email.trim())
+                .query((rs, n) -> new Candidate(rs.getLong("id"), rs.getString("password_hash"),
+                        rs.getBoolean("usable"), rs.getBoolean("must_change_password")))
+                .optional();
+    }
+
+    /**
+     * Inicio de sesión con Google (NEX-147): el correo ya viene verificado
+     * por Google, así que no se comprueba contraseña. Reutiliza las
+     * validaciones de estado de cuenta de {@link #login} y su misma
+     * auditoría (LOGIN / LOGIN_FAILED): una cuenta bloqueada o inactiva no
+     * entra por Google, y un intento fallido no cuenta ni alarga un bloqueo.
+     * Sin auto-registro: el correo debe pertenecer a una cuenta existente.
+     */
+    @Transactional
+    public Optional<LoginResult> loginWithGoogle(String email, String ip) {
+        Optional<Candidate> found = findCandidate(email);
+        if (found.isPresent() && found.get().usable()) {
+            long id = found.get().id();
+            resetFailedAttempts(id);
+            audit.record(AuditEventType.LOGIN, id, null, "user", id, ip, null);
+            return Optional.of(new LoginResult(id, found.get().mustChangePassword(), establishments(id)));
+        }
+        Long id = found.map(Candidate::id).orElse(null);
+        audit.record(AuditEventType.LOGIN_FAILED, id, null, id == null ? null : "user", id, ip, null);
         return Optional.empty();
     }
 
