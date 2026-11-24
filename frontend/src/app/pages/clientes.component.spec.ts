@@ -389,7 +389,7 @@ describe('ClientesComponent', () => {
 
     expect(el().textContent).toContain('No se pudo cargar la política vigente');
     const registrar = boton('Registrar');
-    expect(registrar.disabled).toBeTrue();
+    expect(registrar.disabled).toBe(true);
     enviar();
     await refrescar();
     http.expectNone({ method: 'POST', url: '/api/clients' });
