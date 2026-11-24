@@ -111,6 +111,46 @@ class EstablishmentCreationTests {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class)).isEqualTo(before);
     }
 
+    // NEX-121: la longitud máxima (150) se valida con un mensaje claro; con 150 exactos se acepta.
+    @Test
+    void laLongitudMaximaSeValidaConMensajeClaroYElLimiteExactoSeAcepta() throws Exception {
+        Cookie master = fx.login(fx.user(true, true));
+        int before = jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class);
+
+        MvcResult nombreLargo = create(master,
+            "{\"name\":\"" + "N".repeat(151) + "\",\"contactEmail\":\"a@nexfit.test\"}");
+        assertRejected(nombreLargo, "name");
+        assertThat(body(nombreLargo)).contains("El nombre no puede superar 150 caracteres");
+
+        MvcResult correoLargo = create(master,
+            "{\"name\":\"Gym\",\"contactEmail\":\"" + "c".repeat(139) + "@nexfit.test\"}");
+        assertRejected(correoLargo, "contactEmail");
+        assertThat(body(correoLargo)).contains("El correo de contacto no puede superar 150 caracteres");
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class)).isEqualTo(before);
+
+        MvcResult enElLimite = create(master,
+            "{\"name\":\"" + "N".repeat(150) + "\",\"contactEmail\":\"" + "c".repeat(138) + "@nexfit.test\"}");
+        assertThat(enElLimite.getResponse().getStatus()).isEqualTo(201);
+    }
+
+    // NEX-121: un correo con formato inválido se rechaza con el mensaje claro y señalando el campo.
+    @Test
+    void unCorreoConFormatoInvalidoSeRechazaConMensajeClaro() throws Exception {
+        Cookie master = fx.login(fx.user(true, true));
+        int before = jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class);
+
+        for (String correo : new String[] {
+            "sin-arroba", "a@b", "a b@nexfit.test", "@nexfit.test", "a@@nexfit.test", "a@nexfit..test", "a@.test"
+        }) {
+            MvcResult r = create(master, "{\"name\":\"Gym\",\"contactEmail\":\"" + correo + "\"}");
+            assertRejected(r, "contactEmail");
+            assertThat(body(r)).as(correo).contains("El correo de contacto no es válido");
+        }
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM organizations", Integer.class)).isEqualTo(before);
+    }
+
     // CA43: una zona horaria que no existe se rechaza al crear y no se guarda nada.
     @Test
     void unaZonaHorariaInexistenteAlCrearSeRechazaIndicandoElCampo() throws Exception {

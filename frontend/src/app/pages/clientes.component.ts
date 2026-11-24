@@ -5,6 +5,7 @@ import {
   ClientesService,
   DatosCliente,
   DetalleCliente,
+  PoliticaVigente,
   EstadoMembresia,
   PaginaClientes,
   ResultadoCliente
@@ -123,6 +124,16 @@ const TAMANO_PAGINA = 20;
     }
     .casilla input {
       margin-top: 4px;
+    }
+    .politica {
+      max-height: 12rem;
+      overflow-y: auto;
+      padding: var(--espacio-3);
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      white-space: pre-wrap;
+      font-size: 0.875rem;
+      line-height: 1.5;
     }
     fieldset {
       margin: var(--espacio-3) 0 0;
@@ -397,6 +408,24 @@ const TAMANO_PAGINA = 20;
 
           <fieldset>
             <legend>Autorizaciones</legend>
+            @if (politica(); as politicaVigente) {
+              <p class="nf-ayuda">
+                Política de Tratamiento de Datos Personales · versión {{ politicaVigente.version }} ·
+                {{ fecha(politicaVigente.effectiveDate) }} ·
+                @if (politicaVigente.status === 'borrador') {
+                  borrador, no vigente
+                } @else {
+                  {{ politicaVigente.status }}
+                }
+              </p>
+              <div class="politica">{{ politicaVigente.privacyText }}</div>
+            }
+            @if (errorPolitica()) {
+              <p class="nf-error-campo" role="alert">{{ errorPolitica() }}</p>
+            }
+            @if (politica(); as politicaVigente) {
+              <div class="politica">{{ politicaVigente.healthText }}</div>
+            }
             <label class="casilla">
               <input type="checkbox" name="healthConsent" [(ngModel)]="f.healthConsent" />
               El cliente autoriza expresamente el tratamiento de sus datos de salud (EPS y contactos de emergencia).
@@ -417,7 +446,9 @@ const TAMANO_PAGINA = 20;
             <p class="nf-alerta" role="alert" style="margin-top: var(--espacio-3)">{{ errorGeneral() }}</p>
           }
           <div class="acciones">
-            <button type="submit" class="nf-boton" [disabled]="guardando()">Registrar</button>
+            <button type="submit" class="nf-boton" [disabled]="guardando() || errorPolitica() !== null">
+              Registrar
+            </button>
             <button type="button" class="boton-secundario" (click)="cancelar()">Cancelar</button>
           </div>
         </form>
@@ -465,6 +496,14 @@ const TAMANO_PAGINA = 20;
           <div>
             <dt>EPS</dt>
             <dd>{{ d.epsName ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Autorizó datos personales</dt>
+            <dd>{{ textoAceptacion(d.privacyPolicyVersion, d.privacyAcceptedAt) }}</dd>
+          </div>
+          <div>
+            <dt>Autorizó datos de salud</dt>
+            <dd>{{ textoAceptacion(d.healthConsentVersion, d.healthConsentAt) }}</dd>
           </div>
           <div>
             <dt>Contactos de emergencia</dt>
@@ -591,6 +630,9 @@ export class ClientesComponent implements OnInit {
   protected readonly detalle = signal<DetalleCliente | null>(null);
   protected readonly errorDetalle = signal<string | null>(null);
 
+  protected readonly politica = signal<PoliticaVigente | null>(null);
+  protected readonly errorPolitica = signal<string | null>(null);
+
   protected readonly eps = signal<Eps[]>([]);
   protected readonly formulario = signal<Formulario | null>(null);
   protected readonly errores = signal<Record<string, string>>({});
@@ -660,6 +702,26 @@ export class ClientesComponent implements OnInit {
       next: (lista) => this.eps.set(lista),
       error: () => this.errorGeneral.set('No se pudo cargar el catálogo de EPS.')
     });
+    this.cargarPolitica();
+  }
+
+  private cargarPolitica() {
+    this.politica.set(null);
+    this.errorPolitica.set(null);
+    this.api.politica().subscribe({
+      next: (politica) => this.politica.set(politica),
+      error: () =>
+        this.errorPolitica.set('No se pudo cargar la política vigente. Revisa tu conexión e inténtalo de nuevo.')
+    });
+  }
+
+  /** "Aceptó la política (versión X) el DD/MM/AAAA" o el texto de versión no registrada (NEX-115). */
+  protected textoAceptacion(version: string | null, fechaAceptacion: string | null): string {
+    if (!version) {
+      return 'versión no registrada (anterior a NEX-115)';
+    }
+    const fechaTexto = fechaAceptacion ? this.fecha(fechaAceptacion) : 'sin fecha registrada';
+    return `Aceptó la política (versión ${version}) el ${fechaTexto}`;
   }
 
   protected cancelar() {
@@ -691,6 +753,7 @@ export class ClientesComponent implements OnInit {
   protected guardar() {
     const f = this.formulario();
     if (!f) return;
+    if (this.errorPolitica()) return;
     this.guardando.set(true);
     this.errores.set({});
     this.errorGeneral.set(null);

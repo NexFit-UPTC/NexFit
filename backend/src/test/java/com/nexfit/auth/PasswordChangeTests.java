@@ -261,6 +261,27 @@ class PasswordChangeTests {
         assertThat(probe(otraB)).isEqualTo(401);
     }
 
+    // NEX-123 (H-03): la cuenta recién registrada no tiene establecimiento y aun así debe poder cambiar su clave.
+    @Test
+    @ReglaDeNegocio("RN-38")
+    void unaCuentaSinEstablecimientoPuedeCambiarSuContrasenaYCierraLasDemasSesiones() throws Exception {
+        long id = newOwnUser("sin-gimnasio@nexfit.test");
+        Cookie actual = loginOk("sin-gimnasio@nexfit.test", OWN);
+        Cookie otra = loginOk("sin-gimnasio@nexfit.test", OWN);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM organization_members WHERE user_id = ?",
+            Integer.class, id)).isZero();
+        MvcResult sinGimnasio = mvc.perform(get("/test/authorities").cookie(actual)).andReturn();
+        assertThat(sinGimnasio.getResponse().getStatus()).isEqualTo(403);
+        assertThat(sinGimnasio.getResponse().getContentAsString(StandardCharsets.UTF_8))
+            .contains("ESTABLISHMENT_REQUIRED");
+
+        assertThat(changePassword(actual, OWN, NEW).getResponse().getStatus()).isEqualTo(204);
+
+        assertThat(probe(otra)).isEqualTo(401);
+        assertThat(login("sin-gimnasio@nexfit.test", OWN).getResponse().getStatus()).isEqualTo(401);
+        assertThat(login("sin-gimnasio@nexfit.test", NEW).getResponse().getStatus()).isEqualTo(200);
+    }
+
     @Test
     @ReglaDeNegocio("RN-38")
     void cambiarLaContrasenaNoRevocaLasSesionesDeOtroUsuario() throws Exception {

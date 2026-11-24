@@ -171,6 +171,26 @@ class EstablishmentTests {
             "{\"name\":\"Gym\",\"contactEmail\":\"a@nexfit.test\"}"), "timezone");
     }
 
+    // NEX-121: al modificar también se valida la longitud máxima (150) con un mensaje claro.
+    @Test
+    void modificarConNombreOCorreoMuyLargosSeRechazaConMensajeClaro() throws Exception {
+        Cookie master = fx.login(fx.user(true, true));
+        long orgId = fx.org(true);
+
+        MvcResult nombre = update(master, orgId,
+            "{\"name\":\"" + "N".repeat(151) + "\",\"contactEmail\":\"a@nexfit.test\",\"timezone\":\"America/Bogota\"}");
+        assertRejected(nombre, "name");
+        assertThat(nombre.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+            .contains("El nombre no puede superar 150 caracteres");
+
+        MvcResult correo = update(master, orgId,
+            "{\"name\":\"Gym\",\"contactEmail\":\"" + "c".repeat(139)
+                + "@nexfit.test\",\"timezone\":\"America/Bogota\"}");
+        assertRejected(correo, "contactEmail");
+        assertThat(correo.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+            .contains("El correo de contacto no puede superar 150 caracteres");
+    }
+
     // La lista no incluye datos personales de clientes (RN-08): solo conteos.
     @Test
     @ReglaDeNegocio("RN-08")

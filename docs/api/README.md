@@ -12,7 +12,7 @@ Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly
 | `POST /api/auth/logout` | Con sesión | Cierra la sesión. Devuelve `204`. |
 | `GET /api/auth/establishments` | Con sesión | Gimnasios donde la persona puede operar: `[{organizationId, name, roles}]`. Lista vacía si no tiene ninguno activo. |
 | `POST /api/auth/establishment` | Con sesión | Cuerpo `{organizationId}`. Elige o cambia el gimnasio activo de la sesión y devuelve `204`; `400 {message}` si no puede operar en él. |
-| `POST /api/auth/password` | Con sesión | Cuerpo `{currentPassword, newPassword}`. Cambia la contraseña propia y devuelve `204`. Cierra las demás sesiones de la persona y quita la marca de contraseña temporal. |
+| `POST /api/auth/password` | Con sesión | Cuerpo `{currentPassword, newPassword}`. Cambia la contraseña propia y devuelve `204`. Cierra las demás sesiones de la persona y quita la marca de contraseña temporal. No exige gimnasio activo: una cuenta sin afiliación (p. ej. recién registrada) también puede cambiarla. |
 | `POST /api/auth/users/{userId}/password-reset` | Staff, Administrador, Master | Asigna una contraseña temporal a otra cuenta y la devuelve una sola vez: `200 {temporaryPassword}`. |
 
 Reglas:
@@ -43,7 +43,7 @@ Errores:
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
-| `POST /api/establishments` | Master | Crea un establecimiento activo y sin Administrador. Devuelve `201` con `{id, name, contactEmail, timezone, active}`. |
+| `POST /api/establishments` | Master | Crea un establecimiento activo y sin Administrador. Devuelve `201` con `{id, name, contactEmail, timezone, active}`. Valida con `400 VALIDATION_ERROR {field, message}`: `name` obligatorio y de hasta 150 caracteres; `contactEmail` obligatorio, de hasta 150 caracteres y con formato válido (un mensaje distinto para cada causa: obligatorio, «no puede superar 150 caracteres» y «no es válido»); `timezone` válida (por defecto `America/Bogota`). |
 
 Cuerpo: `{"name": "Gym Norte", "contactEmail": "norte@nexfit.test", "timezone": "America/Bogota"}`. `name` y `contactEmail` son obligatorios (máx. 150 caracteres); `timezone` es opcional y por defecto `America/Bogota`.
 
@@ -60,7 +60,7 @@ Errores:
 |---|---|---|
 | `GET /api/establishments` | Master | Lista los establecimientos: `[{id, name, contactEmail, timezone, active, branchCount, clientCount}]`. |
 | `GET /api/establishments/{id}` | Master | Un establecimiento con el mismo formato; `404` si no existe. |
-| `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. |
+| `PUT /api/establishments/{id}` | Master | Reemplaza `name`, `contactEmail` y `timezone` (los tres obligatorios; `timezone` no tiene valor por defecto al editar). Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe. Las mismas validaciones de `name` y `contactEmail` que al crear (`400 VALIDATION_ERROR`). |
 | `PATCH /api/establishments/{id}/active` | Master | Cuerpo `{"active": true\|false}`. Activa o desactiva el establecimiento (US-08, NEX-33): al desactivarlo, sus usuarios dejan de poder operar y recuperan el acceso al reactivarlo; no se borra nada. Devuelve `200` con `{id, name, contactEmail, timezone, active}`; `404` si no existe; `400 VALIDATION_ERROR` si `active` no es booleano. Queda auditado. |
 
 Nota: la issue NEX-87 habla de `PATCH`, pero el backend expone `PUT /api/establishments/{id}`; el frontend usa `PUT`.
@@ -91,7 +91,7 @@ Respuestas:
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
-| `GET /api/public/gyms?page=0&size=20` | Cualquiera | Página de gimnasios ordenados por nombre. `page` desde 0 (por defecto 0); `size` por defecto 20 y **máximo 50** (un valor mayor se recorta a 50). |
+| `GET /api/public/gyms?page=0&size=20` | Cualquiera | Página de gimnasios ordenados por nombre, sin distinguir mayúsculas ni tildes (la ñ cuenta como n): «Páramo» va antes que «Pulso». `page` desde 0 (por defecto 0); `size` por defecto 20 y **máximo 50** (un valor mayor se recorta a 50). |
 | `GET /api/public/gyms/{id}` | Cualquiera | Detalle de un gimnasio; `404` si no existe o está inactivo (mismo cuerpo en ambos casos). |
 
 Lista: `{content: [{id, name, branches: [{name, addressLine1, addressLine2, city, department}]}], page, size, totalElements, totalPages}`.
@@ -225,11 +225,15 @@ Cada elemento de `content`: `{memberId, documentType, documentNumber, firstName,
 
 `membershipStatus` es el de la membresía efectiva del cliente en este gimnasio, calculado con la fecha local del establecimiento: `active` (vigente), `suspended`, `scheduled` (aún no empieza), `expired` (venció) o `cancelled`; `null` si nunca tuvo. Si tiene varias, se muestra la primera de ese orden y, entre iguales, la que termina más tarde. Solo cuentan las membresías de este gimnasio.
 
-Detalle: `{memberId, documentType, documentNumber, firstName, lastName, email, birthDate, active, joinedAt, membership, phone, epsId, epsName, emergencyContacts}`. `membership` es `{status, planName, startDate, endDate}` o `null`; `emergencyContacts` es `[{id, fullName, relationship, phone, primary}]`. Muestra también clientes con la afiliación inactiva. Cada consulta registra un evento `HEALTH_CONTACT_DATA_ACCESSED` con quién consultó (D-08).
+Detalle: `{memberId, documentType, documentNumber, firstName, lastName, email, birthDate, active, joinedAt, membership, phone, epsId, epsName, emergencyContacts, privacyAcceptedAt, healthConsentAt, privacyPolicyVersion, healthConsentVersion}` (NEX-115: fechas de aceptación y versión aceptada de la política y de la autorización de salud; `null` en afiliaciones anteriores a NEX-115, «versión no registrada»). `membership` es `{status, planName, startDate, endDate}` o `null`; `emergencyContacts` es `[{id, fullName, relationship, phone, primary}]`. Muestra también clientes con la afiliación inactiva. Cada consulta registra un evento `HEALTH_CONTACT_DATA_ACCESSED` con quién consultó (D-08).
 
 Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `q`.
 - `403 ACCESS_DENIED`: el rol no es Staff ni Administrador.
+
+### Política vigente (NEX-115, DAV-12)
+
+`GET /api/legal/policy` — CLIENTES/CONSULTAR. Devuelve el texto vigente de la política de tratamiento de datos y de la autorización de datos de salud: `version`, `effectiveDate`, `status`, `privacyText`, `healthText`. El texto vigente es el borrador `0.1-borrador` del TT-17 (sin revisión jurídica; los [CORCHETES] van visibles, nunca se inventan) y se muestra etiquetado como borrador. No deja evento de auditoría: es lectura de un documento fijo, no de datos de un titular. Al afiliar un cliente, el servidor sella la versión vigente (`privacy_policy_version`, `health_consent_version` en `organization_members`); al cambiar la EPS con autorización, también se sella la versión vigente de salud. La versión nunca se acepta desde el cliente.
 - `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
 - `401` sin sesión.
 

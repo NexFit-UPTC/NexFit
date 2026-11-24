@@ -5,7 +5,6 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { leerGimnasio } from '../core/gimnasio-preseleccionado';
 import { EstadoSesion, SessionService } from '../core/session.service';
-import { AuthShellComponent } from './auth-shell.component';
 import { MIN_CONTRASENA } from './cambiar-contrasena.component';
 
 const DESTINOS: Partial<Record<EstadoSesion, string>> = {
@@ -33,7 +32,7 @@ const CAMPOS: Campo[] = ['documentType', 'documentNumber', 'firstName', 'lastNam
 /** Registro público de una cuenta de Cliente (POST /api/auth/register). */
 @Component({
   selector: 'app-registro',
-  imports: [ReactiveFormsModule, RouterLink, AuthShellComponent],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './registro.component.html',
   styleUrl: './registro.component.css'
 })

@@ -145,17 +145,21 @@ public class ClientRepository {
             .optional();
     }
 
-    public long createClientMember(long orgId, long userId, String phone, long epsId) {
+    public long createClientMember(long orgId, long userId, String phone, long epsId,
+                                     String privacyVersion, String healthVersion) {
         return jdbc.sql("""
             INSERT INTO organization_members (organization_id, user_id, phone, eps_id,
-                                              privacy_accepted_at, health_consent_at, is_active)
-            VALUES (:org, :user, :phone, :eps, now(), now(), true)
+                                              privacy_accepted_at, health_consent_at,
+                                              privacy_policy_version, health_consent_version, is_active)
+            VALUES (:org, :user, :phone, :eps, now(), now(), :privacyVersion, :healthVersion, true)
             RETURNING id
             """)
             .param("org", orgId)
             .param("user", userId)
             .param("phone", phone)
             .param("eps", epsId)
+            .param("privacyVersion", privacyVersion)
+            .param("healthVersion", healthVersion)
             .query((rs, n) -> rs.getLong("id"))
             .single();
     }

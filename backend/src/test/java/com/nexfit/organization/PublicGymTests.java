@@ -169,6 +169,23 @@ class PublicGymTests {
         assertThat(mine).hasSizeGreaterThanOrEqualTo(2).isSorted();
     }
 
+    // CA54 / NEX-114: el orden por nombre ignora las tildes («Páramo» antes que «Pulso», «Ágora» entre las A).
+    // Los nombres empiezan por «000» para quedar al principio y caber en la primera página.
+    @Test
+    void elOrdenPorNombreIgnoraLasTildes() throws Exception {
+        for (String nombre : List.of("000 Tilde Pulso Vital", "000 Tilde Ágora", "000 Tilde Páramo Fitness",
+                                     "000 Tilde Cóndor Gym", "000 Tilde Cima Gym")) {
+            gym(nombre, true);
+        }
+
+        String json = body(list("?size=50"));
+
+        List<String> names = JsonPath.read(json, "$.content[*].name");
+        assertThat(names.stream().filter(n -> n.startsWith("000 Tilde ")).toList())
+            .containsExactly("000 Tilde Ágora", "000 Tilde Cima Gym", "000 Tilde Cóndor Gym",
+                "000 Tilde Páramo Fitness", "000 Tilde Pulso Vital");
+    }
+
     // ---- criterio 2: detalle con sedes y planes activos; 404 si no existe o está inactivo -------
 
     @Test

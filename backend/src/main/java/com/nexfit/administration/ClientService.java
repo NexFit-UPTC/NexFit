@@ -4,6 +4,7 @@ import com.nexfit.administration.internal.ClientRepository;
 import com.nexfit.audit.AuditEventType;
 import com.nexfit.audit.AuditService;
 import com.nexfit.auth.AuthService;
+import com.nexfit.legal.LegalPolicyService;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
@@ -25,11 +26,14 @@ class ClientService {
     private final ClientRepository repo;
     private final AuthService auth;
     private final AuditService audit;
+    private final LegalPolicyService policy;
 
-    ClientService(ClientRepository repo, AuthService auth, AuditService audit) {
+    ClientService(ClientRepository repo, AuthService auth, AuditService audit,
+                  LegalPolicyService policy) {
         this.repo = repo;
         this.auth = auth;
         this.audit = audit;
+        this.policy = policy;
     }
 
     public enum Status {
@@ -85,7 +89,10 @@ class ClientService {
         if (repo.findMember(orgId, userId).isPresent()) {
             return new CreateResult(Status.ALREADY_MEMBER, null, null, null, null, null);
         }
-        long memberId = repo.createClientMember(orgId, userId, phone, epsId);
+        // NEX-115: la versión aceptada se sella en el servidor (TT-17 0.1-borrador); nunca se
+        // acepta una versión mandada por el cliente: hay una sola vigente.
+        long memberId = repo.createClientMember(orgId, userId, phone, epsId,
+            policy.currentVersion(), policy.currentVersion());
         repo.insertRole(memberId, orgId, "client");
         repo.insertEmergencyContact(orgId, memberId, emergencyName, emergencyRelationship, emergencyPhone);
         audit.record(AuditEventType.CLIENT_ACCOUNT_CREATED, actorId, orgId, "user", userId, ip, null);

@@ -142,4 +142,26 @@ describe('EstablecimientoComponent', () => {
     expect(el().querySelector('[role=alert]')?.textContent).toContain('No se pudieron cargar');
     expect(el().textContent).toContain('Reintentar');
   });
+
+  describe('cambio de contraseña sin establecimiento (NEX-123)', () => {
+    const enlace = () => el().querySelector<HTMLAnchorElement>('a[href="/cambiar-contrasena"]');
+
+    it('con la lista vacía (cuenta sin gimnasio) ofrece cambiar la contraseña', async () => {
+      await cargarLista([]);
+      expect(enlace()?.textContent).toContain('Cambiar contraseña');
+    });
+
+    it('también está visible con establecimientos, mientras carga y si falla la carga', async () => {
+      expect(enlace()).not.toBeNull(); // cargando
+      http.expectOne('/api/auth/establishments').flush(null, { status: 500, statusText: '' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(enlace()).not.toBeNull(); // error al cargar
+    });
+
+    it('con establecimientos en la lista sigue visible', async () => {
+      await cargarLista();
+      expect(enlace()).not.toBeNull();
+    });
+  });
 });

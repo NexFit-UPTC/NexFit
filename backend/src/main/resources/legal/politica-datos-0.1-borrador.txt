@@ -1,0 +1,91 @@
+## 2. Parte A · Política de tratamiento de datos personales
+
+**Versión del texto:** 0.1-borrador · **Fecha:** 18/10/2026 · **Estado:** borrador, no vigente
+
+### A.1 Quiénes intervienen
+
+NexFit es una plataforma para la gestión de gimnasios. En ella intervienen dos tipos de actores, y la política los distingue porque de eso depende quién responde ante el titular:
+
+- **El establecimiento (gimnasio)** que afilia a sus clientes y decide para qué se usan sus datos. Para los datos de sus clientes, empleados y entrenadores, actúa como **Responsable del tratamiento**. Sus datos de identificación y contacto son los del establecimiento registrado en la plataforma: `[RAZÓN SOCIAL, NIT, DIRECCIÓN, CORREO, TELÉFONO DEL ESTABLECIMIENTO]`.
+- **NexFit**, la plataforma que aloja y procesa esos datos por cuenta del establecimiento, actúa como **Encargado del tratamiento** respecto de los datos de los clientes de cada gimnasio. Respecto de los datos de las cuentas de acceso a la plataforma (por ejemplo, el administrador del establecimiento), NexFit puede actuar como Responsable. Datos de NexFit: `[RAZÓN SOCIAL O NOMBRE DEL TITULAR DE LA PLATAFORMA, NIT/CC, DIRECCIÓN, CORREO, TELÉFONO]`.
+
+> Esta distribución Responsable/Encargado es una propuesta del equipo y debe confirmarse con el asesor jurídico (punto 7.1).
+
+### A.2 Definiciones básicas
+
+- **Dato personal:** cualquier información que sirva para identificar o hacer identificable a una persona.
+- **Dato sensible:** dato que afecta la intimidad del titular o cuyo uso indebido puede generar discriminación; entre ellos, los datos relativos a la salud.
+- **Titular:** la persona a quien pertenecen los datos.
+- **Tratamiento:** cualquier operación sobre los datos (recolectar, almacenar, usar, consultar, circular, suprimir).
+- **Responsable:** quien decide sobre la base de datos y el tratamiento.
+- **Encargado:** quien trata los datos por cuenta del Responsable.
+
+### A.3 Datos que se tratan
+
+Según el modelo de datos vigente (ver Anexo 1), la plataforma trata:
+
+| Grupo | Datos | ¿Sensible? |
+| -- | -- | -- |
+| Identificación y contacto | tipo y número de documento, nombres y apellidos, fecha de nacimiento, correo, teléfono | No |
+| Cuenta de acceso | credenciales (la contraseña se guarda cifrada con hash, nunca en claro), intentos fallidos de ingreso | No |
+| Salud y emergencia | **EPS**, contacto de emergencia (nombre, parentesco, teléfono) | **EPS: sí.** El contacto de emergencia es dato de un tercero (ver A.9) |
+| Comerciales | membresías, pagos (concepto, valor, fecha, método, referencia) | No |
+| Uso del gimnasio | ingresos y salidas, reservas de clases | No |
+| Entrenamiento | rutinas asignadas, registros de entrenamiento realizados, **peso corporal** | **Peso corporal: probablemente sí** (punto 7.4) |
+| Seguridad y auditoría | eventos de la plataforma, dirección IP, fecha y hora | No |
+
+### A.4 Finalidades
+
+Los datos se tratan únicamente para:
+
+1. Crear y administrar la cuenta del titular y su afiliación al establecimiento.
+2. Gestionar membresías, pagos, reservas de clases y registro de asistencia.
+3. Hacer seguimiento del entrenamiento (rutinas, registros de ejecución y peso) cuando el cliente lo use.
+4. **Atender emergencias** durante la permanencia en el gimnasio, usando la EPS y el contacto de emergencia.
+5. Comunicarse con el titular sobre su membresía y el servicio.
+6. Garantizar la seguridad de la plataforma y llevar trazabilidad de las operaciones (auditoría).
+7. Cumplir obligaciones legales, contables y tributarias.
+
+Los datos **no se usan** para publicidad de terceros ni se venden. Cualquier finalidad nueva requiere una nueva autorización. `[CONFIRMAR si el establecimiento hará mercadeo propio; de ser así, debe ser una autorización separada y opcional]`
+
+### A.5 Derechos del titular
+
+El titular puede, en cualquier momento:
+
+- **Conocer, actualizar y rectificar** sus datos.
+- Solicitar **prueba de la autorización** otorgada.
+- Ser **informado** del uso que se ha dado a sus datos.
+- **Revocar la autorización y/o solicitar la supresión** de sus datos, cuando no se respeten los principios y garantías legales o cuando no exista un deber legal o contractual de conservarlos.
+- **Acceder de forma gratuita** a sus datos.
+- Presentar quejas ante la **Superintendencia de Industria y Comercio (SIC)** por infracciones a la ley, después de haber agotado el trámite de consulta o reclamo ante el Responsable.
+
+### A.6 Autorización
+
+- Para los datos no sensibles, el titular autoriza el tratamiento al aceptar esta política en su afiliación. La aplicación registra la fecha de aceptación (`privacy_accepted_at`).
+- Para los **datos de salud**, la autorización es **expresa, previa y separada** (Parte B). La aplicación registra su fecha (`health_consent_at`).
+- La autorización puede revocarse según el procedimiento de la Parte C. La revocatoria no afecta el tratamiento ya realizado de forma legítima ni impide conservar lo que la ley obliga a conservar.
+
+### A.7 Atención de solicitudes
+
+El titular puede presentar consultas, reclamos de corrección, actualización o supresión, y revocatorias, por: `[CANAL: correo electrónico y/o dirección física del establecimiento]`. El procedimiento, los plazos y quién atiende están en la Parte C. En la fase actual del proyecto **todas las solicitudes se atienden de forma manual**.
+
+### A.8 Seguridad, conservación y terceros
+
+- **Seguridad.** Contraseñas con hash; acceso por rol; aislamiento entre establecimientos (cada gimnasio solo ve sus datos); registro de auditoría; no se guardan secretos en el código.
+- **Conservación.** Los datos se conservan mientras dure la afiliación y, después, durante el tiempo que exijan las obligaciones legales, contables y tributarias `[PLAZOS A CONFIRMAR POR EL ASESOR]`. Pasado ese tiempo se suprimen o se anonimizan. Por diseño, la plataforma **no borra físicamente** pagos, membresías ni auditoría (usa estados), por lo que la supresión de estos registros se resuelve según lo explicado en la Parte C (sección C.5).
+- **Proveedores de infraestructura.** La plataforma se aloja en servicios de terceros (base de datos en la nube y hosting web) `[LISTAR PROVEEDORES Y PAÍS DE ALOJAMIENTO]`. Si los datos quedan alojados fuera de Colombia, el asesor debe confirmar los requisitos de transmisión/transferencia internacional (punto 7.5).
+- **Entrega a terceros.** Los datos no se entregan a terceros salvo requerimiento de autoridad competente o autorización del titular.
+
+### A.9 Datos de terceros (contacto de emergencia)
+
+Al registrar un contacto de emergencia, el cliente declara que **cuenta con la autorización de esa persona** para compartir su nombre, parentesco y teléfono con el establecimiento, con la única finalidad de contactarla en una emergencia. `[CONFIRMAR si basta esta declaración o si se requiere otra forma de soporte]`
+
+### A.10 Menores de edad
+
+La plataforma captura la fecha de nacimiento. El tratamiento de datos de niños, niñas y adolescentes tiene reglas especiales (interés superior del menor, autorización del representante legal). `[DECIDIR: ¿NexFit admite afiliados menores de 18 años? Si no, el sistema debe impedirlo; si sí, se necesita un flujo de autorización del representante legal]` (punto 7.6).
+
+### A.11 Vigencia y cambios
+
+Esta política entra en vigencia en la fecha de su aprobación `[FECHA]` bajo la versión `[VERSIÓN]`. Los cambios sustanciales se informan al titular y, cuando afecten finalidades, se pide nueva autorización. Cada versión se conserva en el historial (sección 8).
+
+---

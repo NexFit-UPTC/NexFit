@@ -1,5 +1,6 @@
 package com.nexfit.membership;
 
+import com.nexfit.legal.LegalPolicyService;
 import com.nexfit.shared.ActiveOrganization;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -26,9 +27,11 @@ public class ProfileService {
     private static final int MAX_CONTACTS = 10;
 
     private final JdbcClient jdbc;
+    private final LegalPolicyService policy;
 
-    ProfileService(JdbcClient jdbc) {
+    ProfileService(JdbcClient jdbc, LegalPolicyService policy) {
         this.jdbc = jdbc;
+        this.policy = policy;
     }
 
     public record Identity(String documentType, String documentNumber, String firstName, String lastName,
@@ -106,11 +109,14 @@ public class ProfileService {
                 throw new IllegalArgumentException("Cambiar la EPS exige la autorización expresa de datos de salud");
             }
             if (changed) {
+                // NEX-115: al cambiar la EPS con autorización, se sella además la versión vigente.
                 jdbc.sql("""
-                        UPDATE organization_members SET eps_id = :v, health_consent_at = now()
+                        UPDATE organization_members
+                           SET eps_id = :v, health_consent_at = now(), health_consent_version = :version
                         WHERE id = :id AND organization_id = :org AND user_id = :user
                         """)
-                    .param("v", epsId).param("id", memberId).param("org", orgId).param("user", userId).update();
+                    .param("v", epsId).param("version", policy.currentVersion())
+                    .param("id", memberId).param("org", orgId).param("user", userId).update();
             } else {
                 jdbc.sql("UPDATE organization_members SET eps_id = :v WHERE id = :id AND organization_id = :org AND user_id = :user")
                     .param("v", epsId).param("id", memberId).param("org", orgId).param("user", userId).update();
