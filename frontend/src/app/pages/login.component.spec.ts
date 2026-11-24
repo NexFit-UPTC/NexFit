@@ -181,9 +181,9 @@ describe('LoginComponent', () => {
     afterEach(() => vi.restoreAllMocks());
 
     it('con ?error=google muestra el mensaje genérico', () => {
-      const alerta = abrirCon('google').querySelector('[role=alert]')!;
-      expect(alerta.textContent).toContain('No se pudo iniciar sesión con Google');
-      expect(alerta.textContent).not.toMatch(/no existe|no registrado|bloquead/);
+      const alerta = abrirCon('google').querySelector('[role=alert]')!.textContent!;
+      expect(alerta).toContain('No se pudo iniciar sesión con Google');
+      expect(alerta).not.toMatch(/no existe|no registrado|bloquead/);
     });
 
     it('sin el parámetro (o con otro valor) no lo muestra', () => {
