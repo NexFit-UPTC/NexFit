@@ -479,7 +479,7 @@ class ClientTests {
                  m AS (INSERT INTO organization_members (organization_id, user_id, eps_id, is_active)
                        SELECT ?, ?, eps.id, true FROM eps RETURNING id),
                  c AS (INSERT INTO emergency_contacts (organization_id, member_id, full_name, relationship, phone, is_primary)
-                       SELECT ?, m.id, 'Luis Pérez', 'Padre', '3000000000' FROM m),
+                       SELECT ?, m.id, 'Luis Pérez', 'Padre', '3000000000', true FROM m),
                  r AS (INSERT INTO member_roles (member_id, role, organization_id)
                        SELECT m.id, 'client', ? FROM m)
             SELECT id FROM m
