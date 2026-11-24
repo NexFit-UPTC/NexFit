@@ -56,7 +56,8 @@ public class ClientQueryRepository {
     public record Detail(long memberId, String documentType, String documentNumber, String firstName,
                          String lastName, String email, LocalDate birthDate, boolean active,
                          OffsetDateTime joinedAt, Membership membership, String phone, Long epsId,
-                         String epsName) { }
+                         String epsName, OffsetDateTime privacyAcceptedAt, OffsetDateTime healthConsentAt,
+                         String privacyPolicyVersion, String healthConsentVersion) { }
 
     public record Page(List<Summary> content, long total) { }
 
@@ -121,6 +122,8 @@ public class ClientQueryRepository {
                 SELECT om.id AS member_id, CAST(u.document_type AS text) AS document_type, u.document_number,
                        u.first_name, u.last_name, u.email, u.birth_date, om.is_active, om.joined_at,
                        om.phone, om.eps_id, e.name AS eps_name,
+                       om.privacy_accepted_at, om.health_consent_at,
+                       om.privacy_policy_version, om.health_consent_version,
                        ms.effective_status, p.name AS plan_name, ms.start_date, ms.end_date
                   FROM organization_members om
                   JOIN users u ON u.id = om.user_id
@@ -137,7 +140,10 @@ public class ClientQueryRepository {
                     rs.getString("document_number"), rs.getString("first_name"), rs.getString("last_name"),
                     rs.getString("email"), rs.getObject("birth_date", LocalDate.class),
                     rs.getBoolean("is_active"), rs.getObject("joined_at", OffsetDateTime.class), membership,
-                    rs.getString("phone"), rs.getObject("eps_id", Long.class), rs.getString("eps_name"));
+                    rs.getString("phone"), rs.getObject("eps_id", Long.class), rs.getString("eps_name"),
+                    rs.getObject("privacy_accepted_at", OffsetDateTime.class),
+                    rs.getObject("health_consent_at", OffsetDateTime.class),
+                    rs.getString("privacy_policy_version"), rs.getString("health_consent_version"));
             })
             .optional();
     }

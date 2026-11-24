@@ -38,7 +38,19 @@ const detalle = {
   phone: '3001234567',
   epsId: 3,
   epsName: 'Sanitas',
+  privacyAcceptedAt: '2026-10-01T15:00:00Z',
+  healthConsentAt: '2026-10-02T09:00:00Z',
+  privacyPolicyVersion: '0.1-borrador',
+  healthConsentVersion: '0.1-borrador',
   emergencyContacts: [{ id: 1, fullName: 'Luis Gómez', relationship: 'Padre', phone: '3009999999', primary: true }]
+};
+
+const politica = {
+  version: '0.1-borrador',
+  effectiveDate: '2026-10-18',
+  status: 'borrador',
+  privacyText: 'Política de tratamiento de datos personales (texto completo).',
+  healthText: 'Autorización expresa para datos de salud (texto completo).'
 };
 
 describe('ClientesComponent', () => {
@@ -101,6 +113,18 @@ describe('ClientesComponent', () => {
       { id: 3, name: 'Sanitas' },
       { id: 4, name: 'Sura' }
     ]);
+    http.expectOne({ method: 'GET', url: '/api/legal/policy' }).flush(politica);
+    await refrescar();
+  }
+
+  async function abrirRegistroSinPolitica() {
+    boton('Registrar cliente').click();
+    fixture.detectChanges();
+    http.expectOne({ method: 'GET', url: '/api/health-insurance-providers' }).flush([
+      { id: 3, name: 'Sanitas' },
+      { id: 4, name: 'Sura' }
+    ]);
+    http.expectOne({ method: 'GET', url: '/api/legal/policy' }).flush(null, { status: 500, statusText: 'Error' });
     await refrescar();
   }
 
@@ -219,6 +243,28 @@ describe('ClientesComponent', () => {
     expect(el().textContent).not.toContain('Sanitas');
   });
 
+  it('el detalle muestra la versión y la fecha de cada aceptación', async () => {
+    await cargar();
+    el().querySelector<HTMLButtonElement>('.ver')!.click();
+    http.expectOne({ method: 'GET', url: '/api/clients/5' }).flush(detalle);
+    await refrescar();
+
+    const texto = el().textContent!;
+    expect(texto).toContain('Aceptó la política (versión 0.1-borrador) el 01/10/2026');
+    expect(texto).toContain('Aceptó la política (versión 0.1-borrador) el 02/10/2026');
+  });
+
+  it('el detalle de una afiliación anterior indica versión no registrada', async () => {
+    await cargar();
+    el().querySelector<HTMLButtonElement>('.ver')!.click();
+    http
+      .expectOne({ method: 'GET', url: '/api/clients/5' })
+      .flush({ ...detalle, privacyAcceptedAt: null, healthConsentAt: null, privacyPolicyVersion: null, healthConsentVersion: null });
+    await refrescar();
+
+    expect(el().textContent).toContain('versión no registrada (anterior a NEX-115)');
+  });
+
   it('si el detalle falla, muestra el mensaje', async () => {
     await cargar();
     el().querySelector<HTMLButtonElement>('.ver')!.click();
@@ -323,6 +369,30 @@ describe('ClientesComponent', () => {
     await refrescar();
 
     expect(el().querySelector('.nf-alerta[role="alert"]')?.textContent).toContain('ya es miembro de este gimnasio');
+  });
+
+  it('al abrir el registro muestra el texto de la política con versión, fecha y estado borrador', async () => {
+    await cargar();
+    await abrirRegistro();
+
+    const texto = el().textContent!;
+    expect(texto).toContain('versión 0.1-borrador');
+    expect(texto).toContain('18/10/2026');
+    expect(texto).toContain('borrador, no vigente');
+    expect(texto).toContain('Política de tratamiento de datos personales (texto completo).');
+    expect(texto).toContain('Autorización expresa para datos de salud (texto completo).');
+  });
+
+  it('si la política no carga, avisa y no deja registrar', async () => {
+    await cargar();
+    await abrirRegistroSinPolitica();
+
+    expect(el().textContent).toContain('No se pudo cargar la política vigente');
+    const registrar = boton('Registrar');
+    expect(registrar.disabled).toBe(true);
+    enviar();
+    await refrescar();
+    http.expectNone({ method: 'POST', url: '/api/clients' });
   });
 
   it('si el catálogo de EPS no carga, avisa', async () => {

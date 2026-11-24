@@ -200,6 +200,10 @@ class ClientTests {
             Boolean.class, memberId)).isTrue();
         assertThat(jdbc.queryForObject("SELECT health_consent_at IS NOT NULL FROM organization_members WHERE id = ?",
             Boolean.class, memberId)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT privacy_policy_version FROM organization_members WHERE id = ?",
+            String.class, memberId)).isEqualTo("0.1-borrador");
+        assertThat(jdbc.queryForObject("SELECT health_consent_version FROM organization_members WHERE id = ?",
+            String.class, memberId)).isEqualTo("0.1-borrador");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM emergency_contacts WHERE member_id = ?",
             Integer.class, memberId)).isEqualTo(1);
         assertThat(auditTypeCount(org.id(), "CLIENT_ACCOUNT_CREATED")).isEqualTo(1);
@@ -423,5 +427,68 @@ class ClientTests {
         assertThat(search(staff, "CC", "NO-EXISTE-1", true, true).getResponse().getStatus())
             .isEqualTo(404);
         assertThat(auditCount(org.id())).isEqualTo(1);
+    }
+
+    @Test
+    void detalleExponeFechasYVersionesAceptadas() throws Exception {
+        AccessFixtures.Org org = fixtures.orgWithAdmin();
+        Cookie staff = staffCookie(org);
+        long eps = epsId();
+
+        int n = SEQ.incrementAndGet();
+        MvcResult created = create(staff, createJson("CC", "N" + n, "Juan", "Ríos", "1995-05-05",
+            "detalle" + n + "@nexfit.test", "3001234567", eps, "Luis Pérez", "Padre", "3000000000"));
+        assertThat(created.getResponse().getStatus()).isEqualTo(201);
+        long memberId = longValue(created, "\"memberId\":");
+
+        MvcResult r = mvc.perform(get("/clients/" + memberId).cookie(staff)).andReturn();
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        assertThat(body(r)).contains("\"privacyAcceptedAt\":");
+        assertThat(body(r)).contains("\"healthConsentAt\":");
+        assertThat(body(r)).contains("\"privacyPolicyVersion\":\"0.1-borrador\"");
+        assertThat(body(r)).contains("\"healthConsentVersion\":\"0.1-borrador\"");
+    }
+
+    @Test
+    void detalleSinSesionDa401() throws Exception {
+        MvcResult r = mvc.perform(get("/clients/1")).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void detalleEntrenadorDa403() throws Exception {
+        AccessFixtures.Org org = fixtures.orgWithAdmin();
+        AccessFixtures.Account trainer = fixtures.actor(org.id(), "trainer");
+        Cookie trainerCookie = fixtures.login(trainer);
+
+        MvcResult r = mvc.perform(get("/clients/1").cookie(trainerCookie)).andReturn();
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(403);
+        assertThat(body(r)).contains("ACCESS_DENIED");
+    }
+
+    @Test
+    void detalleDeAfiliacionAnteriorMuestraVersionesNulas() throws Exception {
+        AccessFixtures.Org org = fixtures.orgWithAdmin();
+        Cookie staff = staffCookie(org);
+        int n = SEQ.incrementAndGet();
+        long userId = newUser("anterior" + n + "@nexfit.test");
+        long memberId = jdbc.queryForObject("""
+            WITH eps AS (INSERT INTO health_insurance_providers (name, is_active) VALUES ('EPS', true) RETURNING id),
+                 m AS (INSERT INTO organization_members (organization_id, user_id, eps_id, is_active)
+                       SELECT ?, ?, eps.id, true FROM eps RETURNING id),
+                 c AS (INSERT INTO emergency_contacts (organization_id, member_id, full_name, relationship, phone, is_primary)
+                       SELECT ?, m.id, 'Luis Pérez', 'Padre', '3000000000', true FROM m),
+                 r AS (INSERT INTO member_roles (member_id, role, organization_id)
+                       SELECT m.id, 'client', ? FROM m)
+            SELECT id FROM m
+            """, Long.class, org.id(), userId, org.id(), org.id());
+
+        MvcResult r = mvc.perform(get("/clients/" + memberId).cookie(staff)).andReturn();
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        assertThat(body(r)).contains("\"privacyPolicyVersion\":null");
+        assertThat(body(r)).contains("\"healthConsentVersion\":null");
     }
 }

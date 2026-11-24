@@ -98,6 +98,10 @@ class ClientQueryController {
         body.put("phone", c.phone());
         body.put("epsId", c.epsId());
         body.put("epsName", c.epsName());
+        body.put("privacyAcceptedAt", c.privacyAcceptedAt());
+        body.put("healthConsentAt", c.healthConsentAt());
+        body.put("privacyPolicyVersion", c.privacyPolicyVersion());
+        body.put("healthConsentVersion", c.healthConsentVersion());
         List<Map<String, Object>> contacts = new ArrayList<>();
         for (Contact contact : result.detail().emergencyContacts()) {
             Map<String, Object> one = new LinkedHashMap<>();

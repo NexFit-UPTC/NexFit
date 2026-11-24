@@ -1,0 +1,33 @@
+## 3. Parte B · Autorización expresa para datos de salud (EPS)
+
+**Versión del texto:** 0.1-borrador · **Fecha:** 18/10/2026 · **Estado:** borrador, no vigente
+
+> Este texto se presenta en **toda afiliación de cliente**, porque la EPS es obligatoria (D-17, RN-25). Debe mostrarse **separado** de la política general y con su propia casilla de aceptación; no puede venir marcado de antemano.
+
+### B.1 Texto para mostrar al titular
+
+**Autorización para el tratamiento de datos de salud**
+
+Yo, `[NOMBRE DEL CLIENTE]`, identificado(a) con `[TIPO Y NÚMERO DE DOCUMENTO]`, **autorizo de manera expresa, previa e informada** a `[NOMBRE DEL ESTABLECIMIENTO]` (Responsable) y a NexFit (Encargado, plataforma que aloja la información) para tratar mis datos de salud, que son datos sensibles:
+
+- el nombre de mi **EPS**, y
+- `[SI SE ADOPTA, VER 7.4]` mi **peso corporal** y los datos de entrenamiento relacionados con mi condición física que yo registre.
+
+**Finalidad:** contar con esta información para atender una **emergencia** que ocurra durante mi permanencia en el gimnasio y para hacer seguimiento de mi entrenamiento. No se usará para otra finalidad.
+
+**Quedo informado(a) de que:**
+
+1. Por tratarse de datos sensibles, **no estoy obligado(a) a autorizar** su tratamiento. `[AJUSTAR según la decisión del punto 7.2: si la EPS es obligatoria para afiliarse, el texto debe explicar con claridad por qué se pide y qué pasa si no se informa]`
+2. Tengo derecho a conocer, actualizar, rectificar y suprimir estos datos, y a **revocar esta autorización** cuando lo desee, mediante `[CANAL DE ATENCIÓN]`.
+3. Mis datos se manejan según la Política de Tratamiento de Datos Personales, versión `[VERSIÓN]`, que puedo consultar en `[ENLACE / PANTALLA]`.
+
+☐ **Acepto** el tratamiento de mis datos de salud en los términos anteriores.
+
+Versión de esta autorización: `[VERSIÓN]` · Fecha de aceptación: `[LA REGISTRA EL SISTEMA]`
+
+### B.2 Por qué es un texto aparte
+
+- Los datos de salud requieren autorización **explícita**, no basta con aceptar la política general.
+- Debe poder probarse **cuándo** y **qué texto** se aceptó. Hoy el modelo guarda la fecha (`health_consent_at`); guardar también la versión se propone en la sección 5.
+
+---

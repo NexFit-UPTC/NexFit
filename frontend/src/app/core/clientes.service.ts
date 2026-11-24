@@ -62,6 +62,10 @@ export interface DetalleCliente {
   phone: string | null;
   epsId: number | null;
   epsName: string | null;
+  privacyAcceptedAt: string | null;
+  healthConsentAt: string | null;
+  privacyPolicyVersion: string | null;
+  healthConsentVersion: string | null;
   emergencyContacts: ContactoEmergencia[];
 }
 
@@ -93,6 +97,14 @@ export interface PersonaEncontrada {
   lastName: string;
 }
 
+export interface PoliticaVigente {
+  version: string;
+  effectiveDate: string;
+  status: string;
+  privacyText: string;
+  healthText: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClientesService {
   private readonly http = inject(HttpClient);
@@ -109,6 +121,11 @@ export class ClientesService {
   /** Detalle con EPS y contactos de emergencia; el servidor audita cada consulta. */
   detalle(memberId: number): Observable<DetalleCliente> {
     return this.http.get<DetalleCliente>(`/api/clients/${memberId}`);
+  }
+
+  /** Texto vigente de la política (NEX-115): versión, fecha, estado y ambos textos. */
+  politica(): Observable<PoliticaVigente> {
+    return this.http.get<PoliticaVigente>('/api/legal/policy');
   }
 
   crear(datos: DatosCliente): Observable<ResultadoCliente> {
