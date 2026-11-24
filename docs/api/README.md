@@ -225,11 +225,15 @@ Cada elemento de `content`: `{memberId, documentType, documentNumber, firstName,
 
 `membershipStatus` es el de la membresía efectiva del cliente en este gimnasio, calculado con la fecha local del establecimiento: `active` (vigente), `suspended`, `scheduled` (aún no empieza), `expired` (venció) o `cancelled`; `null` si nunca tuvo. Si tiene varias, se muestra la primera de ese orden y, entre iguales, la que termina más tarde. Solo cuentan las membresías de este gimnasio.
 
-Detalle: `{memberId, documentType, documentNumber, firstName, lastName, email, birthDate, active, joinedAt, membership, phone, epsId, epsName, emergencyContacts}`. `membership` es `{status, planName, startDate, endDate}` o `null`; `emergencyContacts` es `[{id, fullName, relationship, phone, primary}]`. Muestra también clientes con la afiliación inactiva. Cada consulta registra un evento `HEALTH_CONTACT_DATA_ACCESSED` con quién consultó (D-08).
+Detalle: `{memberId, documentType, documentNumber, firstName, lastName, email, birthDate, active, joinedAt, membership, phone, epsId, epsName, emergencyContacts, privacyAcceptedAt, healthConsentAt, privacyPolicyVersion, healthConsentVersion}` (NEX-115: fechas de aceptación y versión aceptada de la política y de la autorización de salud; `null` en afiliaciones anteriores a NEX-115, «versión no registrada»). `membership` es `{status, planName, startDate, endDate}` o `null`; `emergencyContacts` es `[{id, fullName, relationship, phone, primary}]`. Muestra también clientes con la afiliación inactiva. Cada consulta registra un evento `HEALTH_CONTACT_DATA_ACCESSED` con quién consultó (D-08).
 
 Errores:
 - `400 VALIDATION_ERROR` con `{code, field, message}`; `field` es `q`.
 - `403 ACCESS_DENIED`: el rol no es Staff ni Administrador.
+
+### Política vigente (NEX-115, DAV-12)
+
+`GET /api/legal/policy` — CLIENTES/CONSULTAR. Devuelve el texto vigente de la política de tratamiento de datos y de la autorización de datos de salud: `version`, `effectiveDate`, `status`, `privacyText`, `healthText`. El texto vigente es el borrador `0.1-borrador` del TT-17 (sin revisión jurídica; los [CORCHETES] van visibles, nunca se inventan) y se muestra etiquetado como borrador. No deja evento de auditoría: es lectura de un documento fijo, no de datos de un titular. Al afiliar un cliente, el servidor sella la versión vigente (`privacy_policy_version`, `health_consent_version` en `organization_members`); al cambiar la EPS con autorización, también se sella la versión vigente de salud. La versión nunca se acepta desde el cliente.
 - `404`: el cliente no existe en el gimnasio o es de otro (igual que un id inexistente).
 - `401` sin sesión.
 
