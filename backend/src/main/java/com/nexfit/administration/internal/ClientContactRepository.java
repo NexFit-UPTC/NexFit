@@ -99,13 +99,15 @@ public class ClientContactRepository {
             .update();
     }
 
-    public void updateEps(long orgId, long memberId, long epsId, boolean withConsent) {
+    public void updateEps(long orgId, long memberId, long epsId, boolean withConsent, String healthVersion) {
         if (withConsent) {
             jdbc.sql("""
-                    UPDATE organization_members SET eps_id = :eps, health_consent_at = now()
+                    UPDATE organization_members
+                       SET eps_id = :eps, health_consent_at = now(), health_consent_version = :version
                     WHERE id = :id AND organization_id = :org
                     """)
                 .param("eps", epsId)
+                .param("version", healthVersion)
                 .param("id", memberId)
                 .param("org", orgId)
                 .update();

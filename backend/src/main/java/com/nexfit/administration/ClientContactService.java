@@ -3,6 +3,7 @@ package com.nexfit.administration;
 import com.nexfit.administration.internal.ClientContactRepository;
 import com.nexfit.audit.AuditEventType;
 import com.nexfit.audit.AuditService;
+import com.nexfit.legal.LegalPolicyService;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +20,12 @@ class ClientContactService {
 
     private final ClientContactRepository repo;
     private final AuditService audit;
+    private final LegalPolicyService policy;
 
-    ClientContactService(ClientContactRepository repo, AuditService audit) {
+    ClientContactService(ClientContactRepository repo, AuditService audit, LegalPolicyService policy) {
         this.repo = repo;
         this.audit = audit;
+        this.policy = policy;
     }
 
     public enum GetStatus {
@@ -80,7 +83,9 @@ class ClientContactService {
         }
         if (epsPresent) {
             boolean changed = !epsId.equals(member.get().epsId());
-            repo.updateEps(orgId, memberId, epsId, changed && healthConsent);
+            // NEX-115: al cambiar la EPS con autorización, se sella además la versión vigente.
+            String healthVersion = changed && healthConsent ? policy.currentVersion() : null;
+            repo.updateEps(orgId, memberId, epsId, changed && healthConsent, healthVersion);
         }
         if (contacts != null) {
             repo.replaceContacts(orgId, memberId, contacts);
