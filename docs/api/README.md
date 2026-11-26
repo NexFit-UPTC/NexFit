@@ -2,7 +2,7 @@
 
 Documentación de los endpoints REST de `backend/` (rutas, roles permitidos, entradas y salidas). Se actualiza en el mismo PR que cambia la API.
 
-## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26, NEX-112)
+## Sesión, contraseñas y gimnasio activo (NEX-20, NEX-24, NEX-26, NEX-112, NEX-147)
 
 Rutas bajo `/api/auth`. La sesión viaja en la cookie `NEXFIT_SESSION` (HttpOnly) y vence tras 30 minutos sin actividad (RNF-07). Toda petición que no sea `GET` debe llevar la cabecera `X-XSRF-TOKEN` con el valor de la cookie `XSRF-TOKEN` (protección CSRF); sin ella se rechaza con \403 {code: CSRF_TOKEN_INVALID, message}`.`.
 
@@ -22,6 +22,23 @@ Reglas:
 - Con `mustChangePassword: true` (contraseña temporal) la única operación permitida, además de cerrar sesión, es cambiar la contraseña; el resto responde `403 PASSWORD_CHANGE_REQUIRED`. La temporal tiene 12 caracteres y vale 72 horas; vencida, el acceso responde `401`.
 - `password-reset`: el Staff o el Administrador solo restablecen cuentas de su gimnasio (`404` si la cuenta no es de este gimnasio) y, si la persona tiene más de una afiliación activa y ya ha iniciado sesión, solo el Master (`403`). Cierra las sesiones de la cuenta, levanta el bloqueo y queda auditado. Entrenador y Cliente reciben `403 ACCESS_DENIED`.
 - Sin gimnasio elegido, las rutas que lo necesitan responden `403 ESTABLISHMENT_REQUIRED`.
+
+### Inicio de sesión con Google (NEX-147)
+
+Solo para cuentas que ya existen: no registra a nadie. Lo gestiona Spring Security (flujo de código con `state`, `nonce` y PKCE), no un controlador; por eso estas rutas no aparecen en `cases()` de `AuthorizationMatrixTests` y se prueban en `GoogleLoginTests`. Son públicas y escriben datos (una sesión en la base), así que llevan tope por conexión (`nexfit.auth.google-max-per-hour`, 120 por hora).
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/oauth2/authorization/google` | Cualquiera | Redirige a Google (`302`). Lo abre el botón «Continuar con Google» de `/login`. |
+| `GET /api/login/oauth2/code/google` | Google | Callback del flujo. Responde siempre una redirección del navegador al sitio público (sin `/api`). |
+
+- **Éxito:** `302 /login?google=1`. Se abre la misma sesión (`NEXFIT_SESSION`) que con la contraseña: mismos roles y permisos, auto-selección de gimnasio con una sola afiliación (con varias o ninguna, el front lleva a `/establecimiento`). La sesión previa se reemplaza.
+- **Cualquier rechazo:** `302 /login?error=google`, idéntico para un correo sin cuenta, correo sin verificar en Google, cuenta inactiva o bloqueada, cuenta Master, contraseña temporal pendiente o vencida, o un error de Google; no revela si el correo existe. No abre sesión ni toca la previa.
+- **Enlace:** el correo verificado por Google (`email_verified`) se compara sin distinguir mayúsculas con el de la cuenta. Sin migración ni almacenamiento del identificador de Google.
+- **Master y contraseña temporal:** el Master y las cuentas con contraseña temporal pendiente entran solo con la contraseña (el cambio de la temporal exige la contraseña actual).
+- **RN-38:** un rechazo por Google no suma fallos ni alarga un bloqueo.
+- **Auditoría:** `LOGIN` y `LOGIN_FAILED` con `metadata.method = "google"` (el rechazo de un correo sin cuenta o sin verificar queda sin actor).
+- **Configuración:** `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` (ambas; sin ellas la función no existe y estas rutas responden `401`) y `NEXFIT_PUBLIC_URL` (por defecto `http://localhost:4200`). La redirect URI sale de ahí y es fija: `<NEXFIT_PUBLIC_URL>/api/login/oauth2/code/google`; en producción `https://nexfit-vert.vercel.app/api/login/oauth2/code/google`, en local `http://localhost:4200/api/login/oauth2/code/google`.
 
 ## Información personal propia (NEX-27, US-17)
 

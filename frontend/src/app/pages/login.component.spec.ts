@@ -189,4 +189,46 @@ describe('LoginComponent', () => {
       expect(abrirCon('0').textContent).not.toContain('Cuenta creada');
     });
   });
+
+  describe('inicio de sesión con Google', () => {
+    function abrirCon(parametros: Record<string, string>) {
+      const ruta = TestBed.inject(ActivatedRoute);
+      vi.spyOn(ruta.snapshot.queryParamMap, 'get').mockImplementation((k) => parametros[k] ?? null);
+      const f = TestBed.createComponent(LoginComponent);
+      f.detectChanges();
+      return f.nativeElement as HTMLElement;
+    }
+    beforeEach(() => sessionStorage.removeItem('nexfit.gimnasio'));
+    afterEach(() => vi.restoreAllMocks());
+
+    it('el botón es un enlace de navegación completa al backend, debajo del formulario', () => {
+      const boton = el().querySelector<HTMLAnchorElement>('a[href="/api/oauth2/authorization/google"]')!;
+      expect(boton.textContent).toContain('Continuar con Google');
+      const form = el().querySelector('form')!;
+      expect(form.compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('con ?error=google muestra un mensaje genérico, sin revelar el motivo', () => {
+      const alerta = abrirCon({ error: 'google' }).querySelector('[role=alert]')!.textContent!;
+      expect(alerta).toContain('No se pudo iniciar sesión con Google');
+      expect(alerta.toLowerCase()).not.toMatch(/no existe|no registrado|bloquead|inactiv|master/);
+    });
+
+    it('sin ?error=google no muestra el mensaje', () => {
+      expect(el().textContent).not.toContain('con Google. Usa tu correo');
+      expect(abrirCon({ error: 'otro' }).querySelector('[role=alert]')).toBeNull();
+    });
+
+    it.each([{ error: 'google' }, { google: '1' }])('al volver de Google (%o) conserva el gimnasio guardado', (parametros) => {
+      sessionStorage.setItem('nexfit.gimnasio', '7');
+      abrirCon(parametros);
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('7');
+    });
+
+    it('sin marca de Google y sin ?gimnasio sigue borrando el gimnasio guardado', () => {
+      sessionStorage.setItem('nexfit.gimnasio', '7');
+      abrirCon({});
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
+    });
+  });
 });

@@ -31,6 +31,8 @@ server:
       # Azure sobrescribe X-Forwarded-For con la IP que ve (la de Vercel); en Azure se fija
       # CLIENT_IP_HEADER=X-Real-IP (o X-Vercel-Forwarded-For) sin reconstruir la imagen.
       remote-ip-header: ${CLIENT_IP_HEADER:X-Forwarded-For}
+    # Tras el rewrite de Vercel, una redirección absoluta salía con el host de Azure y el navegador caía en 404.
+    use-relative-redirects: true
   servlet:
     context-path: /api
     session:
