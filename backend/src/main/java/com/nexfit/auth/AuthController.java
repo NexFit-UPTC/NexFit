@@ -17,7 +17,6 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -81,23 +80,8 @@ class AuthController {
         if (result.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Credenciales inválidas"));
         }
-        HttpSession old = request.getSession(false);
-        if (old != null) {
-            old.invalidate();
-        }
-        HttpSession session = request.getSession(true);
         LoginResult r = result.get();
-        session.setAttribute(SessionUserFilter.USER_ID_ATTRIBUTE, r.userId());
-        // Permite a Spring Session encontrar todas las sesiones de un usuario (para
-        // revocarlas al cambiar la contraseña).
-        session.setAttribute(FindByIndexNameSessionRepository.PRINCIPAL_NAME_INDEX_NAME,
-                String.valueOf(r.userId()));
-        // US-05: con una sola afiliación activa se elige sola; con varias, el cliente
-        // elige.
-        if (r.establishments().size() == 1) {
-            session.setAttribute(SessionUserFilter.ORG_ID_ATTRIBUTE,
-                    r.establishments().get(0).organizationId());
-        }
+        LoginSessions.open(request, r);
         return ResponseEntity.ok(Map.of("userId", r.userId(),
                 "mustChangePassword", r.mustChangePassword(),
                 "establishments", r.establishments().stream()

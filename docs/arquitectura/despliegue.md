@@ -42,7 +42,26 @@ Sin valores en el repositorio. Las sensibles se guardan como **secretos de Conta
 | `DB_PASSWORD` | secreto | |
 | `DB_POOL_SIZE` | variable | por defecto 5 |
 | `COOKIE_SECURE` | variable | `true` en producción |
+| `GOOGLE_CLIENT_ID` | variable | Inicio de sesión con Google (NEX-147). Con el secreto, activa la función; sin ellos no existe |
+| `GOOGLE_CLIENT_SECRET` | secreto | `secretref:google-client-secret` |
+| `NEXFIT_PUBLIC_URL` | variable | `https://nexfit-vert.vercel.app`: de aquí sale la redirect URI de Google, que debe registrarse tal cual: `https://nexfit-vert.vercel.app/api/login/oauth2/code/google` |
 | `PORT` | variable | `8080` (debe coincidir con el puerto del ingress) |
+
+## Inicio de sesión con Google (NEX-147)
+
+Se activa solo con `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. En Google Cloud, el cliente OAuth («Aplicación web») registra como URI de redirección autorizada `https://nexfit-vert.vercel.app/api/login/oauth2/code/google` (y, para pruebas locales, `http://localhost:4200/api/login/oauth2/code/google`); no hacen falta orígenes de JavaScript. La URI la fija `NEXFIT_PUBLIC_URL`, no el host que ve el backend tras el proxy de Vercel.
+
+En Azure, nunca con el formulario del portal (reescribe todo el bloque de variables). El secreto se guarda como secreto de la app y se referencia con `secretref:`, sin tocar los `db-*`; el valor se pide en la terminal, sin pegarlo en el chat ni en el repositorio (PowerShell 5.1; comprobar antes cada comando con `az containerapp <comando> --help`):
+
+```powershell
+$s = Read-Host "Client secret de Google" -AsSecureString
+$plain = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))
+az containerapp secret set --name nexfit-api --resource-group nexfit-rg --secrets "google-client-secret=$plain"
+az containerapp update --name nexfit-api --resource-group nexfit-rg --set-env-vars "GOOGLE_CLIENT_ID=<id>" "GOOGLE_CLIENT_SECRET=secretref:google-client-secret" "NEXFIT_PUBLIC_URL=https://nexfit-vert.vercel.app"
+Remove-Variable plain, s
+```
+
+Verificación sin iniciar sesión: `GET https://nexfit-vert.vercel.app/api/oauth2/authorization/google` debe responder `302` hacia `accounts.google.com` con `redirect_uri=https://nexfit-vert.vercel.app/api/login/oauth2/code/google`. La pantalla de consentimiento queda en «Testing», con el correo de pruebas como usuario de prueba.
 
 ## Cómo se despliega
 
