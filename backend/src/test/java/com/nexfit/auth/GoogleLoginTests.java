@@ -188,7 +188,7 @@ class GoogleLoginTests {
     @Test
     void conVariasAfiliacionesLaSesionQuedaSinGimnasioElegido() throws Exception {
         long id = newUser("dos@nexfit.test");
-        affiliate(id, newOrg("Gym Uno"), "client");
+        affiliate(id, newOrg("Gym Uno"), "admin");
         affiliate(id, newOrg("Gym Dos"), "trainer");
 
         Callback callback = googleCallback("dos@nexfit.test", true);
