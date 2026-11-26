@@ -46,6 +46,7 @@ Sin valores en el repositorio. Las sensibles se guardan como **secretos de Conta
 | `GOOGLE_CLIENT_SECRET` | secreto | `secretref:google-client-secret` |
 | `NEXFIT_PUBLIC_URL` | variable | `https://nexfit-vert.vercel.app`: de aquí sale la redirect URI de Google, que debe registrarse tal cual: `https://nexfit-vert.vercel.app/api/login/oauth2/code/google` |
 | `PORT` | variable | `8080` (debe coincidir con el puerto del ingress) |
+| `SERVER_TOMCAT_USE_RELATIVE_REDIRECTS` | variable | `true` (equivale a `server.tomcat.use-relative-redirects`, ya fijado en `application.yml`). Tras el rewrite de Vercel, Tomcat armaba la redirección absoluta con el host de Azure y el navegador caía en un 404; con redirecciones relativas se queda en el dominio de Vercel |
 
 ## Inicio de sesión con Google (NEX-147)
 
