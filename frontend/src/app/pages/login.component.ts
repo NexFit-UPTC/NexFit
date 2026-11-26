@@ -40,11 +40,16 @@ export class LoginComponent {
   protected readonly error = signal<string | null>(null);
   protected readonly verClave = signal(false);
   protected readonly cuentaCreada: boolean;
+  protected readonly errorGoogle: boolean;
 
   constructor() {
     const consulta = inject(ActivatedRoute).snapshot.queryParamMap;
     this.cuentaCreada = consulta.get('registrado') === '1';
-    guardarGimnasio(consulta.get('gimnasio'));
+    this.errorGoogle = consulta.get('error') === 'google';
+    // Al volver de Google (?google=1 o ?error=google) no viene ?gimnasio: se conserva el guardado antes de salir.
+    if (!this.errorGoogle && consulta.get('google') !== '1') {
+      guardarGimnasio(consulta.get('gimnasio'));
+    }
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {
       const destino = DESTINOS[this.sesion.estado()];

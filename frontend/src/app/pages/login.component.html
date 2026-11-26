@@ -9,6 +9,12 @@
     <p class="nf-ayuda" role="status">Cuenta creada. Inicia sesión con tu correo y tu contraseña.</p>
   }
 
+  @if (errorGoogle) {
+    <p class="nf-alerta" role="alert">
+      No se pudo iniciar sesión con Google. Usa tu correo y contraseña, o entra con la cuenta de Google con la que te registraste en NexFit.
+    </p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>
@@ -63,6 +69,11 @@
       {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
     </button>
   </form>
+
+  <p class="separador" aria-hidden="true"><span>o</span></p>
+
+  <!-- Navegación completa (no routerLink): el backend redirige a Google y vuelve a /login. -->
+  <a class="google" href="/api/oauth2/authorization/google">Continuar con Google</a>
 
   <p class="nf-ayuda">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
 
