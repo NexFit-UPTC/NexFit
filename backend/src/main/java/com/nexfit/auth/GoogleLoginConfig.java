@@ -44,6 +44,8 @@ class GoogleLoginConfig {
 
     static final String FAILURE_URL = "/login?error=google";
     static final String SUCCESS_URL = "/login?google=1";
+    /** Correo verificado por Google sin cuenta (NEX-148): el login ofrece crearla. */
+    static final String NEW_ACCOUNT_URL = "/login?google=nuevo";
     private static final String CALLBACK_PATH = "/api/login/oauth2/code/google";
 
     @Bean

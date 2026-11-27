@@ -1,9 +1,12 @@
 package com.nexfit.auth;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -38,5 +41,19 @@ class GoogleLoginDisabledTests {
     @Test
     void sinElSecretoElCallbackDeGoogleDa401() throws Exception {
         mvc.perform(get("/login/oauth2/code/google")).andExpect(status().isUnauthorized());
+    }
+
+    // NEX-148: el controlador del registro con Google existe siempre, pero sin Google nunca hay pendiente.
+    @Test
+    void sinElSecretoElGetDelRegistroConGoogleDa404() throws Exception {
+        mvc.perform(get("/auth/google-registration")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void sinElSecretoElPostDelRegistroConGoogleDa404() throws Exception {
+        mvc.perform(post("/auth/google-registration").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"documentType\":\"CC\",\"documentNumber\":\"D1\",\"firstName\":\"Ana\","
+                        + "\"lastName\":\"Pérez\",\"birthDate\":\"1990-01-01\",\"acceptPolicy\":true}"))
+                .andExpect(status().isNotFound());
     }
 }

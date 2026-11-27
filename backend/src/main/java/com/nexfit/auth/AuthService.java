@@ -164,6 +164,19 @@ public class AuthService {
     public record ResetResult(ResetStatus status, String temporaryPassword) {
     }
 
+    /** Estado de {@link #loginWithGoogle} (NEX-148). */
+    public enum GoogleLoginStatus {
+        LOGGED_IN, NO_ACCOUNT, REJECTED
+    }
+
+    /**
+     * Resultado de {@link #loginWithGoogle}; el inicio de sesión solo viene con {@code LOGGED_IN}.
+     * {@code NO_ACCOUNT} es únicamente "correo verificado por Google sin cuenta"; todo otro rechazo
+     * es {@code REJECTED}.
+     */
+    public record GoogleLoginResult(GoogleLoginStatus status, LoginResult login) {
+    }
+
     /** Estado de {@link #register}. */
     public enum RegisterStatus {
         CREATED, CONFLICT
@@ -240,10 +253,11 @@ public class AuthService {
      * (cuyo cambio exige la contraseña actual) usan la contraseña. Todo rechazo
      * es igual para quien llama, se audita como LOGIN_FAILED con
      * {@code method=google} y no suma ni alarga el bloqueo (RN-38): Google no es
-     * un intento de contraseña.
+     * un intento de contraseña. Solo el correo verificado sin cuenta se distingue
+     * ({@code NO_ACCOUNT}, NEX-148) para ofrecer el registro; el resto es {@code REJECTED}.
      */
     @Transactional
-    public Optional<LoginResult> loginWithGoogle(String email, String ip) {
+    public GoogleLoginResult loginWithGoogle(String email, String ip) {
         Map<String, Object> via = Map.of("method", "google");
         Optional<Candidate> found = findCandidate(email);
         if (found.isPresent() && found.get().usable() && !found.get().platformAdmin()
@@ -251,11 +265,14 @@ public class AuthService {
             long id = found.get().id();
             resetFailedAttempts(id);
             audit.record(AuditEventType.LOGIN, id, null, "user", id, ip, via);
-            return Optional.of(new LoginResult(id, false, establishments(id)));
+            return new GoogleLoginResult(GoogleLoginStatus.LOGGED_IN,
+                    new LoginResult(id, false, establishments(id)));
         }
         Long id = found.map(Candidate::id).orElse(null);
         audit.record(AuditEventType.LOGIN_FAILED, id, null, id == null ? null : "user", id, ip, via);
-        return Optional.empty();
+        // Sin correo verificado el handler llama con null: eso nunca es "sin cuenta".
+        boolean noAccount = email != null && found.isEmpty();
+        return new GoogleLoginResult(noAccount ? GoogleLoginStatus.NO_ACCOUNT : GoogleLoginStatus.REJECTED, null);
     }
 
     /**
@@ -568,6 +585,50 @@ public class AuthService {
                 .query((rs, n) -> rs.getLong("id"))
                 .single();
         audit.record(AuditEventType.ACCOUNT_SELF_REGISTERED, userId, null, "user", userId, ip, null);
+        return new RegisterResult(RegisterStatus.CREATED, userId);
+    }
+
+    /**
+     * Registro con Google (NEX-148): crea la cuenta Cliente de un correo que Google verificó y la
+     * persona completó con sus datos y la aceptación de la política. Igual que {@link #register}
+     * (sin roles ni afiliación), pero sin contraseña: se guarda el hash de 32 bytes aleatorios que
+     * nadie conoce, así que la cuenta solo entra por Google o tras un restablecimiento asistido.
+     * El INSERT usa ON CONFLICT DO NOTHING: una carrera por el correo (índice sobre lower(email)) o
+     * por el documento se resuelve aquí como {@code CONFLICT}, sin una excepción que deje abortada
+     * la transacción (con PostgreSQL ya no se podría auditar ni confirmar). Audita el registro (con
+     * la versión de la política vigente en el servidor) y el ingreso, ambos con {@code method=google}.
+     */
+    @Transactional
+    public RegisterResult registerWithGoogle(String email, String documentType, String documentNumber,
+            String firstName, String lastName, LocalDate birthDate, String policyVersion, String ip) {
+        byte[] secret = new byte[32];
+        random.nextBytes(secret);
+        String unusableHash = encoder.encode(java.util.Base64.getEncoder().encodeToString(secret));
+        Optional<Long> created = jdbc.sql("""
+                INSERT INTO users (document_type, document_number, first_name, last_name, birth_date,
+                                   email, password_hash, must_change_password, temp_password_expires_at,
+                                   is_platform_admin, is_active)
+                VALUES (CAST(:type AS document_type), :number, :first, :last, :birth, :email, :hash,
+                        false, NULL, false, true)
+                ON CONFLICT DO NOTHING
+                RETURNING id
+                """)
+                .param("type", documentType)
+                .param("number", documentNumber)
+                .param("first", firstName)
+                .param("last", lastName)
+                .param("birth", birthDate)
+                .param("email", email.trim().toLowerCase(java.util.Locale.ROOT))
+                .param("hash", unusableHash)
+                .query((rs, n) -> rs.getLong("id"))
+                .optional();
+        if (created.isEmpty()) {
+            return new RegisterResult(RegisterStatus.CONFLICT, null);
+        }
+        long userId = created.get();
+        audit.record(AuditEventType.ACCOUNT_SELF_REGISTERED, userId, null, "user", userId, ip,
+                Map.of("method", "google", "policyVersion", policyVersion));
+        audit.record(AuditEventType.LOGIN, userId, null, "user", userId, ip, Map.of("method", "google"));
         return new RegisterResult(RegisterStatus.CREATED, userId);
     }
 

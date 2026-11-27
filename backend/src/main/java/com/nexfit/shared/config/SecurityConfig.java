@@ -80,6 +80,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/auth/login", "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        // NEX-148: registro con Google. Lo protege el correo verificado guardado en la sesión.
+                        .requestMatchers(HttpMethod.GET, "/auth/google-registration").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/google-registration").permitAll()
 
                         // NEX-97: única excepción pública de lectura; cualquier otro método o ruta
                         // sigue exigiendo sesión.
