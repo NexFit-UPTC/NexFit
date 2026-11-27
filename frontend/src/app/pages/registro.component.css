@@ -127,3 +127,48 @@ form {
     font-size: 1.75rem;
   }
 }
+
+/* Registro con Google (NEX-148). Mismos tokens que el botón de /login. */
+.separador {
+  display: flex;
+  align-items: center;
+  gap: var(--espacio-2);
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--texto-suave);
+}
+
+.separador::before,
+.separador::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--borde);
+}
+
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 10px 20px;
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.politica {
+  max-height: 14rem;
+  margin: 0;
+  padding: var(--espacio-2);
+  overflow: auto;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 0.875rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}

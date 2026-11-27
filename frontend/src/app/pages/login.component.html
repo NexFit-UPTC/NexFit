@@ -15,6 +15,13 @@
     </p>
   }
 
+  @if (googleSinCuenta) {
+    <div class="nf-alerta" role="alert">
+      <p>No encontramos una cuenta con ese correo. ¿Quieres crear una?</p>
+      <a class="nf-boton" routerLink="/registro" [queryParams]="{ google: 1 }">Crear cuenta con este correo</a>
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>

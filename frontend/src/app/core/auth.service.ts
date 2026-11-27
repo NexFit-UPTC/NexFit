@@ -27,6 +27,22 @@ export interface DatosRegistro {
   password: string;
 }
 
+/** GET /api/auth/google-registration: el correo que Google verificó y la política vigente (NEX-148). */
+export interface RegistroGooglePendiente {
+  email: string;
+  policy: { version: string; effectiveDate: string; privacyText: string };
+}
+
+/** Cuerpo de POST /api/auth/google-registration: sin correo (sale de la sesión) ni contraseña. */
+export interface DatosRegistroGoogle {
+  documentType: string;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  acceptPolicy: boolean;
+}
+
 /**
  * Operaciones de /api/auth (US-01, US-02, US-05) y la navegación que sigue a cada una.
  * Los errores HTTP se propagan a quien llama para que cada pantalla muestre su mensaje;
@@ -61,6 +77,21 @@ export class AuthService {
   /** POST /api/auth/register: crea solo la cuenta (201 {userId}); no abre sesión. La contraseña va tal cual, sin recortar. */
   async registrar(datos: DatosRegistro): Promise<void> {
     await firstValueFrom(this.http.post<{ userId: number }>('/api/auth/register', datos));
+  }
+
+  /** GET /api/auth/google-registration: 404 si no hay registro con Google pendiente (o venció). */
+  leerRegistroGoogle(): Promise<RegistroGooglePendiente> {
+    return firstValueFrom(this.http.get<RegistroGooglePendiente>('/api/auth/google-registration'));
+  }
+
+  /**
+   * POST /api/auth/google-registration: crea la cuenta Cliente y el servidor abre la sesión (201), así que
+   * sigue lo mismo que tras cualquier ingreso: /me decide el destino (un Cliente sin gimnasio va a elegirlo,
+   * con el gimnasio preseleccionado si lo hay).
+   */
+  async registrarConGoogle(datos: DatosRegistroGoogle): Promise<void> {
+    await firstValueFrom(this.http.post<{ userId: number }>('/api/auth/google-registration', datos));
+    await this.entrar();
   }
 
   /** POST /api/auth/password: contraseña temporal o voluntaria (mínimo 10 caracteres en el servidor). */

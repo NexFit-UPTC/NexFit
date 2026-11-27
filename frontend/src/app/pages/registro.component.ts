@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../core/auth.service';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AuthService, RegistroGooglePendiente } from '../core/auth.service';
 import { leerGimnasio } from '../core/gimnasio-preseleccionado';
+import { marcarRegistroGoogle } from '../core/registro-google';
 import { EstadoSesion, SessionService } from '../core/session.service';
 import { MIN_CONTRASENA } from './cambiar-contrasena.component';
 
@@ -26,8 +27,17 @@ function coinciden(grupo: AbstractControl): ValidationErrors | null {
   return clave && confirmar && clave !== confirmar ? { noCoinciden: true } : null;
 }
 
-type Campo = 'documentType' | 'documentNumber' | 'firstName' | 'lastName' | 'birthDate' | 'email' | 'password';
-const CAMPOS: Campo[] = ['documentType', 'documentNumber', 'firstName', 'lastName', 'birthDate', 'email', 'password'];
+type Campo = 'documentType' | 'documentNumber' | 'firstName' | 'lastName' | 'birthDate' | 'email' | 'password' | 'acceptPolicy';
+const CAMPOS: Campo[] = [
+  'documentType',
+  'documentNumber',
+  'firstName',
+  'lastName',
+  'birthDate',
+  'email',
+  'password',
+  'acceptPolicy'
+];
 
 /** Registro público de una cuenta de Cliente (POST /api/auth/register). */
 @Component({
@@ -52,16 +62,24 @@ export class RegistroComponent {
       birthDate: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(MIN_CONTRASENA)]],
-      confirmar: ['', [Validators.required]]
+      confirmar: ['', [Validators.required]],
+      // Solo en el modo Google (NEX-148); deshabilitada no cuenta para la validez del formulario.
+      acepto: [{ value: false, disabled: true }, [Validators.requiredTrue]]
     },
     { validators: coinciden }
   );
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly aviso = signal<string | null>(null);
   protected readonly erroresServidor = signal<Partial<Record<Campo, string>>>({});
   protected readonly verClave = signal(false);
+  /** Correo verificado por Google y política vigente; null en el registro con correo y contraseña. */
+  protected readonly google = signal<RegistroGooglePendiente | null>(null);
 
   constructor() {
+    if (inject(ActivatedRoute).snapshot.queryParamMap.get('google') === '1') {
+      void this.cargarRegistroGoogle();
+    }
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {
       const destino = DESTINOS[this.sesion.estado()];
@@ -76,6 +94,36 @@ export class RegistroComponent {
     return c.touched && c.invalid;
   }
 
+  /** El botón guarda una marca y sigue como enlace normal: el servidor redirige a Google y vuelve a /login. */
+  protected marcarGoogle(): void {
+    marcarRegistroGoogle();
+  }
+
+  /** Pide el correo que el servidor guardó al volver de Google; sin pendiente (404) sigue el registro normal. */
+  private async cargarRegistroGoogle(): Promise<void> {
+    try {
+      const pendiente = await this.auth.leerRegistroGoogle();
+      this.google.set(pendiente);
+      this.form.controls.email.setValue(pendiente.email);
+      this.form.controls.password.disable();
+      this.form.controls.confirmar.disable();
+      this.form.controls.acepto.enable();
+    } catch {
+      this.aviso.set('El registro con Google venció o no se inició. Vuelve a intentarlo con Google o regístrate con tu correo y contraseña.');
+    }
+  }
+
+  /** Deja el formulario como el registro normal (el pendiente venció o ya no existe). */
+  private salirDelModoGoogle(): void {
+    this.google.set(null);
+    this.form.controls.email.reset('');
+    this.form.controls.password.enable();
+    this.form.controls.confirmar.enable();
+    this.form.controls.acepto.reset(false);
+    this.form.controls.acepto.disable();
+    this.aviso.set('El registro con Google venció. Vuelve a intentarlo con Google o regístrate con tu correo y contraseña.');
+  }
+
   protected async registrar(): Promise<void> {
     if (this.enviando()) return;
     if (this.form.invalid) {
@@ -84,8 +132,27 @@ export class RegistroComponent {
     }
     this.enviando.set(true);
     this.error.set(null);
+    this.aviso.set(null);
     this.erroresServidor.set({});
     const v = this.form.getRawValue();
+    if (this.google()) {
+      try {
+        // El correo no viaja: el servidor usa el que guardó. AuthService.registrarConGoogle ya sigue al destino.
+        await this.auth.registrarConGoogle({
+          documentType: v.documentType,
+          documentNumber: v.documentNumber.trim(),
+          firstName: v.firstName.trim(),
+          lastName: v.lastName.trim(),
+          birthDate: v.birthDate,
+          acceptPolicy: v.acepto
+        });
+      } catch (e) {
+        this.mostrarError(e);
+      } finally {
+        this.enviando.set(false);
+      }
+      return;
+    }
     try {
       await this.auth.registrar({
         documentType: v.documentType,
@@ -117,6 +184,8 @@ export class RegistroComponent {
         return;
       }
       this.error.set(mensaje ?? 'Revisa los datos e inténtalo de nuevo.');
+    } else if (http?.status === 404 && this.google()) {
+      this.salirDelModoGoogle();
     } else if (http?.status === 409) {
       this.error.set(mensaje ?? 'Ya existe una cuenta con esos datos.');
     } else if (http?.status === 403) {
