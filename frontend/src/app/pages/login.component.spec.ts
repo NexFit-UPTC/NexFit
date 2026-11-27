@@ -230,5 +230,61 @@ describe('LoginComponent', () => {
       abrirCon({});
       expect(sessionStorage.getItem('nexfit.gimnasio')).toBeNull();
     });
+
+    describe('correo verificado sin cuenta (?google=nuevo, NEX-148)', () => {
+      beforeEach(() => {
+        sessionStorage.removeItem('nexfit.registro-google');
+        vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      });
+      afterEach(() => sessionStorage.removeItem('nexfit.registro-google'));
+
+      it('ofrece crear la cuenta en vez del error genérico', () => {
+        const pagina = abrirCon({ google: 'nuevo' });
+        expect(pagina.textContent).toContain('No encontramos una cuenta con ese correo. ¿Quieres crear una?');
+        expect(pagina.textContent).not.toContain('No se pudo iniciar sesión con Google');
+        const boton = pagina.querySelector<HTMLAnchorElement>('a.nf-boton')!;
+        expect(boton.textContent).toContain('Crear cuenta con este correo');
+        expect(boton.getAttribute('href')).toBe('/registro?google=1');
+        expect(router.navigate).not.toHaveBeenCalled();
+      });
+
+      it('no aparece con otro valor de ?google ni con ?error=google', () => {
+        expect(abrirCon({ google: '1' }).textContent).not.toContain('¿Quieres crear una?');
+        expect(abrirCon({ error: 'google' }).textContent).not.toContain('¿Quieres crear una?');
+      });
+
+      it('conserva el gimnasio guardado', () => {
+        sessionStorage.setItem('nexfit.gimnasio', '7');
+        abrirCon({ google: 'nuevo' });
+        expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('7');
+      });
+
+      it('con la marca de «Registrarme con Google» la borra y salta directo a /registro?google=1', () => {
+        sessionStorage.setItem('nexfit.registro-google', '1');
+        sessionStorage.setItem('nexfit.gimnasio', '7');
+        const pagina = abrirCon({ google: 'nuevo' });
+        expect(sessionStorage.getItem('nexfit.registro-google')).toBeNull();
+        expect(router.navigate).toHaveBeenCalledWith(['/registro'], { queryParams: { google: 1 }, replaceUrl: true });
+        expect(pagina.textContent).not.toContain('¿Quieres crear una?');
+        expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('7');
+      });
+
+      it('sin ?google=nuevo (con ?error=google o ?google=1) la marca se borra y no se navega', () => {
+        for (const consulta of [{ error: 'google' }, { google: '1' }]) {
+          sessionStorage.setItem('nexfit.registro-google', '1');
+          abrirCon(consulta);
+          expect(sessionStorage.getItem('nexfit.registro-google')).toBeNull();
+          expect(router.navigate).not.toHaveBeenCalled();
+        }
+      });
+
+      it('una marca vieja ya borrada no salta la pregunta en una carga posterior con ?google=nuevo', () => {
+        sessionStorage.setItem('nexfit.registro-google', '1');
+        abrirCon({ error: 'google' });
+        const pagina = abrirCon({ google: 'nuevo' });
+        expect(pagina.textContent).toContain('¿Quieres crear una?');
+        expect(router.navigate).not.toHaveBeenCalled();
+      });
+    });
   });
 });

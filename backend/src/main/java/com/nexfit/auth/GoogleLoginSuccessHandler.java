@@ -1,8 +1,10 @@
 package com.nexfit.auth;
 
-import com.nexfit.auth.AuthService.LoginResult;
+import com.nexfit.auth.AuthService.GoogleLoginResult;
+import com.nexfit.shared.SessionUserFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
@@ -17,9 +19,11 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  * cuenta de NexFit que tenga ese correo. La sesión que se abre es la del login con contraseña
  * ({@link LoginSessions}); roles y permisos se siguen armando desde la BD en cada solicitud.
  *
- * <p>Sin correo verificado, sin cuenta o con una cuenta no elegible (inactiva, bloqueada, Master o
- * con contraseña temporal pendiente) no se abre sesión y se vuelve al login con el mismo error
- * genérico, sin revelar el motivo ni si el correo existe. Una sesión previa solo se reemplaza
+ * <p>Sin correo verificado o con una cuenta no elegible (inactiva, bloqueada, Master o con contraseña
+ * temporal pendiente) no se abre sesión y se vuelve al login con el mismo error genérico, sin revelar
+ * el motivo. Un correo verificado sin cuenta (NEX-148) deja un registro pendiente en la sesión y
+ * vuelve al login con {@code ?google=nuevo}, que ofrece crear la cuenta; decirlo no filtra nada: la
+ * persona acaba de probar con Google que el correo es suyo. Una sesión previa solo se reemplaza
  * cuando el ingreso es válido.
  */
 class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
@@ -53,13 +57,25 @@ class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
         SecurityContextHolder.clearContext();
         // Sin correo verificado se consulta con null: no hay cuenta, y el rechazo queda auditado igual.
         String email = verifiedEmail(authentication).orElse(null);
-        Optional<LoginResult> result = auth.loginWithGoogle(email, request.getRemoteAddr());
-        if (result.isEmpty()) {
-            redirect.sendRedirect(request, response, GoogleLoginConfig.FAILURE_URL);
-            return;
+        GoogleLoginResult result = auth.loginWithGoogle(email, request.getRemoteAddr());
+        switch (result.status()) {
+            case LOGGED_IN -> {
+                LoginSessions.open(request, result.login());
+                redirect.sendRedirect(request, response, GoogleLoginConfig.SUCCESS_URL);
+            }
+            case NO_ACCOUNT -> {
+                // NEX-148: correo verificado sin cuenta → se ofrece crearla. Con una sesión de usuario ya
+                // abierta no se ofrece (rechazo genérico, sin tocar esa sesión).
+                HttpSession previous = request.getSession(false);
+                if (previous != null && previous.getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE) != null) {
+                    redirect.sendRedirect(request, response, GoogleLoginConfig.FAILURE_URL);
+                    return;
+                }
+                GooglePendingRegistration.start(request, email);
+                redirect.sendRedirect(request, response, GoogleLoginConfig.NEW_ACCOUNT_URL);
+            }
+            case REJECTED -> redirect.sendRedirect(request, response, GoogleLoginConfig.FAILURE_URL);
         }
-        LoginSessions.open(request, result.get());
-        redirect.sendRedirect(request, response, GoogleLoginConfig.SUCCESS_URL);
     }
 
     /** Correo del ID token de Google, solo si Google lo marca verificado. Cualquier otra cosa, vacío. */

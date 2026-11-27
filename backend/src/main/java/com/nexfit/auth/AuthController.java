@@ -3,6 +3,8 @@ package com.nexfit.auth;
 import com.nexfit.auth.AuthService.LoginResult;
 import com.nexfit.auth.AuthService.PasswordChangeResult;
 import com.nexfit.auth.AuthService.ResetResult;
+import com.nexfit.legal.LegalPolicyService;
+import com.nexfit.legal.PolicyDocument;
 import com.nexfit.shared.Accion;
 import com.nexfit.shared.ActiveOrganization;
 import com.nexfit.shared.AnyAuthenticated;
@@ -57,6 +59,10 @@ class AuthController {
             String lastName, String birthDate, String email, String password) {
     }
 
+    record GoogleRegistrationRequest(String documentType, String documentNumber, String firstName,
+            String lastName, String birthDate, Boolean acceptPolicy) {
+    }
+
     private static final int MAX_LENGTH = 150;
     private static final int NAME_MAX = 100;
     private static final int DOCUMENT_NUMBER_MAX = 30;
@@ -66,9 +72,12 @@ class AuthController {
     private final AuthService auth;
     private final RegisterRateLimiter registerLimiter;
 
-    AuthController(AuthService auth, RegisterRateLimiter registerLimiter) {
+    private final LegalPolicyService policy;
+
+    AuthController(AuthService auth, RegisterRateLimiter registerLimiter, LegalPolicyService policy) {
         this.auth = auth;
         this.registerLimiter = registerLimiter;
+        this.policy = policy;
     }
 
     // Declarativo: /auth/login es pública por SecurityConfig, no por esta
@@ -98,44 +107,14 @@ class AuthController {
     @PostMapping("/register")
     ResponseEntity<Map<String, Object>> register(@RequestBody RegisterRequest body, HttpServletRequest request) {
         if (!registerLimiter.allow(request.getRemoteAddr())) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .header("Retry-After", String.valueOf(RegisterRateLimiter.WINDOW.toSeconds()))
-                    .body(Map.of("code", "TOO_MANY_REQUESTS",
-                            "message", "Demasiados registros desde esta conexión. Inténtalo de nuevo más tarde"));
+            return tooManyRegistrations();
         }
-        if (body.documentType() == null || body.documentType().isBlank()) {
-            return invalid("documentType", "El tipo de documento es obligatorio");
+        IdentityCheck check = checkIdentity(body.documentType(), body.documentNumber(), body.firstName(),
+                body.lastName(), body.birthDate());
+        if (check.error() != null) {
+            return check.error();
         }
-        if (!DOCUMENT_TYPES.contains(body.documentType().trim())) {
-            return invalid("documentType", "El tipo de documento no es válido");
-        }
-        if (body.documentNumber() == null || body.documentNumber().isBlank()) {
-            return invalid("documentNumber", "El número de documento es obligatorio");
-        }
-        if (body.documentNumber().trim().length() > DOCUMENT_NUMBER_MAX) {
-            return invalid("documentNumber", "El número de documento no puede superar 30 caracteres");
-        }
-        if (body.firstName() == null || body.firstName().isBlank()) {
-            return invalid("firstName", "El nombre es obligatorio");
-        }
-        if (body.firstName().trim().length() > NAME_MAX) {
-            return invalid("firstName", "El nombre no puede superar 100 caracteres");
-        }
-        if (body.lastName() == null || body.lastName().isBlank()) {
-            return invalid("lastName", "El apellido es obligatorio");
-        }
-        if (body.lastName().trim().length() > NAME_MAX) {
-            return invalid("lastName", "El apellido no puede superar 100 caracteres");
-        }
-        if (body.birthDate() == null || body.birthDate().isBlank()) {
-            return invalid("birthDate", "La fecha de nacimiento es obligatoria");
-        }
-        LocalDate birthDate;
-        try {
-            birthDate = LocalDate.parse(body.birthDate().trim());
-        } catch (DateTimeParseException e) {
-            return invalid("birthDate", "La fecha debe tener el formato AAAA-MM-DD");
-        }
+        Identity identity = check.identity();
         if (body.email() == null || body.email().isBlank()) {
             return invalid("email", "El correo es obligatorio");
         }
@@ -153,14 +132,145 @@ class AuthController {
         if (AuthService.isWeak(body.password())) {
             return invalid("password", AuthService.WEAK_PASSWORD_MESSAGE);
         }
-        RegisterResult result = auth.register(body.documentType().trim(), body.documentNumber().trim(),
-                body.firstName().trim(), body.lastName().trim(), birthDate, body.email().trim(),
+        RegisterResult result = auth.register(identity.documentType(), identity.documentNumber(),
+                identity.firstName(), identity.lastName(), identity.birthDate(), body.email().trim(),
                 body.password(), request.getRemoteAddr());
         return switch (result.status()) {
             case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(Map.of("userId", result.userId()));
-            case CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("message", "Ya existe una cuenta con esos datos"));
+            case CONFLICT -> conflict();
         };
+    }
+
+    /**
+     * Registro con Google, paso 1 (NEX-148): el correo verificado que espera el formulario y la política
+     * vigente. Pública por SecurityConfig, como /auth/register; la anotación es declarativa. Sin registro
+     * pendiente (o vencido, o sin Google configurado) responde 404.
+     */
+    @AnyAuthenticated
+    @GetMapping("/google-registration")
+    ResponseEntity<Map<String, Object>> googleRegistration(HttpServletRequest request) {
+        Optional<String> email = GooglePendingRegistration.peek(request);
+        if (email.isEmpty()) {
+            return noPendingRegistration();
+        }
+        PolicyDocument policyDocument = policy.document();
+        Map<String, Object> policyBody = new LinkedHashMap<>();
+        policyBody.put("version", policyDocument.version());
+        policyBody.put("effectiveDate", policyDocument.effectiveDate());
+        policyBody.put("privacyText", policyDocument.privacyText());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email.get());
+        body.put("policy", policyBody);
+        return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Registro con Google, paso 2 (NEX-148): completa los datos y acepta la política. Crea la cuenta Cliente
+     * (sin gimnasio ni contraseña propia), abre la sesión como un login y consume el pendiente. El correo sale
+     * solo de la sesión; la versión de la política, del servidor. Comparte el tope de uso de /auth/register.
+     */
+    @AnyAuthenticated
+    @PostMapping("/google-registration")
+    ResponseEntity<Map<String, Object>> completeGoogleRegistration(@RequestBody GoogleRegistrationRequest body,
+            HttpServletRequest request) {
+        if (!registerLimiter.allow(request.getRemoteAddr())) {
+            return tooManyRegistrations();
+        }
+        Optional<String> email = GooglePendingRegistration.peek(request);
+        if (email.isEmpty()) {
+            return noPendingRegistration();
+        }
+        IdentityCheck check = checkIdentity(body.documentType(), body.documentNumber(), body.firstName(),
+                body.lastName(), body.birthDate());
+        if (check.error() != null) {
+            return check.error();
+        }
+        if (!Boolean.TRUE.equals(body.acceptPolicy())) {
+            return invalid("acceptPolicy", "Debes aceptar la política de tratamiento de datos");
+        }
+        Identity identity = check.identity();
+        RegisterResult result = auth.registerWithGoogle(email.get(), identity.documentType(),
+                identity.documentNumber(), identity.firstName(), identity.lastName(), identity.birthDate(),
+                policy.currentVersion(), request.getRemoteAddr());
+        if (result.status() == AuthService.RegisterStatus.CONFLICT) {
+            GooglePendingRegistration.clear(request);
+            return conflict();
+        }
+        // Reemplaza la sesión (y con ella el pendiente), igual que un login con Google.
+        LoginSessions.open(request, new LoginResult(result.userId(), false, List.of()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("userId", result.userId()));
+    }
+
+    private static ResponseEntity<Map<String, Object>> noPendingRegistration() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("code", "NO_PENDING_REGISTRATION",
+                "message", "No hay un registro con Google pendiente"));
+    }
+
+    private static ResponseEntity<Map<String, Object>> conflict() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Ya existe una cuenta con esos datos"));
+    }
+
+    private static ResponseEntity<Map<String, Object>> tooManyRegistrations() {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(RegisterRateLimiter.WINDOW.toSeconds()))
+                .body(Map.of("code", "TOO_MANY_REQUESTS",
+                        "message", "Demasiados registros desde esta conexión. Inténtalo de nuevo más tarde"));
+    }
+
+    /** Datos personales ya validados y recortados. */
+    private record Identity(String documentType, String documentNumber, String firstName, String lastName,
+            LocalDate birthDate) {
+    }
+
+    /** Resultado de {@link #checkIdentity}: los datos válidos, o la respuesta de error. */
+    private record IdentityCheck(Identity identity, ResponseEntity<Map<String, Object>> error) {
+    }
+
+    /**
+     * Validación de los datos personales que comparten /auth/register y el registro con Google, en el mismo
+     * orden y con los mismos mensajes.
+     */
+    private static IdentityCheck checkIdentity(String documentType, String documentNumber, String firstName,
+            String lastName, String birthDateText) {
+        if (documentType == null || documentType.isBlank()) {
+            return rejected("documentType", "El tipo de documento es obligatorio");
+        }
+        if (!DOCUMENT_TYPES.contains(documentType.trim())) {
+            return rejected("documentType", "El tipo de documento no es válido");
+        }
+        if (documentNumber == null || documentNumber.isBlank()) {
+            return rejected("documentNumber", "El número de documento es obligatorio");
+        }
+        if (documentNumber.trim().length() > DOCUMENT_NUMBER_MAX) {
+            return rejected("documentNumber", "El número de documento no puede superar 30 caracteres");
+        }
+        if (firstName == null || firstName.isBlank()) {
+            return rejected("firstName", "El nombre es obligatorio");
+        }
+        if (firstName.trim().length() > NAME_MAX) {
+            return rejected("firstName", "El nombre no puede superar 100 caracteres");
+        }
+        if (lastName == null || lastName.isBlank()) {
+            return rejected("lastName", "El apellido es obligatorio");
+        }
+        if (lastName.trim().length() > NAME_MAX) {
+            return rejected("lastName", "El apellido no puede superar 100 caracteres");
+        }
+        if (birthDateText == null || birthDateText.isBlank()) {
+            return rejected("birthDate", "La fecha de nacimiento es obligatoria");
+        }
+        LocalDate birthDate;
+        try {
+            birthDate = LocalDate.parse(birthDateText.trim());
+        } catch (DateTimeParseException e) {
+            return rejected("birthDate", "La fecha debe tener el formato AAAA-MM-DD");
+        }
+        return new IdentityCheck(new Identity(documentType.trim(), documentNumber.trim(), firstName.trim(),
+                lastName.trim(), birthDate), null);
+    }
+
+    private static IdentityCheck rejected(String field, String message) {
+        return new IdentityCheck(null, invalid(field, message));
     }
 
     /**

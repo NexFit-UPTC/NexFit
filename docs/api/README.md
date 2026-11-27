@@ -25,7 +25,7 @@ Reglas:
 
 ### Inicio de sesión con Google (NEX-147)
 
-Solo para cuentas que ya existen: no registra a nadie. Lo gestiona Spring Security (flujo de código con `state`, `nonce` y PKCE), no un controlador; por eso estas rutas no aparecen en `cases()` de `AuthorizationMatrixTests` y se prueban en `GoogleLoginTests`. Son públicas y escriben datos (una sesión en la base), así que llevan tope por conexión (`nexfit.auth.google-max-per-hour`, 120 por hora).
+Entra solo a cuentas que ya existen: este flujo no registra a nadie (crear la cuenta es el paso aparte de «Registro con Google», más abajo). Lo gestiona Spring Security (flujo de código con `state`, `nonce` y PKCE), no un controlador; por eso estas rutas no aparecen en `cases()` de `AuthorizationMatrixTests` y se prueban en `GoogleLoginTests`. Son públicas y escriben datos (una sesión en la base), así que llevan tope por conexión (`nexfit.auth.google-max-per-hour`, 120 por hora).
 
 | Ruta | Quién | Qué hace |
 |---|---|---|
@@ -33,12 +33,39 @@ Solo para cuentas que ya existen: no registra a nadie. Lo gestiona Spring Securi
 | `GET /api/login/oauth2/code/google` | Google | Callback del flujo. Responde siempre una redirección del navegador al sitio público (sin `/api`). |
 
 - **Éxito:** `302 /login?google=1`. Se abre la misma sesión (`NEXFIT_SESSION`) que con la contraseña: mismos roles y permisos, auto-selección de gimnasio con una sola afiliación (con varias o ninguna, el front lleva a `/establecimiento`). La sesión previa se reemplaza.
-- **Cualquier rechazo:** `302 /login?error=google`, idéntico para un correo sin cuenta, correo sin verificar en Google, cuenta inactiva o bloqueada, cuenta Master, contraseña temporal pendiente o vencida, o un error de Google; no revela si el correo existe. No abre sesión ni toca la previa.
+- **Correo verificado por Google sin cuenta (NEX-148):** `302 /login?google=nuevo`. No abre sesión; deja un registro pendiente en la sesión (ver «Registro con Google») y el front ofrece «No encontramos una cuenta con ese correo. ¿Quieres crear una?». Si la sesión que llega ya es de un usuario, no se ofrece y se trata como cualquier otro rechazo.
+- **Cualquier otro rechazo:** `302 /login?error=google`, idéntico para un correo sin verificar en Google, cuenta inactiva o bloqueada, cuenta Master, contraseña temporal pendiente o vencida, o un error de Google; no revela el motivo. No abre sesión ni toca la previa.
 - **Enlace:** el correo verificado por Google (`email_verified`) se compara sin distinguir mayúsculas con el de la cuenta. Sin migración ni almacenamiento del identificador de Google.
 - **Master y contraseña temporal:** el Master y las cuentas con contraseña temporal pendiente entran solo con la contraseña (el cambio de la temporal exige la contraseña actual).
 - **RN-38:** un rechazo por Google no suma fallos ni alarga un bloqueo.
-- **Auditoría:** `LOGIN` y `LOGIN_FAILED` con `metadata.method = "google"` (el rechazo de un correo sin cuenta o sin verificar queda sin actor).
+- **Auditoría:** `LOGIN` y `LOGIN_FAILED` con `metadata.method = "google"` (el rechazo de un correo sin cuenta o sin verificar queda sin actor, también cuando se ofrece el registro).
 - **Configuración:** `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` (ambas; sin ellas la función no existe y estas rutas responden `401`) y `NEXFIT_PUBLIC_URL` (por defecto `http://localhost:4200`). La redirect URI sale de ahí y es fija: `<NEXFIT_PUBLIC_URL>/api/login/oauth2/code/google`; en producción `https://nexfit-vert.vercel.app/api/login/oauth2/code/google`, en local `http://localhost:4200/api/login/oauth2/code/google`.
+
+### Registro con Google (NEX-148)
+
+Crea la cuenta de quien entró con Google con un correo verificado que no tiene cuenta. La cuenta nace como la de `POST /api/auth/register`: Cliente, sin gimnasio, sin afiliación y sin contraseña temporal. Se pide a la persona lo que Google no entrega y la aceptación de la política vigente. Sin migración: la cuenta guarda el hash de una contraseña aleatoria que nadie conoce, así que no entra con contraseña (ni puede cambiarla: pide la actual); entra con Google o, si hace falta, tras un restablecimiento asistido.
+
+Tras el callback, el correo verificado queda en el servidor, en la sesión, como atributo `NEXFIT_GOOGLE_PENDING` sin usuario (nunca en la URL): vence a los 10 minutos, es de un solo uso y se guarda en una sesión con id nuevo. No autentica ni da acceso a nada. Si se cancela, solo se deja vencer.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `GET /api/auth/google-registration` | Cualquiera (pública, como `/auth/register`) | `200 {email, policy: {version, effectiveDate, privacyText}}` con el correo pendiente y la política vigente. `404 NO_PENDING_REGISTRATION` si no hay pendiente, venció o Google no está configurado. |
+| `POST /api/auth/google-registration` | Cualquiera (pública, con el mismo tope que `/auth/register`) | Crea la cuenta, abre la sesión y consume el pendiente. `201 {userId}`. |
+
+Cuerpo del POST: `{"documentType": "CC|CE|PPT|PA", "documentNumber": "…", "firstName": "…", "lastName": "…", "birthDate": "YYYY-MM-DD", "acceptPolicy": true}`. El correo sale de la sesión, nunca del cuerpo; la versión de la política la pone el servidor.
+
+Errores del POST (el orden es este):
+- `429 {code: TOO_MANY_REQUESTS}` con `Retry-After`: comparte contador con `POST /auth/register` (`nexfit.auth.register-max-per-hour`, 30 por hora y conexión).
+- `404 {code: NO_PENDING_REGISTRATION}`: sin pendiente o vencido.
+- `400 VALIDATION_ERROR {code, field, message}`: las mismas validaciones de datos personales que `/auth/register` (sin la contraseña) y `field: acceptPolicy` si no es `true`. El pendiente sigue vigente.
+- `409 {message: "Ya existe una cuenta con esos datos"}`: el correo o el documento ya existen (también si la cuenta se creó mientras tanto o en un envío doble: el INSERT usa `ON CONFLICT DO NOTHING` sobre `lower(email)` y el documento). Borra el pendiente.
+
+El correo que ya tiene cuenta nunca crea otra: entra a la existente por el flujo de arriba. Los roles Administrador, Personal y Entrenador no se crean por Google.
+
+- **Sesión:** se abre como en un login con Google (id de sesión nuevo, la previa se reemplaza); un Cliente sin gimnasio va a `/establecimiento`, con el gimnasio guardado en el navegador preseleccionado si lo hay.
+- **Auditoría:** `ACCOUNT_SELF_REGISTERED` con `metadata {method: "google", policyVersion}` (la aceptación queda sellada con la versión que el servidor tenía vigente) y `LOGIN` con `{method: "google"}`. No hay un evento `REGISTER` aparte.
+- **Sin `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`:** las rutas existen, pero nunca hay pendiente: ambas responden `404 NO_PENDING_REGISTRATION`.
+- **Front:** `/registro` tiene «Registrarme con Google» (guarda una marca en `sessionStorage` y, al volver a `/login?google=nuevo`, salta a `/registro?google=1`); sin marca, `/login` muestra «Crear cuenta con este correo» hacia `/registro?google=1`. Ese modo muestra el correo de solo lectura, sin contraseña, con el texto de la política y la casilla obligatoria.
 
 ## Información personal propia (NEX-27, US-17)
 
