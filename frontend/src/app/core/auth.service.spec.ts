@@ -173,6 +173,57 @@ describe('AuthService', () => {
     });
   });
 
+  describe('registro con Google (NEX-148)', () => {
+    const datos = {
+      documentType: 'CC',
+      documentNumber: '123',
+      firstName: 'Ana',
+      lastName: 'Ruiz',
+      birthDate: '1990-05-17',
+      acceptPolicy: true
+    };
+
+    it('leerRegistroGoogle pide GET /api/auth/google-registration y devuelve el correo y la política', async () => {
+      const pendiente = { email: 'ana@gmail.com', policy: { version: '0.1-borrador', effectiveDate: '2026-10-18', privacyText: 'Texto' } };
+      const promesa = auth.leerRegistroGoogle();
+      http.expectOne({ method: 'GET', url: '/api/auth/google-registration' }).flush(pendiente);
+      await expect(promesa).resolves.toEqual(pendiente);
+    });
+
+    it('leerRegistroGoogle propaga el 404 cuando no hay pendiente', async () => {
+      const promesa = auth.leerRegistroGoogle();
+      http.expectOne('/api/auth/google-registration').flush({ code: 'NO_PENDING_REGISTRATION' }, { status: 404, statusText: '' });
+      await expect(promesa).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('registrarConGoogle envía los datos sin correo ni contraseña y luego sigue como un ingreso', async () => {
+      document.cookie = 'XSRF-TOKEN=abc; path=/';
+      sessionStorage.setItem('nexfit.gimnasio', '2');
+      const promesa = auth.registrarConGoogle(datos);
+      const req = http.expectOne({ method: 'POST', url: '/api/auth/google-registration' });
+      expect(req.request.body).toEqual(datos);
+      expect(req.request.headers.get('X-XSRF-TOKEN')).toBe('abc');
+      req.flush({ userId: 5 }, { status: 201, statusText: 'Created' });
+      // Cliente sin gimnasio: /me responde ESTABLISHMENT_REQUIRED y el gimnasio guardado se conserva para elegirlo.
+      await atenderMe({ code: 'ESTABLISHMENT_REQUIRED' }, 403);
+      await promesa;
+      expect(sesion.estado()).toBe('sin-establecimiento');
+      expect(sessionStorage.getItem('nexfit.gimnasio')).toBe('2');
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+      sessionStorage.removeItem('nexfit.gimnasio');
+    });
+
+    it('registrarConGoogle propaga 400, 404 y 409 sin cargar /me', async () => {
+      document.cookie = 'XSRF-TOKEN=abc; path=/';
+      for (const status of [400, 404, 409]) {
+        const promesa = auth.registrarConGoogle(datos);
+        http.expectOne('/api/auth/google-registration').flush({ message: 'x' }, { status, statusText: '' });
+        await expect(promesa).rejects.toMatchObject({ status });
+      }
+      http.expectNone('/api/me');
+    });
+  });
+
   describe('cerrar sesión', () => {
     it('POST /api/auth/logout, limpia la sesión y vuelve al login', async () => {
       document.cookie = 'XSRF-TOKEN=abc; path=/';

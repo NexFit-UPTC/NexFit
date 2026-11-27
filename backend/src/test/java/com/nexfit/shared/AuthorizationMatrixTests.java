@@ -288,6 +288,11 @@ class AuthorizationMatrixTests {
                                 false));
                 list.add(new Case("POST /auth/register", Kind.PUBLIC, Set.of(), c -> "/auth/register", c -> "{}", null,
                                 false));
+                // NEX-148: registro con Google; públicos como /auth/register (SecurityConfig + @AnyAuthenticated).
+                list.add(new Case("GET /auth/google-registration", Kind.PUBLIC, Set.of(),
+                                c -> "/auth/google-registration", c -> null, null, false));
+                list.add(new Case("POST /auth/google-registration", Kind.PUBLIC, Set.of(),
+                                c -> "/auth/google-registration", c -> "{}", null, false));
 
                 // Públicos de solo lectura (NEX-97): los abre SecurityConfig; el handler lleva
                 // @AnyAuthenticated.
@@ -1077,8 +1082,8 @@ class AuthorizationMatrixTests {
                 assertThat(ALL).hasSize(5);
                 assertThat(ctx.accounts().keySet()).containsExactlyInAnyOrderElementsOf(ALL);
                 assertThat(byKind.getOrDefault("PUBLIC", 0L))
-                                .as("solo el login, el registro y los 2 GET de /public/gyms son públicos")
-                                .isEqualTo(4L);
+                                .as("solo el login, el registro, el registro con Google (GET y POST) y los 2 GET de /public/gyms son públicos")
+                                .isEqualTo(6L);
                 assertThat(cases.stream().filter(c -> c.foreign() != null)).as("endpoints con recurso ajeno")
                                 .isNotEmpty();
         }

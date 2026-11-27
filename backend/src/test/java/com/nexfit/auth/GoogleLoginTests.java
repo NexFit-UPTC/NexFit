@@ -55,6 +55,7 @@ class GoogleLoginTests {
     private static final String PASSWORD = "Clave-Segura-123";
     private static final String FAILURE = "/login?error=google";
     private static final String SUCCESS = "/login?google=1";
+    private static final String NEW_ACCOUNT = "/login?google=nuevo";
 
     @Container
     @ServiceConnection
@@ -178,11 +179,15 @@ class GoogleLoginTests {
     @Test
     void elCorreoNoDistingueMayusculasNiEspacios() throws Exception {
         long id = newUser("Maria.Gomez@nexfit.test");
+        int usersBefore = jdbc.queryForObject("SELECT count(*) FROM users", Integer.class);
 
         Callback callback = googleCallback("  maria.gomez@NEXFIT.test ", true);
 
         assertThat(callback.redirect()).isEqualTo(SUCCESS);
         assertThat(callback.session().getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE)).isEqualTo(id);
+        // NEX-148: entrar a la cuenta existente nunca crea otra ni deja un registro pendiente.
+        assertThat(callback.session().getAttribute(GooglePendingRegistration.ATTRIBUTE)).isNull();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 
     @Test
@@ -215,11 +220,51 @@ class GoogleLoginTests {
     void correoSinCuentaVuelveAlLoginSinAbrirSesion() throws Exception {
         Callback callback = googleCallback("nadie@nexfit.test", true);
 
-        assertThat(callback.redirect()).isEqualTo(FAILURE);
-        assertThat(callback.session()).isNull();
+        // NEX-148: el correo verificado sin cuenta ya no es el error genérico: se ofrece crearla.
+        assertThat(callback.redirect()).isEqualTo(NEW_ACCOUNT);
+        assertThat(callback.session().getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE)).isNull();
         assertThat(googleEvents("LOGIN_FAILED", null)).isPositive();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE lower(email) = 'nadie@nexfit.test'",
                 Integer.class)).isZero();
+    }
+
+    @Test
+    void correoSinCuentaDejaElPendienteEnUnaSesionConIdNuevo() throws Exception {
+        var previous = new MockHttpSession();
+        String idBefore = previous.getId();
+
+        Callback callback = googleCallback("  Nuevo.Pendiente@NexFit.test ", true, previous);
+
+        assertThat(callback.redirect()).isEqualTo(NEW_ACCOUNT);
+        assertThat(callback.session().getId()).as("anti-fijación: la sesión cambia de id").isNotEqualTo(idBefore);
+        assertThat(callback.session().getAttribute(GooglePendingRegistration.ATTRIBUTE))
+                .isInstanceOf(Map.class)
+                .extracting(v -> ((Map<?, ?>) v).get("email")).isEqualTo("nuevo.pendiente@nexfit.test");
+        assertThat(callback.session().getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    void correoSinCuentaConUnaSesionDeUsuarioAbiertaEsElErrorGenerico() throws Exception {
+        var previous = new MockHttpSession();
+        previous.setAttribute(SessionUserFilter.USER_ID_ATTRIBUTE, 555L);
+
+        Callback callback = googleCallback("nadie-con-sesion@nexfit.test", true, previous);
+
+        assertThat(callback.redirect()).isEqualTo(FAILURE);
+        assertThat(previous.isInvalid()).isFalse();
+        assertThat(previous.getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE)).isEqualTo(555L);
+        assertThat(previous.getAttribute(GooglePendingRegistration.ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    void correoSinVerificarYSinCuentaNoDejaPendienteNiCreaCuenta() throws Exception {
+        int usersBefore = jdbc.queryForObject("SELECT count(*) FROM users", Integer.class);
+
+        Callback callback = googleCallback("sinverificar-nadie@nexfit.test", false);
+
+        assertThat(callback.redirect()).isEqualTo(FAILURE);
+        assertThat(callback.session()).isNull();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users", Integer.class)).isEqualTo(usersBefore);
     }
 
     @Test

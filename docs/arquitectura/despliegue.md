@@ -62,7 +62,7 @@ az containerapp update --name nexfit-api --resource-group nexfit-rg --set-env-va
 Remove-Variable plain, s
 ```
 
-Verificación sin iniciar sesión: `GET https://nexfit-vert.vercel.app/api/oauth2/authorization/google` debe responder `302` hacia `accounts.google.com` con `redirect_uri=https://nexfit-vert.vercel.app/api/login/oauth2/code/google`. La pantalla de consentimiento queda en «Testing», con el correo de pruebas como usuario de prueba.
+Verificación sin iniciar sesión: `GET https://nexfit-vert.vercel.app/api/oauth2/authorization/google` debe responder `302` hacia `accounts.google.com` con `redirect_uri=https://nexfit-vert.vercel.app/api/login/oauth2/code/google`. La pantalla de consentimiento está «En producción» desde el 26/11/2026: cualquier persona con cuenta de Google puede usar el inicio de sesión y, desde NEX-148, el registro con Google (mismo cliente OAuth, mismas variables y mismos alcances `openid` y `email`; sin variables nuevas).
 
 ## Cómo se despliega
 
