@@ -21,10 +21,10 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  *
  * <p>Sin correo verificado o con una cuenta no elegible (inactiva, bloqueada, Master o con contraseña
  * temporal pendiente) no se abre sesión y se vuelve al login con el mismo error genérico, sin revelar
- * el motivo. Un correo verificado sin cuenta (NEX-148) deja un registro pendiente en la sesión y
- * vuelve al login con {@code ?google=nuevo}, que ofrece crear la cuenta; decirlo no filtra nada: la
- * persona acaba de probar con Google que el correo es suyo. Una sesión previa solo se reemplaza
- * cuando el ingreso es válido.
+ * el motivo. Un correo verificado sin cuenta (NEX-148, NEX-149) deja un registro pendiente en la sesión
+ * (con el nombre y el apellido del perfil de Google) y va directo a {@code /completar-registro}; decirlo
+ * no filtra nada: la persona acaba de probar con Google que el correo es suyo. Una sesión previa solo se
+ * reemplaza cuando el ingreso es válido.
  */
 class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
 
@@ -64,14 +64,15 @@ class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
                 redirect.sendRedirect(request, response, GoogleLoginConfig.SUCCESS_URL);
             }
             case NO_ACCOUNT -> {
-                // NEX-148: correo verificado sin cuenta → se ofrece crearla. Con una sesión de usuario ya
-                // abierta no se ofrece (rechazo genérico, sin tocar esa sesión).
+                // NEX-149: correo verificado sin cuenta → directo a completar los datos. Con una sesión de
+                // usuario ya abierta no se ofrece (rechazo genérico, sin tocar esa sesión).
                 HttpSession previous = request.getSession(false);
                 if (previous != null && previous.getAttribute(SessionUserFilter.USER_ID_ATTRIBUTE) != null) {
                     redirect.sendRedirect(request, response, GoogleLoginConfig.FAILURE_URL);
                     return;
                 }
-                GooglePendingRegistration.start(request, email);
+                GooglePendingRegistration.start(request, email, givenName(authentication),
+                        familyName(authentication));
                 redirect.sendRedirect(request, response, GoogleLoginConfig.NEW_ACCOUNT_URL);
             }
             case REJECTED -> redirect.sendRedirect(request, response, GoogleLoginConfig.FAILURE_URL);
@@ -86,5 +87,16 @@ class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
             return email == null || email.isBlank() ? Optional.empty() : Optional.of(email);
         }
         return Optional.empty();
+    }
+
+    /** Nombre del perfil de Google (alcance {@code profile}); null si no viene. Solo precarga un formulario. */
+    private static String givenName(Authentication authentication) {
+        return authentication != null && authentication.getPrincipal() instanceof OidcUser oidc
+                ? oidc.getGivenName() : null;
+    }
+
+    private static String familyName(Authentication authentication) {
+        return authentication != null && authentication.getPrincipal() instanceof OidcUser oidc
+                ? oidc.getFamilyName() : null;
     }
 }

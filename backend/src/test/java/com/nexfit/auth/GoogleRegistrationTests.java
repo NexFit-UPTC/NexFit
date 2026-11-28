@@ -52,7 +52,10 @@ class GoogleRegistrationTests {
 
     private static final String PATH = "/auth/google-registration";
     private static final String COOKIE = "NEXFIT_SESSION";
-    private static final String CONFLICT_BODY = "{\"message\":\"Ya existe una cuenta con esos datos\"}";
+    private static final String DOCUMENT_TAKEN_BODY = "{\"code\":\"DOCUMENT_TAKEN\",\"field\":\"documentNumber\","
+            + "\"message\":\"Ya hay una cuenta con este número de documento\"}";
+    private static final String EMAIL_TAKEN_BODY = "{\"code\":\"EMAIL_TAKEN\",\"field\":\"email\","
+            + "\"message\":\"Ya hay una cuenta con este correo\"}";
 
     @Container
     @ServiceConnection
@@ -115,9 +118,18 @@ class GoogleRegistrationTests {
     }
 
     private Cookie pendingUntil(String email, long expiresAtMillis) {
+        return pendingUntil(email, "", "", expiresAtMillis);
+    }
+
+    private Cookie pendingWithNames(String email, String firstName, String lastName) {
+        return pendingUntil(email, firstName, lastName,
+                System.currentTimeMillis() + GooglePendingRegistration.TTL.toMillis());
+    }
+
+    private Cookie pendingUntil(String email, String firstName, String lastName, long expiresAtMillis) {
         Session session = sessions().createSession();
-        session.setAttribute(GooglePendingRegistration.ATTRIBUTE,
-                GooglePendingRegistration.value(email.trim().toLowerCase(Locale.ROOT), expiresAtMillis));
+        session.setAttribute(GooglePendingRegistration.ATTRIBUTE, GooglePendingRegistration
+                .value(email.trim().toLowerCase(Locale.ROOT), firstName, lastName, expiresAtMillis));
         sessions().save(session);
         return cookieFor(session.getId());
     }
@@ -183,6 +195,17 @@ class GoogleRegistrationTests {
         assertThat(content(r)).contains("\"email\":\"pendiente.uno@nexfit.test\"")
                 .contains("\"version\":\"" + LegalPolicyService.VERSION + "\"")
                 .contains("\"effectiveDate\"").contains("\"privacyText\":\"");
+    }
+
+    @Test
+    void getDevuelveElNombreYElApellidoQueGoogleEntrego() throws Exception {
+        Cookie session = pendingWithNames("Con.Perfil@NexFit.test", "Ana María", "Pérez");
+
+        MvcResult r = send(get(PATH).cookie(session));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        assertThat(content(r)).contains("\"email\":\"con.perfil@nexfit.test\"")
+                .contains("\"firstName\":\"Ana María\"").contains("\"lastName\":\"Pérez\"");
     }
 
     @Test
@@ -323,7 +346,7 @@ class GoogleRegistrationTests {
     // ---- Criterio 2: con cuenta → nunca una segunda --------------------------------------------
 
     @Test
-    void siElCorreoSeCreoEntreTantoElPostDa409SinSegundaFilaYBorraElPendiente() throws Exception {
+    void siElCorreoSeCreoEntreTantoElPostDa409EmailTakenSinSegundaFilaYElPendienteSigue() throws Exception {
         String email = newEmail();
         Cookie pending = pending(email);
         jdbc.update("""
@@ -336,23 +359,59 @@ class GoogleRegistrationTests {
         MvcResult r = complete(pending, body(newDocument(), "true"));
 
         assertThat(r.getResponse().getStatus()).isEqualTo(409);
-        assertThat(content(r)).isEqualTo(CONFLICT_BODY);
+        assertThat(content(r)).isEqualTo(EMAIL_TAKEN_BODY);
         assertThat(usersWithEmail(email)).isEqualTo(1);
-        // El pendiente quedó borrado en el repositorio de sesiones, no solo en memoria.
-        assertThat(attribute(pending, GooglePendingRegistration.ATTRIBUTE)).isNull();
+        // NEX-149: el 409 no consume el pendiente (solo se consume al crear la cuenta).
+        assertThat(attribute(pending, GooglePendingRegistration.ATTRIBUTE)).isNotNull();
     }
 
     @Test
-    void unDocumentoYaRegistradoDa409() throws Exception {
+    void unDocumentoYaRegistradoDa409DocumentTakenYSePuedeCorregirYReenviarSinVolverAGoogle() throws Exception {
+        String document = newDocument();
+        complete(pending(newEmail()), body(document, "true"));
+        String second = newEmail();
+        Cookie pending = pending(second);
+
+        MvcResult r = complete(pending, body(document, "true"));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
+        assertThat(usersWithEmail(second)).isZero();
+        assertThat(attribute(pending, GooglePendingRegistration.ATTRIBUTE)).isNotNull();
+
+        // Corrige el documento y reenvía con la misma sesión: crea la cuenta sin pasar otra vez por Google.
+        MvcResult retry = complete(pending, body(newDocument(), "true"));
+
+        assertThat(retry.getResponse().getStatus()).isEqualTo(201);
+        assertThat(usersWithEmail(second)).isEqualTo(1);
+        assertThat(sessionOf(pending)).as("ahora sí se consumió").isNull();
+    }
+
+    @Test
+    void elMismoNumeroConOtroTipoDeDocumentoTambienEsDocumentTaken() throws Exception {
         String document = newDocument();
         complete(pending(newEmail()), body(document, "true"));
         String second = newEmail();
 
-        MvcResult r = complete(pending(second), body(document, "true"));
+        MvcResult r = complete(pending(second),
+                body(document, "true").replace("\"documentType\":\"CC\"", "\"documentType\":\"CE\""));
 
         assertThat(r.getResponse().getStatus()).isEqualTo(409);
-        assertThat(content(r)).isEqualTo(CONFLICT_BODY);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
         assertThat(usersWithEmail(second)).isZero();
+    }
+
+    @Test
+    void siSeRepitenElDocumentoYElCorreoSeInformaElDocumento() throws Exception {
+        String document = newDocument();
+        String email = newEmail();
+        complete(pending(email), body(document, "true"));
+
+        MvcResult r = complete(pending(email), body(document, "true"));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
+        assertThat(usersWithEmail(email)).isEqualTo(1);
     }
 
     /**
@@ -361,7 +420,7 @@ class GoogleRegistrationTests {
      * lower(email) en el INSERT (ON CONFLICT), y responde 409 sin 500 ni segunda fila.
      */
     @Test
-    void dosEnviosConElMismoCorreoDan201Y409PorLaUnicidadDeLaBase() throws Exception {
+    void dosEnviosConElMismoCorreoDan201Y409EmailTakenPorLaUnicidadDeLaBase() throws Exception {
         String email = newEmail();
         Cookie first = pending(email);
         Cookie second = pending(email);
@@ -373,7 +432,7 @@ class GoogleRegistrationTests {
 
         assertThat(one.getResponse().getStatus()).isEqualTo(201);
         assertThat(two.getResponse().getStatus()).isEqualTo(409);
-        assertThat(content(two)).isEqualTo(CONFLICT_BODY);
+        assertThat(content(two)).isEqualTo(EMAIL_TAKEN_BODY);
         assertThat(usersWithEmail(email)).isEqualTo(1);
     }
 
