@@ -128,7 +128,7 @@ form {
   }
 }
 
-/* Registro con Google (NEX-148). Mismos tokens que el botón de /login. */
+/* «Continuar con Google» (NEX-149). Mismos tokens que el botón de /login. */
 .separador {
   display: flex;
   align-items: center;
@@ -158,17 +158,4 @@ form {
   border: 1px solid var(--borde);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
-}
-
-.politica {
-  max-height: 14rem;
-  margin: 0;
-  padding: var(--espacio-2);
-  overflow: auto;
-  white-space: pre-wrap;
-  font: inherit;
-  font-size: 0.875rem;
-  background: var(--superficie);
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
 }

@@ -44,8 +44,8 @@ class GoogleLoginConfig {
 
     static final String FAILURE_URL = "/login?error=google";
     static final String SUCCESS_URL = "/login?google=1";
-    /** Correo verificado por Google sin cuenta (NEX-148): el login ofrece crearla. */
-    static final String NEW_ACCOUNT_URL = "/login?google=nuevo";
+    /** Correo verificado por Google sin cuenta (NEX-149): va directo a completar los datos de la cuenta. */
+    static final String NEW_ACCOUNT_URL = "/completar-registro";
     private static final String CALLBACK_PATH = "/api/login/oauth2/code/google";
 
     @Bean
@@ -59,7 +59,8 @@ class GoogleLoginConfig {
         var registration = CommonOAuth2Provider.GOOGLE.getBuilder("google")
                 .clientId(clientId)
                 .clientSecret(clientSecret)
-                .scope("openid", "email")
+                // profile: nombre y apellido para precargar el registro (alcance básico, no sensible).
+                .scope("openid", "email", "profile")
                 .redirectUri(base + CALLBACK_PATH)
                 .clientSettings(ClientRegistration.ClientSettings.builder().requireProofKey(true).build())
                 .build();

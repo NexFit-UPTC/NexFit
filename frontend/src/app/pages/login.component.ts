@@ -4,7 +4,6 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { guardarGimnasio } from '../core/gimnasio-preseleccionado';
-import { consumirRegistroGoogle } from '../core/registro-google';
 import { EstadoSesion, SessionService } from '../core/session.service';
 import { AuthShellComponent } from './auth-shell.component';
 
@@ -42,25 +41,14 @@ export class LoginComponent {
   protected readonly verClave = signal(false);
   protected readonly cuentaCreada: boolean;
   protected readonly errorGoogle: boolean;
-  /** Google verificó el correo pero no tiene cuenta (?google=nuevo, NEX-148): se ofrece crearla. */
-  protected readonly googleSinCuenta: boolean;
 
   constructor() {
     const consulta = inject(ActivatedRoute).snapshot.queryParamMap;
     this.cuentaCreada = consulta.get('registrado') === '1';
     this.errorGoogle = consulta.get('error') === 'google';
-    const sinCuenta = consulta.get('google') === 'nuevo';
-    // Al volver de Google (?google=1|nuevo o ?error=google) no viene ?gimnasio: se conserva el guardado antes de salir.
-    if (!this.errorGoogle && consulta.get('google') !== '1' && !sinCuenta) {
+    // Al volver de Google (?google=1 o ?error=google) no viene ?gimnasio: se conserva el guardado antes de salir.
+    if (!this.errorGoogle && consulta.get('google') !== '1') {
       guardarGimnasio(consulta.get('gimnasio'));
-    }
-    // Quien pulsó «Registrarme con Google» en /registro ya dijo que quiere crear la cuenta: sin volver a preguntar.
-    // La marca se consume en toda carga de /login: una marca vieja no debe saltarse la pregunta después.
-    const marca = consumirRegistroGoogle();
-    const queriaRegistrarse = sinCuenta && marca;
-    this.googleSinCuenta = sinCuenta && !queriaRegistrarse;
-    if (queriaRegistrarse) {
-      void this.router.navigate(['/registro'], { queryParams: { google: 1 }, replaceUrl: true });
     }
     // Quien ya tiene sesión no necesita esta pantalla; reacciona también cuando /api/me responde después de pintar.
     effect(() => {

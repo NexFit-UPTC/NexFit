@@ -135,22 +135,23 @@ class AuthController {
         RegisterResult result = auth.register(identity.documentType(), identity.documentNumber(),
                 identity.firstName(), identity.lastName(), identity.birthDate(), body.email().trim(),
                 body.password(), request.getRemoteAddr());
-        return switch (result.status()) {
-            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(Map.of("userId", result.userId()));
-            case CONFLICT -> conflict();
-        };
+        if (result.status() != AuthService.RegisterStatus.CREATED) {
+            return taken(result.status());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("userId", result.userId()));
     }
 
     /**
-     * Registro con Google, paso 1 (NEX-148): el correo verificado que espera el formulario y la política
-     * vigente. Pública por SecurityConfig, como /auth/register; la anotación es declarativa. Sin registro
-     * pendiente (o vencido, o sin Google configurado) responde 404.
+     * Registro con Google, paso 1 (NEX-148, NEX-149): el correo verificado y el nombre y apellido del perfil de
+     * Google que precargan el formulario, y la política vigente. Pública por SecurityConfig, como
+     * /auth/register; la anotación es declarativa. Sin registro pendiente (o vencido, o sin Google
+     * configurado) responde 404.
      */
     @AnyAuthenticated
     @GetMapping("/google-registration")
     ResponseEntity<Map<String, Object>> googleRegistration(HttpServletRequest request) {
-        Optional<String> email = GooglePendingRegistration.peek(request);
-        if (email.isEmpty()) {
+        Optional<GooglePendingRegistration.Pending> pending = GooglePendingRegistration.peek(request);
+        if (pending.isEmpty()) {
             return noPendingRegistration();
         }
         PolicyDocument policyDocument = policy.document();
@@ -159,15 +160,19 @@ class AuthController {
         policyBody.put("effectiveDate", policyDocument.effectiveDate());
         policyBody.put("privacyText", policyDocument.privacyText());
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("email", email.get());
+        body.put("email", pending.get().email());
+        body.put("firstName", pending.get().firstName());
+        body.put("lastName", pending.get().lastName());
         body.put("policy", policyBody);
         return ResponseEntity.ok(body);
     }
 
     /**
-     * Registro con Google, paso 2 (NEX-148): completa los datos y acepta la política. Crea la cuenta Cliente
-     * (sin gimnasio ni contraseña propia), abre la sesión como un login y consume el pendiente. El correo sale
-     * solo de la sesión; la versión de la política, del servidor. Comparte el tope de uso de /auth/register.
+     * Registro con Google, paso 2 (NEX-148, NEX-149): completa los datos y acepta la política. Crea la cuenta
+     * Cliente (sin gimnasio ni contraseña propia), abre la sesión como un login y consume el pendiente. El
+     * correo sale solo de la sesión; la versión de la política, del servidor. Un documento o correo repetido
+     * responde 409 por campo y el pendiente sigue vigente para corregir y reenviar. Comparte el tope de uso
+     * de /auth/register.
      */
     @AnyAuthenticated
     @PostMapping("/google-registration")
@@ -176,8 +181,8 @@ class AuthController {
         if (!registerLimiter.allow(request.getRemoteAddr())) {
             return tooManyRegistrations();
         }
-        Optional<String> email = GooglePendingRegistration.peek(request);
-        if (email.isEmpty()) {
+        Optional<GooglePendingRegistration.Pending> pending = GooglePendingRegistration.peek(request);
+        if (pending.isEmpty()) {
             return noPendingRegistration();
         }
         IdentityCheck check = checkIdentity(body.documentType(), body.documentNumber(), body.firstName(),
@@ -189,12 +194,12 @@ class AuthController {
             return invalid("acceptPolicy", "Debes aceptar la política de tratamiento de datos");
         }
         Identity identity = check.identity();
-        RegisterResult result = auth.registerWithGoogle(email.get(), identity.documentType(),
+        RegisterResult result = auth.registerWithGoogle(pending.get().email(), identity.documentType(),
                 identity.documentNumber(), identity.firstName(), identity.lastName(), identity.birthDate(),
                 policy.currentVersion(), request.getRemoteAddr());
-        if (result.status() == AuthService.RegisterStatus.CONFLICT) {
-            GooglePendingRegistration.clear(request);
-            return conflict();
+        if (result.status() != AuthService.RegisterStatus.CREATED) {
+            // El pendiente no se toca: la persona corrige el dato y reenvía sin volver a Google.
+            return taken(result.status());
         }
         // Reemplaza la sesión (y con ella el pendiente), igual que un login con Google.
         LoginSessions.open(request, new LoginResult(result.userId(), false, List.of()));
@@ -206,8 +211,29 @@ class AuthController {
                 "message", "No hay un registro con Google pendiente"));
     }
 
-    private static ResponseEntity<Map<String, Object>> conflict() {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Ya existe una cuenta con esos datos"));
+    /**
+     * 409 por campo (NEX-149; decisión del 28/11: se abandona el 409 genérico). Solo {@code TAKEN} (la fila
+     * que chocó desapareció antes de poder identificarla) responde sin campo.
+     */
+    private static ResponseEntity<Map<String, Object>> taken(AuthService.RegisterStatus status) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        switch (status) {
+            case DOCUMENT_TAKEN -> {
+                error.put("code", "DOCUMENT_TAKEN");
+                error.put("field", "documentNumber");
+                error.put("message", "Ya hay una cuenta con este número de documento");
+            }
+            case EMAIL_TAKEN -> {
+                error.put("code", "EMAIL_TAKEN");
+                error.put("field", "email");
+                error.put("message", "Ya hay una cuenta con este correo");
+            }
+            default -> {
+                error.put("code", "ACCOUNT_TAKEN");
+                error.put("message", "Ya existe una cuenta con esos datos");
+            }
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     private static ResponseEntity<Map<String, Object>> tooManyRegistrations() {

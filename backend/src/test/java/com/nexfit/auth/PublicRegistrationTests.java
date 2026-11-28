@@ -29,7 +29,11 @@ class PublicRegistrationTests {
 
     private static final String PASSWORD = "Clave-Segura-123";
     private static final String SHORT_PASSWORD = "corta123"; // 8 caracteres
-    private static final String CONFLICT_BODY = "{\"message\":\"Ya existe una cuenta con esos datos\"}";
+    // NEX-149 (decisión del 28/11): el 409 ya no es genérico; dice qué dato se repite.
+    private static final String DOCUMENT_TAKEN_BODY = "{\"code\":\"DOCUMENT_TAKEN\",\"field\":\"documentNumber\","
+            + "\"message\":\"Ya hay una cuenta con este número de documento\"}";
+    private static final String EMAIL_TAKEN_BODY = "{\"code\":\"EMAIL_TAKEN\",\"field\":\"email\","
+            + "\"message\":\"Ya hay una cuenta con este correo\"}";
 
     @Container
     @ServiceConnection
@@ -99,30 +103,70 @@ class PublicRegistrationTests {
     }
 
     @Test
-    void correoDuplicadoDa409ConElMismoCuerpoGenerico() throws Exception {
+    void correoDuplicadoDa409EmailTakenEnElCampoCorreo() throws Exception {
         int n = SEQ.incrementAndGet();
         String email = "duplicado" + n + "@nexfit.test";
         assertThat(register(body("D" + n, email, PASSWORD)).getResponse().getStatus()).isEqualTo(201);
-        // Mismo correo con otras mayúsculas: 409, mismo cuerpo, sin revelar datos.
+        // Mismo correo con otras mayúsculas: 409 que señala el correo.
         MvcResult r = register(body("D" + n + "X", email.toUpperCase(), PASSWORD));
         assertThat(r.getResponse().getStatus()).isEqualTo(409);
-        assertThat(content(r)).isEqualTo(CONFLICT_BODY);
+        assertThat(content(r)).isEqualTo(EMAIL_TAKEN_BODY);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE lower(email) = lower(?)",
                 Integer.class, email)).isEqualTo(1);
     }
 
     @Test
-    void documentoDuplicadoDa409ConElMismoCuerpoGenerico() throws Exception {
+    void documentoDuplicadoDa409DocumentTakenEnElCampoDocumento() throws Exception {
         int n = SEQ.incrementAndGet();
         String email = "doc" + n + "@nexfit.test";
         String doc = "DOC" + n;
         assertThat(register(body(doc, email, PASSWORD)).getResponse().getStatus()).isEqualTo(201);
-        // Mismo documento con otro correo: 409 con el cuerpo idéntico al del correo
-        // duplicado.
-        // Esa igualdad es la prueba de que no se puede enumerar cuentas.
+        // Mismo documento con otro correo: 409 que señala el documento.
         MvcResult r = register(body(doc, "otro" + n + "@nexfit.test", PASSWORD));
         assertThat(r.getResponse().getStatus()).isEqualTo(409);
-        assertThat(content(r)).isEqualTo(CONFLICT_BODY);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
+    }
+
+    @Test
+    void elMismoNumeroConOtroTipoDeDocumentoDa409YNoUn500() throws Exception {
+        int n = SEQ.incrementAndGet();
+        String doc = "TIPO" + n;
+        assertThat(register(body(doc, "tipo" + n + "@nexfit.test", PASSWORD)).getResponse().getStatus())
+                .isEqualTo(201);
+
+        // La unicidad de la BD es solo por número: CE con el número de una CC también choca.
+        MvcResult r = register(body(doc, "tipo-otro" + n + "@nexfit.test", PASSWORD)
+                .replace("\"documentType\":\"CC\"", "\"documentType\":\"CE\""));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM users WHERE document_number = ?", Integer.class, doc))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void siSeRepitenElDocumentoYElCorreoSeInformaElDocumento() throws Exception {
+        int n = SEQ.incrementAndGet();
+        String email = "ambos" + n + "@nexfit.test";
+        String doc = "AMBOS" + n;
+        assertThat(register(body(doc, email, PASSWORD)).getResponse().getStatus()).isEqualTo(201);
+
+        MvcResult r = register(body(doc, email, PASSWORD));
+
+        assertThat(r.getResponse().getStatus()).isEqualTo(409);
+        assertThat(content(r)).isEqualTo(DOCUMENT_TAKEN_BODY);
+    }
+
+    @Test
+    void despuesDeUn409SeCorrigeElDatoYElMismoRegistroSeCrea() throws Exception {
+        int n = SEQ.incrementAndGet();
+        String doc = "CORR" + n;
+        assertThat(register(body(doc, "corr" + n + "@nexfit.test", PASSWORD)).getResponse().getStatus())
+                .isEqualTo(201);
+        String email = "corr-nuevo" + n + "@nexfit.test";
+        assertThat(register(body(doc, email, PASSWORD)).getResponse().getStatus()).isEqualTo(409);
+
+        assertThat(register(body(doc + "B", email, PASSWORD)).getResponse().getStatus()).isEqualTo(201);
     }
 
     @Test

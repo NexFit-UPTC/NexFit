@@ -173,7 +173,7 @@ describe('AuthService', () => {
     });
   });
 
-  describe('registro con Google (NEX-148)', () => {
+  describe('registro con Google (NEX-148, NEX-149)', () => {
     const datos = {
       documentType: 'CC',
       documentNumber: '123',
@@ -183,8 +183,8 @@ describe('AuthService', () => {
       acceptPolicy: true
     };
 
-    it('leerRegistroGoogle pide GET /api/auth/google-registration y devuelve el correo y la política', async () => {
-      const pendiente = { email: 'ana@gmail.com', policy: { version: '0.1-borrador', effectiveDate: '2026-10-18', privacyText: 'Texto' } };
+    it('leerRegistroGoogle pide GET /api/auth/google-registration y devuelve el correo, el nombre y la política', async () => {
+      const pendiente = { email: 'ana@gmail.com', firstName: 'Ana', lastName: 'Ruiz', policy: { version: '0.1-borrador', effectiveDate: '2026-10-18', privacyText: 'Texto' } };
       const promesa = auth.leerRegistroGoogle();
       http.expectOne({ method: 'GET', url: '/api/auth/google-registration' }).flush(pendiente);
       await expect(promesa).resolves.toEqual(pendiente);
@@ -220,6 +220,22 @@ describe('AuthService', () => {
         http.expectOne('/api/auth/google-registration').flush({ message: 'x' }, { status, statusText: '' });
         await expect(promesa).rejects.toMatchObject({ status });
       }
+      http.expectNone('/api/me');
+    });
+
+    it('registrarConGoogle propaga el 409 por campo con su code y field para mostrarlo junto al campo', async () => {
+      document.cookie = 'XSRF-TOKEN=abc; path=/';
+      const promesa = auth.registrarConGoogle(datos);
+      http
+        .expectOne('/api/auth/google-registration')
+        .flush(
+          { code: 'DOCUMENT_TAKEN', field: 'documentNumber', message: 'Ya hay una cuenta con este número de documento' },
+          { status: 409, statusText: 'Conflict' }
+        );
+      await expect(promesa).rejects.toMatchObject({
+        status: 409,
+        error: { code: 'DOCUMENT_TAKEN', field: 'documentNumber' }
+      });
       http.expectNone('/api/me');
     });
   });

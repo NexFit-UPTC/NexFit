@@ -15,17 +15,9 @@
   <h1 class="titulo">Crea tu cuenta</h1>
   <p class="subtitulo">Los campos marcados con * son obligatorios.</p>
 
-  @if (aviso(); as mensaje) {
-    <p class="nf-alerta" role="status">{{ mensaje }}</p>
-  }
-
-  @if (google()) {
-    <p class="nf-ayuda" role="status">Google verificó tu correo. Completa los datos que faltan y acepta la política para crear tu cuenta.</p>
-  } @else {
-    <!-- Navegación completa (no routerLink): el backend redirige a Google y vuelve a /login. -->
-    <a class="google" href="/api/oauth2/authorization/google" (click)="marcarGoogle()">Registrarme con Google</a>
-    <p class="separador" aria-hidden="true"><span>o con tu correo y contraseña</span></p>
-  }
+  <!-- Navegación completa (no routerLink): el backend redirige a Google; con cuenta entra, sin cuenta va a /completar-registro. -->
+  <a class="google" href="/api/oauth2/authorization/google">Continuar con Google</a>
+  <p class="separador" aria-hidden="true"><span>o con tu correo y contraseña</span></p>
 
   <form [formGroup]="form" (ngSubmit)="registrar()" novalidate>
     @if (error(); as mensaje) {
@@ -130,7 +122,6 @@
             autocomplete="email"
             inputmode="email"
             placeholder="tu@correo.com"
-            [readOnly]="!!google()"
             [attr.aria-invalid]="invalido('email') || !!erroresServidor().email"
             [attr.aria-describedby]="invalido('email') || erroresServidor().email ? 'email-error' : null"
           />
@@ -140,73 +131,49 @@
             <p id="email-error" class="nf-error-campo">{{ m }}</p>
           }
         </div>
-        @if (!google()) {
-          <div class="nf-campo">
-            <label for="password">Contraseña <span aria-hidden="true">*</span></label>
-            <input
-              id="password"
-              class="nf-entrada"
-              formControlName="password"
-              autocomplete="new-password"
-              [type]="verClave() ? 'text' : 'password'"
-              aria-describedby="password-ayuda"
-              [attr.aria-invalid]="invalido('password') || !!erroresServidor().password"
-            />
-            @if (invalido('password')) {
-              <p id="password-ayuda" class="nf-error-campo">La contraseña debe tener al menos {{ minimo }} caracteres.</p>
-            } @else if (erroresServidor().password; as m) {
-              <p id="password-ayuda" class="nf-error-campo">{{ m }}</p>
-            } @else {
-              <p id="password-ayuda" class="nf-ayuda">Mínimo {{ minimo }} caracteres.</p>
-            }
-          </div>
-          <div class="nf-campo">
-            <label for="confirmar">Repite la contraseña <span aria-hidden="true">*</span></label>
-            <input
-              id="confirmar"
-              class="nf-entrada"
-              formControlName="confirmar"
-              autocomplete="new-password"
-              [type]="verClave() ? 'text' : 'password'"
-              [attr.aria-invalid]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden'))"
-              [attr.aria-describedby]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden')) ? 'confirmar-error' : null"
-            />
-            @if (form.controls.confirmar.touched && form.hasError('noCoinciden')) {
-              <p id="confirmar-error" class="nf-error-campo">Las contraseñas no coinciden.</p>
-            } @else if (form.controls.confirmar.touched && form.controls.confirmar.invalid) {
-              <p id="confirmar-error" class="nf-error-campo">Repite la contraseña.</p>
-            }
-          </div>
+        <div class="nf-campo">
+          <label for="password">Contraseña <span aria-hidden="true">*</span></label>
+          <input
+            id="password"
+            class="nf-entrada"
+            formControlName="password"
+            autocomplete="new-password"
+            [type]="verClave() ? 'text' : 'password'"
+            aria-describedby="password-ayuda"
+            [attr.aria-invalid]="invalido('password') || !!erroresServidor().password"
+          />
+          @if (invalido('password')) {
+            <p id="password-ayuda" class="nf-error-campo">La contraseña debe tener al menos {{ minimo }} caracteres.</p>
+          } @else if (erroresServidor().password; as m) {
+            <p id="password-ayuda" class="nf-error-campo">{{ m }}</p>
+          } @else {
+            <p id="password-ayuda" class="nf-ayuda">Mínimo {{ minimo }} caracteres.</p>
+          }
+        </div>
+        <div class="nf-campo">
+          <label for="confirmar">Repite la contraseña <span aria-hidden="true">*</span></label>
+          <input
+            id="confirmar"
+            class="nf-entrada"
+            formControlName="confirmar"
+            autocomplete="new-password"
+            [type]="verClave() ? 'text' : 'password'"
+            [attr.aria-invalid]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden'))"
+            [attr.aria-describedby]="form.controls.confirmar.touched && (form.controls.confirmar.invalid || form.hasError('noCoinciden')) ? 'confirmar-error' : null"
+          />
+          @if (form.controls.confirmar.touched && form.hasError('noCoinciden')) {
+            <p id="confirmar-error" class="nf-error-campo">Las contraseñas no coinciden.</p>
+          } @else if (form.controls.confirmar.touched && form.controls.confirmar.invalid) {
+            <p id="confirmar-error" class="nf-error-campo">Repite la contraseña.</p>
+          }
+        </div>
 
-          <label class="mostrar">
-            <input type="checkbox" [checked]="verClave()" (change)="verClave.set(!verClave())" />
-            Mostrar contraseñas
-          </label>
-        }
+        <label class="mostrar">
+          <input type="checkbox" [checked]="verClave()" (change)="verClave.set(!verClave())" />
+          Mostrar contraseñas
+        </label>
       </div>
     </fieldset>
-
-    @if (google(); as g) {
-      <fieldset class="seccion">
-        <legend>Política de tratamiento de datos</legend>
-        <pre class="politica" tabindex="0" aria-label="Texto de la política de tratamiento de datos">{{ g.policy.privacyText }}</pre>
-        <label class="mostrar">
-          <input
-            id="acepto"
-            type="checkbox"
-            formControlName="acepto"
-            [attr.aria-invalid]="invalido('acepto') || !!erroresServidor().acceptPolicy"
-            [attr.aria-describedby]="invalido('acepto') || erroresServidor().acceptPolicy ? 'acepto-error' : null"
-          />
-          Acepto la política de tratamiento de datos (versión {{ g.policy.version }}) <span aria-hidden="true">*</span>
-        </label>
-        @if (invalido('acepto')) {
-          <p id="acepto-error" class="nf-error-campo">Debes aceptar la política para crear tu cuenta.</p>
-        } @else if (erroresServidor().acceptPolicy; as m) {
-          <p id="acepto-error" class="nf-error-campo">{{ m }}</p>
-        }
-      </fieldset>
-    }
 
     <div class="acciones">
       <a routerLink="/login" class="nf-boton-sec">Cancelar</a>
