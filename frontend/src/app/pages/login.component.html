@@ -15,13 +15,6 @@
     </p>
   }
 
-  @if (googleSinCuenta) {
-    <div class="nf-alerta" role="alert">
-      <p>No encontramos una cuenta con ese correo. ¿Quieres crear una?</p>
-      <a class="nf-boton" routerLink="/registro" [queryParams]="{ google: 1 }">Crear cuenta con este correo</a>
-    </div>
-  }
-
   <form [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
     @if (error(); as mensaje) {
       <p class="nf-alerta" role="alert">{{ mensaje }}</p>
@@ -79,7 +72,7 @@
 
   <p class="separador" aria-hidden="true"><span>o</span></p>
 
-  <!-- Navegación completa (no routerLink): el backend redirige a Google y vuelve a /login. -->
+  <!-- Navegación completa (no routerLink): el backend redirige a Google; con cuenta entra, sin cuenta va a /completar-registro. -->
   <a class="google" href="/api/oauth2/authorization/google">Continuar con Google</a>
 
   <p class="nf-ayuda">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>

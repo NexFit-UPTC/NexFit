@@ -179,7 +179,7 @@ public class AuthService {
 
     /** Estado de {@link #register}. */
     public enum RegisterStatus {
-        CREATED, CONFLICT
+        CREATED, DOCUMENT_TAKEN, EMAIL_TAKEN, TAKEN
     }
 
     /**
@@ -543,36 +543,22 @@ public class AuthService {
     /**
      * Auto-registro público (BE-11, NEX-102): un visitante crea solo su cuenta,
      * sin roles ni afiliación. La contraseña es la elegida por el visitante
-     * (entre 10 y 64 caracteres y no débil, H-01/NEX-112; RNF-06); no hay contraseña temporal. El conflicto
-     * no distingue si chocó el correo o el documento, para no permitir
-     * enumerar cuentas. Queda auditado con la IP.
+     * (entre 10 y 64 caracteres y no débil, H-01/NEX-112; RNF-06); no hay contraseña temporal. El INSERT usa
+     * ON CONFLICT DO NOTHING (sin comprobación previa): si choca, el resultado dice qué dato se repite
+     * (NEX-149, decisión del 28/11: se abandona el conflicto genérico; el freno contra la enumeración es el
+     * tope de {@link RegisterRateLimiter}). Queda auditado con la IP.
      */
     @Transactional
     public RegisterResult register(String documentType, String documentNumber, String firstName,
             String lastName, LocalDate birthDate, String email,
             String password, String ip) {
-        boolean emailExists = jdbc.sql("SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(:email))")
-                .param("email", email.trim())
-                .query((rs, n) -> rs.getBoolean(1))
-                .single();
-        boolean documentExists = jdbc.sql("""
-                SELECT EXISTS(SELECT 1 FROM users
-                              WHERE document_type = CAST(:type AS document_type)
-                                AND document_number = :number)
-                """)
-                .param("type", documentType)
-                .param("number", documentNumber)
-                .query((rs, n) -> rs.getBoolean(1))
-                .single();
-        if (emailExists || documentExists) {
-            return new RegisterResult(RegisterStatus.CONFLICT, null);
-        }
-        long userId = jdbc.sql("""
+        Optional<Long> created = jdbc.sql("""
                 INSERT INTO users (document_type, document_number, first_name, last_name, birth_date,
                                    email, password_hash, must_change_password, temp_password_expires_at,
                                    is_platform_admin, is_active)
                 VALUES (CAST(:type AS document_type), :number, :first, :last, :birth, :email, :hash,
                         false, NULL, false, true)
+                ON CONFLICT DO NOTHING
                 RETURNING id
                 """)
                 .param("type", documentType)
@@ -583,7 +569,11 @@ public class AuthService {
                 .param("email", email.trim())
                 .param("hash", encoder.encode(password))
                 .query((rs, n) -> rs.getLong("id"))
-                .single();
+                .optional();
+        if (created.isEmpty()) {
+            return whichIsTaken(email, documentNumber);
+        }
+        long userId = created.get();
         audit.record(AuditEventType.ACCOUNT_SELF_REGISTERED, userId, null, "user", userId, ip, null);
         return new RegisterResult(RegisterStatus.CREATED, userId);
     }
@@ -594,8 +584,9 @@ public class AuthService {
      * (sin roles ni afiliación), pero sin contraseña: se guarda el hash de 32 bytes aleatorios que
      * nadie conoce, así que la cuenta solo entra por Google o tras un restablecimiento asistido.
      * El INSERT usa ON CONFLICT DO NOTHING: una carrera por el correo (índice sobre lower(email)) o
-     * por el documento se resuelve aquí como {@code CONFLICT}, sin una excepción que deje abortada
-     * la transacción (con PostgreSQL ya no se podría auditar ni confirmar). Audita el registro (con
+     * por el documento se resuelve aquí como {@code DOCUMENT_TAKEN}, {@code EMAIL_TAKEN} o {@code TAKEN},
+     * sin una excepción que deje abortada la transacción (con PostgreSQL ya no se podría auditar ni
+     * confirmar). Audita el registro (con
      * la versión de la política vigente en el servidor) y el ingreso, ambos con {@code method=google}.
      */
     @Transactional
@@ -623,13 +614,35 @@ public class AuthService {
                 .query((rs, n) -> rs.getLong("id"))
                 .optional();
         if (created.isEmpty()) {
-            return new RegisterResult(RegisterStatus.CONFLICT, null);
+            return whichIsTaken(email, documentNumber);
         }
         long userId = created.get();
         audit.record(AuditEventType.ACCOUNT_SELF_REGISTERED, userId, null, "user", userId, ip,
                 Map.of("method", "google", "policyVersion", policyVersion));
         audit.record(AuditEventType.LOGIN, userId, null, "user", userId, ip, Map.of("method", "google"));
         return new RegisterResult(RegisterStatus.CREATED, userId);
+    }
+
+    /**
+     * Qué dato chocó cuando el INSERT no creó fila (NEX-149). Se consulta en la misma transacción, que
+     * {@code ON CONFLICT DO NOTHING} deja válida; una fila de una transacción concurrente aún sin confirmar
+     * ya se esperó en el INSERT, así que aquí se ve. La unicidad del documento es solo por número (V2), sin
+     * el tipo. Si los dos chocan se informa el documento (el orden del formulario). Si no se encuentra
+     * ninguno (la fila desapareció entre el INSERT y esta consulta), {@code TAKEN}: el único caso sin campo.
+     */
+    private RegisterResult whichIsTaken(String email, String documentNumber) {
+        boolean documentExists = jdbc.sql("SELECT EXISTS(SELECT 1 FROM users WHERE document_number = :number)")
+                .param("number", documentNumber)
+                .query((rs, n) -> rs.getBoolean(1))
+                .single();
+        if (documentExists) {
+            return new RegisterResult(RegisterStatus.DOCUMENT_TAKEN, null);
+        }
+        boolean emailExists = jdbc.sql("SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(:email))")
+                .param("email", email.trim())
+                .query((rs, n) -> rs.getBoolean(1))
+                .single();
+        return new RegisterResult(emailExists ? RegisterStatus.EMAIL_TAKEN : RegisterStatus.TAKEN, null);
     }
 
     @Transactional

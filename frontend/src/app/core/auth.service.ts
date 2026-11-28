@@ -27,9 +27,11 @@ export interface DatosRegistro {
   password: string;
 }
 
-/** GET /api/auth/google-registration: el correo que Google verificó y la política vigente (NEX-148). */
+/** GET /api/auth/google-registration: el correo que Google verificó, su nombre y apellido (pueden venir vacíos) y la política vigente (NEX-148, NEX-149). */
 export interface RegistroGooglePendiente {
   email: string;
+  firstName: string;
+  lastName: string;
   policy: { version: string; effectiveDate: string; privacyText: string };
 }
 
@@ -79,7 +81,7 @@ export class AuthService {
     await firstValueFrom(this.http.post<{ userId: number }>('/api/auth/register', datos));
   }
 
-  /** GET /api/auth/google-registration: 404 si no hay registro con Google pendiente (o venció). */
+  /** GET /api/auth/google-registration: 404 si no hay registro con Google pendiente (o venció, 30 min). */
   leerRegistroGoogle(): Promise<RegistroGooglePendiente> {
     return firstValueFrom(this.http.get<RegistroGooglePendiente>('/api/auth/google-registration'));
   }

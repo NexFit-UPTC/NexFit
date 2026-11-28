@@ -1,0 +1,180 @@
+<div class="pagina">
+  <header class="cabecera">
+    <a class="marca" routerLink="/" aria-label="NexFit, inicio">
+      <svg class="logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="currentColor" />
+        <g fill="none" stroke="var(--sobre-acento)" stroke-width="2.4" stroke-linecap="round">
+          <path d="M9 12v8M23 12v8M6 14.5v3M26 14.5v3M9 16h14" />
+        </g>
+      </svg>
+      <span>NexFit</span>
+    </a>
+    <p class="ya-tienes">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
+  </header>
+
+  <h1 class="titulo">Antes de crear tu cuenta necesitamos unos datos</h1>
+
+  @switch (fase()) {
+    @case ('cargando') {
+      <p class="nf-ayuda" role="status">Cargando tus datos de Google…</p>
+    }
+    @case ('vencido') {
+      <p class="nf-alerta" role="alert">
+        La verificación con Google venció o no se inició. Vuelve a verificar tu cuenta para continuar.
+      </p>
+      <!-- Navegación completa (no routerLink): el backend redirige a Google y vuelve aquí. -->
+      <a class="google" href="/api/oauth2/authorization/google">Vuelve a verificar con Google</a>
+    }
+    @case ('error') {
+      <p class="nf-alerta" role="alert">No se pudo conectar con el servidor. Inténtalo de nuevo en un momento.</p>
+      <button type="button" class="nf-boton" (click)="cargar()">Reintentar</button>
+    }
+    @case ('formulario') {
+      <p class="subtitulo">Google verificó tu correo. Los campos marcados con * son obligatorios.</p>
+
+      <form [formGroup]="form" (ngSubmit)="crear()" novalidate>
+        @if (error(); as mensaje) {
+          <p class="nf-alerta" role="alert">{{ mensaje }}</p>
+        }
+
+        <fieldset class="seccion">
+          <legend>Datos personales</legend>
+          <div class="rejilla">
+            <div class="nf-campo">
+              <label for="firstName">Nombres <span aria-hidden="true">*</span></label>
+              <input
+                id="firstName"
+                class="nf-entrada"
+                type="text"
+                formControlName="firstName"
+                autocomplete="given-name"
+                [attr.aria-invalid]="invalido('firstName') || !!erroresServidor().firstName"
+                [attr.aria-describedby]="invalido('firstName') || erroresServidor().firstName ? 'firstName-error' : null"
+              />
+              @if (invalido('firstName')) {
+                <p id="firstName-error" class="nf-error-campo">Escribe tu nombre.</p>
+              } @else if (erroresServidor().firstName; as m) {
+                <p id="firstName-error" class="nf-error-campo">{{ m }}</p>
+              }
+            </div>
+            <div class="nf-campo">
+              <label for="lastName">Apellidos <span aria-hidden="true">*</span></label>
+              <input
+                id="lastName"
+                class="nf-entrada"
+                type="text"
+                formControlName="lastName"
+                autocomplete="family-name"
+                [attr.aria-invalid]="invalido('lastName') || !!erroresServidor().lastName"
+                [attr.aria-describedby]="invalido('lastName') || erroresServidor().lastName ? 'lastName-error' : null"
+              />
+              @if (invalido('lastName')) {
+                <p id="lastName-error" class="nf-error-campo">Escribe tu apellido.</p>
+              } @else if (erroresServidor().lastName; as m) {
+                <p id="lastName-error" class="nf-error-campo">{{ m }}</p>
+              }
+            </div>
+            <div class="nf-campo">
+              <label for="email">Correo electrónico</label>
+              <input
+                id="email"
+                class="nf-entrada"
+                type="email"
+                readonly
+                autocomplete="email"
+                [value]="google()?.email ?? ''"
+                [attr.aria-invalid]="!!correoRepetido()"
+                [attr.aria-describedby]="correoRepetido() ? 'email-error' : null"
+              />
+              @if (correoRepetido(); as m) {
+                <p id="email-error" class="nf-error-campo">{{ m }}</p>
+                <!-- Navegación completa: Google entra directo a la cuenta que ya existe. -->
+                <a class="google" href="/api/oauth2/authorization/google">Continuar con Google</a>
+              }
+            </div>
+            <div class="nf-campo">
+              <label for="documentType">Tipo de documento <span aria-hidden="true">*</span></label>
+              <select
+                id="documentType"
+                class="nf-entrada"
+                formControlName="documentType"
+                [attr.aria-invalid]="!!erroresServidor().documentType"
+                [attr.aria-describedby]="erroresServidor().documentType ? 'documentType-error' : null"
+              >
+                @for (t of tipos; track t.valor) {
+                  <option [value]="t.valor">{{ t.texto }}</option>
+                }
+              </select>
+              @if (erroresServidor().documentType; as m) {
+                <p id="documentType-error" class="nf-error-campo">{{ m }}</p>
+              }
+            </div>
+            <div class="nf-campo">
+              <label for="documentNumber">Número de documento <span aria-hidden="true">*</span></label>
+              <input
+                id="documentNumber"
+                class="nf-entrada"
+                type="text"
+                formControlName="documentNumber"
+                autocomplete="off"
+                [attr.aria-invalid]="invalido('documentNumber') || !!erroresServidor().documentNumber"
+                [attr.aria-describedby]="invalido('documentNumber') || erroresServidor().documentNumber ? 'documentNumber-error' : null"
+              />
+              @if (invalido('documentNumber')) {
+                <p id="documentNumber-error" class="nf-error-campo">Escribe tu número de documento.</p>
+              } @else if (erroresServidor().documentNumber; as m) {
+                <p id="documentNumber-error" class="nf-error-campo">{{ m }}</p>
+              }
+            </div>
+            <div class="nf-campo">
+              <label for="birthDate">Fecha de nacimiento <span aria-hidden="true">*</span></label>
+              <input
+                id="birthDate"
+                class="nf-entrada"
+                type="date"
+                formControlName="birthDate"
+                autocomplete="bday"
+                [attr.aria-invalid]="invalido('birthDate') || !!erroresServidor().birthDate"
+                [attr.aria-describedby]="invalido('birthDate') || erroresServidor().birthDate ? 'birthDate-error' : null"
+              />
+              @if (invalido('birthDate')) {
+                <p id="birthDate-error" class="nf-error-campo">Escribe tu fecha de nacimiento.</p>
+              } @else if (erroresServidor().birthDate; as m) {
+                <p id="birthDate-error" class="nf-error-campo">{{ m }}</p>
+              }
+            </div>
+          </div>
+        </fieldset>
+
+        @if (google(); as g) {
+          <fieldset class="seccion">
+            <legend>Política de tratamiento de datos</legend>
+            <pre class="politica" tabindex="0" aria-label="Texto de la política de tratamiento de datos">{{ g.policy.privacyText }}</pre>
+            <label class="mostrar">
+              <input
+                id="acepto"
+                type="checkbox"
+                formControlName="acepto"
+                [attr.aria-invalid]="invalido('acepto') || !!erroresServidor().acceptPolicy"
+                [attr.aria-describedby]="invalido('acepto') || erroresServidor().acceptPolicy ? 'acepto-error' : null"
+              />
+              Acepto la política de tratamiento de datos (versión {{ g.policy.version }}) <span aria-hidden="true">*</span>
+            </label>
+            @if (invalido('acepto')) {
+              <p id="acepto-error" class="nf-error-campo">Debes aceptar la política para crear tu cuenta.</p>
+            } @else if (erroresServidor().acceptPolicy; as m) {
+              <p id="acepto-error" class="nf-error-campo">{{ m }}</p>
+            }
+          </fieldset>
+        }
+
+        <div class="acciones">
+          <a routerLink="/login" class="nf-boton-sec">Cancelar</a>
+          <button type="submit" class="nf-boton" [disabled]="enviando()">
+            {{ enviando() ? 'Creando cuenta…' : 'Crear cuenta' }}
+          </button>
+        </div>
+      </form>
+    }
+  }
+</div>
